@@ -1,56 +1,130 @@
 <?php
-// app/Models/Usuario.php
 
 namespace App\Models;
 
 use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Notifications\Notifiable;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Usuario extends Authenticatable
 {
-    use Notifiable;
+    use HasFactory;
 
-    protected $table = 'sgc_usuarios';
+    protected $table      = 'sgc_usuarios';
     protected $primaryKey = 'id';
-    public $timestamps = false;
+    public    $timestamps = false;
+
+    /**
+     * Columna de contraseña — Laravel la usa para Auth::attempt()
+     */
+    protected $authPasswordName = 'quesera';
 
     protected $fillable = [
-        'email', 'nombre', 'fecha_ingreso', 'id_perfil',
-        'ver_pozos', 'carga_pozos', 'ver_cursos', 'ver_control_instrumentos',
-        'ver_control_no_conformidades', 'ver_sig', 'carga_sig',
-        'ver_paritario', 'carga_paritario', 'ver_minsal', 'carga_minsal',
-        'ver_ds44', 'carga_ds44', 'ver_susres', 'carga_susres',
-        'ver_recres', 'carga_recres', 'ver_certcal', 'carga_certcal',
-        'ver_epp', 'carga_epp', 'ver_man_infra', 'carga_man_infra',
-        'ver_nminutas', 'carga_nminutas'
+        'email',
+        'quesera',
+        'clave',
+        'fecha_ingreso',
+        'id_perfil',
+        'nombre',
     ];
 
     protected $hidden = ['quesera'];
 
-    public function carpetas()
+    protected $casts = [
+        // Permisos booleanos — el legacy los guarda como tinyint/varchar
+        'carga'                    => 'boolean',
+        'planificacion'            => 'boolean',
+        'editar_planificacion'     => 'boolean',
+        'agregar_planificacion'    => 'boolean',
+        'agregar_minutas'          => 'boolean',
+        'descarga'                 => 'boolean',
+        'crear'                    => 'boolean',
+        'ocultar_raiz'             => 'boolean',
+        'eliminar'                 => 'boolean',
+        'editar'                   => 'boolean',
+        'ver_pozos'                => 'boolean',
+        'ver_cursos'               => 'boolean',
+        'ver_btn_matriz'           => 'boolean',
+        'ver_btn_maq'              => 'boolean',
+        'ver_btn_control_pozos'    => 'boolean',
+        'ver_btn_rrhh'             => 'boolean',
+        'ocultar_lateral'          => 'boolean',
+        'carga_pozos'              => 'boolean',
+        'ver_control_instrumentos' => 'boolean',
+        'ver_control_no_conformida'=> 'boolean',
+        'ver_sig'                  => 'boolean',
+        'carga_sig'                => 'boolean',
+        'editar_control_instrumento'=> 'boolean',
+        'editar_cursos'            => 'boolean',
+        'bloque_sig'               => 'boolean',
+        'bloque_seguridad'         => 'boolean',
+        'bloque_ambiente'          => 'boolean',
+        'bloque_rrhh'              => 'boolean',
+        'bloque_abastecimiento'    => 'boolean',
+        'bloque_proyectos'         => 'boolean',
+        'carga_no_conformidades'   => 'boolean',
+        'ver_paritario'            => 'boolean',
+        'carga_paritario'          => 'boolean',
+        'ver_minsal'               => 'boolean',
+        'carga_minsal'             => 'boolean',
+        'ver_ds44'                 => 'boolean',
+        'carga_ds44'               => 'boolean',
+        'ver_susres'               => 'boolean',
+        'carga_susres'             => 'boolean',
+        'ver_recres'               => 'boolean',
+        'carga_recres'             => 'boolean',
+        'ver_certcal'              => 'boolean',
+        'carga_certcal'            => 'boolean',
+        'ver_epp'                  => 'boolean',
+        'carga_epp'                => 'boolean',
+        'ver_man_infra'            => 'boolean',
+        'carga_man_infra'          => 'boolean',
+        'ver_nminutas'             => 'boolean',
+        'carga_nminutas'           => 'boolean',
+    ];
+
+    // ─── Helpers de permisos ────────────────────────────────────────────────
+
+    /**
+     * Verifica si el usuario es administrador (perfil 1 según ser_perfiles)
+     */
+    public function esAdmin(): bool
     {
-        return $this->belongsToMany(Carpeta::class, 'sgc_carpetas_permisos', 'id_usuario', 'id_carpeta');
+        return (int) $this->id_perfil === 1;
     }
 
-    public function noConformidades()
+    /**
+     * Verifica un permiso booleano por nombre de columna
+     * Uso: $usuario->can('bloque_sig')
+     */
+    public function puedeVer(string $permiso): bool
     {
-        return $this->hasMany(NoConformidad::class, 'id_usuario');
+        return (bool) ($this->$permiso ?? false);
     }
 
-    public function minutas()
+    /**
+     * Devuelve los bloques de módulos visibles para este usuario
+     */
+    public function bloquesVisibles(): array
     {
-        return $this->belongsToMany(Minuta::class, 'sgc_minutas_convocados', 'id_usuario', 'id_minuta');
+        $bloques = [
+            'sig'           => 'bloque_sig',
+            'seguridad'     => 'bloque_seguridad',
+            'ambiente'      => 'bloque_ambiente',
+            'rrhh'          => 'bloque_rrhh',
+            'abastecimiento'=> 'bloque_abastecimiento',
+            'proyectos'     => 'bloque_proyectos',
+        ];
+
+        return array_keys(array_filter(
+            $bloques,
+            fn($col) => $this->puedeVer($col)
+        ));
     }
 
-    public function tieneAccesoA($modulo)
-    {
-        $columna = 'ver_' . strtolower(str_replace(' ', '_', $modulo));
-        return isset($this->$columna) && $this->$columna == 1;
-    }
+    // ─── Relaciones ─────────────────────────────────────────────────────────
 
-    public function puedeCargaEn($modulo)
+    public function permisosCarpetas()
     {
-        $columna = 'carga_' . strtolower(str_replace(' ', '_', $modulo));
-        return isset($this->$columna) && $this->$columna == 1;
+        return $this->hasMany(CarpetaPermiso::class, 'id_usuario');
     }
 }

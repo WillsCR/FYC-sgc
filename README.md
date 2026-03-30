@@ -1,58 +1,188 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# SGC — F&C Chile SPA · Control y Gestión Transversal
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Sistema de gestión corporativa modernizado con Laravel 11.  
+Migración incremental desde PHP legacy usando **Strangler Pattern**.
 
-## About Laravel
+---
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Stack tecnológico
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+| Capa | Tecnología |
+|------|-----------|
+| Backend | PHP 8.x + Laravel 11 |
+| Frontend | Blade + Tailwind CSS (CDN) + Vanilla JS |
+| Base de datos | MySQL — BD existente `cfc48507_epp` (compartida) |
+| Servidor dev | XAMPP (Apache + MySQL) |
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+---
 
-## Learning Laravel
+## Instalación local (XAMPP)
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
-
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+### 1. Clonar el repositorio
 
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+git clone https://github.com/WillsCR/FYC-sgc.git
+cd FYC-sgc
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+### 2. Instalar dependencias PHP
 
-## Contributing
+```bash
+composer install
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+### 3. Configurar variables de entorno
 
-## Code of Conduct
+```bash
+cp .env.example .env
+php artisan key:generate
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+Editar `.env` con los datos de conexión a la BD:
 
-## Security Vulnerabilities
+```env
+DB_DATABASE=cfc48507_epp
+DB_USERNAME=root
+DB_PASSWORD=
+```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+### 4. Verificar conexión a la BD (sin correr migraciones)
 
-## License
+```bash
+php artisan tinker
+>>> DB::table('sgc_usuarios')->count();
+# Debe devolver el número de usuarios — si falla, revisar .env
+```
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+### 5. Configurar Virtual Host en XAMPP (recomendado)
+
+Agregar en `C:\xampp\apache\conf\extra\httpd-vhosts.conf`:
+
+```apache
+<VirtualHost *:80>
+    DocumentRoot "C:/xampp/htdocs/FYC-sgc/public"
+    ServerName sgc.local
+    <Directory "C:/xampp/htdocs/FYC-sgc/public">
+        AllowOverride All
+        Require all granted
+    </Directory>
+</VirtualHost>
+```
+
+Agregar en `C:\Windows\System32\drivers\etc\hosts`:
+```
+127.0.0.1   sgc.local
+```
+
+O acceder directamente vía: `http://localhost/FYC-sgc/public`
+
+---
+
+## Estructura del proyecto
+
+```
+FYC-sgc/
+├── app/
+│   ├── Http/
+│   │   ├── Controllers/
+│   │   │   ├── Auth/AuthController.php   ← Login, logout, migración hash
+│   │   │   └── PanelController.php       ← Panel principal
+│   │   └── Middleware/
+│   │       ├── AutenticadoMiddleware.php ← Protege rutas con sesión
+│   │       └── AdminMiddleware.php       ← Solo administradores
+│   ├── Models/
+│   │   ├── Usuario.php                   ← sgc_usuarios (60+ columnas permiso)
+│   │   └── CarpetaPermiso.php            ← sgc_carpetas_permisos
+│   └── Services/
+│       └── PermisoService.php            ← can(), require(), usuarioActual()
+├── resources/views/
+│   ├── layouts/app.blade.php             ← Layout principal con navbar
+│   ├── auth/login.blade.php              ← Pantalla de login
+│   └── panel/index.blade.php            ← Panel (se expande en Sprint 2)
+├── routes/web.php                        ← Todas las rutas del sistema
+├── public/css/app.css                    ← Design system — Propuesta A
+└── .env.example                          ← Variables de entorno del proyecto
+```
+
+---
+
+## Flujo de autenticación
+
+```
+GET  /login  → login.blade.php (formulario)
+POST /login  → AuthController@login
+                 ├── Busca usuario por email en sgc_usuarios
+                 ├── Verifica clave (bcrypt O sha1+md5 legacy)
+                 ├── Si hash es legacy → migra a bcrypt automáticamente
+                 ├── session_regenerate() → previene session fixation
+                 ├── Guarda en sesión: usuario_id, nombre, email, perfil, es_admin
+                 └── Redirige a /panel
+POST /logout → AuthController@logout → Session::flush() + invalidate()
+```
+
+---
+
+## Sistema de permisos
+
+Los permisos viven en dos lugares de la BD:
+
+### 1. Permisos globales por módulo (`sgc_usuarios`)
+Columnas booleanas: `bloque_sig`, `bloque_seguridad`, `bloque_ambiente`, `bloque_rrhh`, `bloque_abastecimiento`, `bloque_proyectos`, `ver_pozos`, `ver_cursos`, `carga_sig`, etc.
+
+```php
+// Verificar permiso global
+PermisoService::can('bloque_sig');         // true/false
+PermisoService::require('bloque_sig');     // aborta con 403 si no tiene permiso
+```
+
+### 2. Permisos granulares por carpeta (`sgc_carpetas_permisos`)
+Columnas: `carga`, `descarga`, `crear`, `eliminar`, `editar`, `ocultar_raiz`
+
+```php
+// Verificar permiso en carpeta específica
+PermisoService::can('carga', 'carpeta', $carpetaId);
+PermisoService::require('eliminar', 'carpeta', $carpetaId);
+```
+
+Los **administradores** (id_perfil = 1) tienen acceso total automáticamente.
+
+---
+
+## Tablas clave de la BD (solo lectura — NO modificar estructura)
+
+| Tabla | Propósito |
+|-------|-----------|
+| `sgc_usuarios` | Usuarios + 60+ columnas de permisos por módulo |
+| `sgc_carpetas` | Árbol documental principal |
+| `sgc_carpetas_permisos` | Permisos granulares por carpeta y usuario |
+| `sgc_carpetas_contenido` | Archivos asociados a carpetas |
+| `sgc_carpetas2` | Árbol documental módulos secundarios |
+| `sgc_carpetas_contenido2` | Archivos de carpetas secundarias |
+| `sgc_minutas` | Reuniones (cabecera) |
+| `sgc_trabajadores_cursos` | Trabajadores para matriz de cursos |
+| `sgc_control_cursos2` | Cursos ejecutados y vencimientos |
+| `ser_perfiles` | Catálogo de perfiles (1=Admin, etc.) |
+| `ser_conductas` | Config global (campo `promocion` usado en hash legacy) |
+
+> **Regla de oro:** Las nuevas tablas del proyecto usan prefijo `sgc2_`.  
+> Las tablas `sgc_*` existentes **nunca** se modifican estructuralmente.
+
+---
+
+## Sprints
+
+| Sprint | Módulo | Semanas | Puntos |
+|--------|--------|---------|--------|
+| Setup  | Laravel + BD | Sem 1 parcial | 8 |
+| Sprint 1 | Login y autenticación segura | Sem 1–2 | 26 |
+| Sprint 2 | Panel principal + bloques | Sem 3–4 | 29 |
+| Sprint 3 | Gestión documental | Sem 5–6 | 31 |
+| Sprint 4 | Usuarios + permisos + planificación | Sem 7–8 | 34 |
+| Sprint 5 | Minutas + QA + deploy | Sem 9–10 | 28 |
+
+---
+
+## Equipo
+
+Proyecto Capstone 2026 — F&C Chile SPA  
+Repositorio: https://github.com/WillsCR/FYC-sgc

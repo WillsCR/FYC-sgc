@@ -4,20 +4,20 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class AccionInmediataResp extends Model
+class MinutaConvocado extends Model
 {
-    protected $table = 'ges_acciones_inmediatas_resp';
+    protected $table = 'sgc_minutas_convocados';
     public $timestamps = false;
 
     protected $fillable = [
-        'id_accion',
+        'id_minuta',
         'id_usuario',
-        'responsable',
+        'asistencia',
     ];
 
-    public function accionInmediata()
+    public function minuta()
     {
-        return $this->belongsTo(AccionInmediata::class, 'id_accion');
+        return $this->belongsTo(Minuta::class, 'id_minuta');
     }
 
     public function usuario()

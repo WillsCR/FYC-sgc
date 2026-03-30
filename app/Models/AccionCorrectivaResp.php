@@ -4,9 +4,9 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class AccionInmediataResp extends Model
+class AccionCorrectivaResp extends Model
 {
-    protected $table = 'ges_acciones_inmediatas_resp';
+    protected $table = 'ges_acciones_correctivas_resp';
     public $timestamps = false;
 
     protected $fillable = [
@@ -15,9 +15,9 @@ class AccionInmediataResp extends Model
         'responsable',
     ];
 
-    public function accionInmediata()
+    public function accionCorrectiva()
     {
-        return $this->belongsTo(AccionInmediata::class, 'id_accion');
+        return $this->belongsTo(AccionCorrectiva::class, 'id_accion');
     }
 
     public function usuario()

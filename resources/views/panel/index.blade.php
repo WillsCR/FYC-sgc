@@ -35,11 +35,8 @@
                  onclick="toggleSubBloques('{{ $bloque['id'] }}')"
                  style="border-top-color: {{ $bloque['color'] }}">
 
-                {{-- Ícono del bloque --}}
                 <div class="bloque-icon-wrap" style="background: {{ $bloque['color'] }}18">
-                    <span style="color: {{ $bloque['color'] }}">
-                        @include('components.icono', ['nombre' => $bloque['icono'], 'size' => 20])
-                    </span>
+                    <span style="font-size:1.5rem;line-height:1">{{ $bloque['emoji'] }}</span>
                 </div>
 
                 <div class="bloque-title">{{ $bloque['titulo'] }}</div>
@@ -54,9 +51,7 @@
             @foreach($bloque['sub'] as $sub)
             <a href="{{ $sub['ruta'] }}" class="sub-bloque"
                style="background-color: {{ $sub['color'] }}">
-                <span style="color:#fff;opacity:.9">
-                    @include('components.icono', ['nombre' => $sub['icono'], 'size' => 14])
-                </span>
+                <span style="font-size:.95rem">{{ $sub['emoji'] }}</span>
                 {{ $sub['titulo'] }}
             </a>
             @endforeach
@@ -64,9 +59,8 @@
         @endforeach
 
     @else
-        {{-- Sin permisos asignados --}}
         <div style="padding:40px 0;text-align:center">
-            <div style="font-size:2rem;margin-bottom:12px">🔒</div>
+            <div style="font-size:2.5rem;margin-bottom:12px">🔒</div>
             <p style="color:var(--text-muted);font-size:.9rem">
                 No tienes módulos asignados. Contacta al administrador del sistema.
             </p>
@@ -76,31 +70,26 @@
     {{-- ── Estadísticas globales ─────────────────────────────── --}}
     <div class="section-label">Resumen del sistema</div>
     <div class="stats-grid">
-
         <div class="stat-card">
             <div class="stat-value {{ $stats['cumplimiento'] >= 80 ? 'success' : ($stats['cumplimiento'] >= 50 ? 'warning' : 'danger') }}">
                 {{ $stats['cumplimiento'] }}%
             </div>
             <div class="stat-label">Cumplimiento global</div>
         </div>
-
         <div class="stat-card">
             <div class="stat-value {{ $stats['pendientes'] > 0 ? 'danger' : 'success' }}">
                 {{ $stats['pendientes'] }}
             </div>
             <div class="stat-label">Pendientes críticos</div>
         </div>
-
         <div class="stat-card">
             <div class="stat-value">{{ $stats['minutas_mes'] }}</div>
             <div class="stat-label">Minutas este mes</div>
         </div>
-
         <div class="stat-card">
             <div class="stat-value">{{ $stats['documentos_activos'] }}</div>
             <div class="stat-label">Documentos activos</div>
         </div>
-
     </div>
 
 </div>
@@ -108,19 +97,24 @@
 
 @push('scripts')
 <script>
+// ── Fix bug sesión: previene navegación hacia atrás tras cerrar sesión ──
+window.history.pushState(null, '', window.location.href);
+window.addEventListener('popstate', function() {
+    window.history.pushState(null, '', window.location.href);
+});
+
+// ── Toggle sub-bloques ───────────────────────────────────────────────
 var bloqueActivo = null;
 
 function toggleSubBloques(id) {
     var subEl    = document.getElementById('sub-' + id);
     var bloqueEl = document.getElementById('bloque-' + id);
 
-    // Si hay un bloque abierto distinto, cerrarlo
     if (bloqueActivo && bloqueActivo !== id) {
         document.getElementById('sub-' + bloqueActivo).style.display = 'none';
         document.getElementById('bloque-' + bloqueActivo).classList.remove('activo');
     }
 
-    // Alternar el bloque actual
     var estaAbierto = subEl.style.display === 'flex';
     subEl.style.display    = estaAbierto ? 'none' : 'flex';
     bloqueEl.classList.toggle('activo', !estaAbierto);

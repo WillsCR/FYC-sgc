@@ -3,7 +3,8 @@
 @section('title', 'Panel principal')
 
 @section('subnav')
-    <a href="{{ route('panel') }}" class="subnav-item active">Inicio</a>
+    <a href="{{ route('panel') }}"    class="subnav-item active">Inicio</a>
+    <a href="{{ route('metricas') }}" class="subnav-item">Métricas</a>
     <a href="#" class="subnav-item">Planificación</a>
     <a href="#" class="subnav-item">Minutas</a>
     <a href="#" class="subnav-item">Información SIG</a>
@@ -26,7 +27,7 @@
         </p>
     </div>
 
-    {{-- ── Bloques principales ────────────────────────────────── --}}
+    {{-- ── Bloques principales ──────────────────────────────── --}}
     @if(count($bloques) > 0)
         <div class="section-label">Módulos del sistema</div>
         <div class="bloques-grid" id="bloques-container">
@@ -34,18 +35,15 @@
             <div class="bloque" id="bloque-{{ $bloque['id'] }}"
                  onclick="toggleSubBloques('{{ $bloque['id'] }}')"
                  style="border-top-color: {{ $bloque['color'] }}">
-
                 <div class="bloque-icon-wrap" style="background: {{ $bloque['color'] }}18">
                     <span style="font-size:1.5rem;line-height:1">{{ $bloque['emoji'] }}</span>
                 </div>
-
                 <div class="bloque-title">{{ $bloque['titulo'] }}</div>
                 <div class="bloque-badge">{{ $bloque['badge'] }}</div>
             </div>
             @endforeach
         </div>
 
-        {{-- ── Sub-bloques desplegables ───────────────────────── --}}
         @foreach($bloques as $bloque)
         <div class="sub-bloques" id="sub-{{ $bloque['id'] }}" style="display:none">
             @foreach($bloque['sub'] as $sub)
@@ -62,12 +60,12 @@
         <div style="padding:40px 0;text-align:center">
             <div style="font-size:2.5rem;margin-bottom:12px">🔒</div>
             <p style="color:var(--text-muted);font-size:.9rem">
-                No tienes módulos asignados. Contacta al administrador del sistema.
+                No tienes módulos asignados. Contacta al administrador.
             </p>
         </div>
     @endif
 
-    {{-- ── Estadísticas globales ─────────────────────────────── --}}
+    {{-- ── Resumen del sistema ──────────────────────────────── --}}
     <div class="section-label">Resumen del sistema</div>
     <div class="stats-grid">
         <div class="stat-card">
@@ -77,19 +75,30 @@
             <div class="stat-label">Cumplimiento global</div>
         </div>
         <div class="stat-card">
-            <div class="stat-value {{ $stats['pendientes'] > 0 ? 'danger' : 'success' }}">
+            <div class="stat-value {{ $stats['pendientes'] > 5 ? 'danger' : ($stats['pendientes'] > 0 ? 'warning' : 'success') }}">
                 {{ $stats['pendientes'] }}
             </div>
-            <div class="stat-label">Pendientes críticos</div>
+            <div class="stat-label">Actividades pendientes</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value success">{{ $stats['cerradas'] }}</div>
+            <div class="stat-label">Actividades cerradas</div>
         </div>
         <div class="stat-card">
             <div class="stat-value">{{ $stats['minutas_mes'] }}</div>
             <div class="stat-label">Minutas este mes</div>
         </div>
-        <div class="stat-card">
-            <div class="stat-value">{{ $stats['documentos_activos'] }}</div>
-            <div class="stat-label">Documentos activos</div>
-        </div>
+    </div>
+
+    {{-- Acceso rápido a métricas --}}
+    <div style="margin-top:14px;text-align:center">
+        <a href="{{ route('metricas') }}"
+           style="display:inline-flex;align-items:center;gap:7px;padding:9px 20px;
+                  background:var(--navy);color:#fff;border-radius:var(--radius-sm);
+                  font-size:.82rem;font-weight:600;text-decoration:none;
+                  transition:background .15s">
+            📊 Ver métricas detalladas
+        </a>
     </div>
 
 </div>
@@ -97,26 +106,21 @@
 
 @push('scripts')
 <script>
-// ── Fix bug sesión: previene navegación hacia atrás tras cerrar sesión ──
 window.history.pushState(null, '', window.location.href);
 window.addEventListener('popstate', function() {
     window.history.pushState(null, '', window.location.href);
 });
 
-// ── Toggle sub-bloques ───────────────────────────────────────────────
 var bloqueActivo = null;
-
 function toggleSubBloques(id) {
     var subEl    = document.getElementById('sub-' + id);
     var bloqueEl = document.getElementById('bloque-' + id);
-
     if (bloqueActivo && bloqueActivo !== id) {
         document.getElementById('sub-' + bloqueActivo).style.display = 'none';
         document.getElementById('bloque-' + bloqueActivo).classList.remove('activo');
     }
-
     var estaAbierto = subEl.style.display === 'flex';
-    subEl.style.display    = estaAbierto ? 'none' : 'flex';
+    subEl.style.display = estaAbierto ? 'none' : 'flex';
     bloqueEl.classList.toggle('activo', !estaAbierto);
     bloqueActivo = estaAbierto ? null : id;
 }

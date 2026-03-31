@@ -3,7 +3,7 @@
 namespace App\Services;
 
 use App\Models\Usuario;
-use App\Models\CarpetaPermiso;
+use App\Models\CarpetasPermisos;
 use Illuminate\Support\Facades\Session;
 
 class PermisoService
@@ -12,8 +12,8 @@ class PermisoService
      * Verifica si el usuario actual puede realizar una acción.
      *
      * Uso:
-     *   PermisoService::can('bloque_sig')          → permiso global en sgc_usuarios
-     *   PermisoService::can('carga', 'carpeta', 5) → permiso granular por carpeta
+     *   PermisoService::can('bloque_sig')              → permiso global en sgc_usuarios
+     *   PermisoService::can('carga', 'carpeta', 5)     → permiso granular por carpeta
      */
     public static function can(string $accion, string $recurso = 'global', int $recursoId = 0): bool
     {
@@ -23,7 +23,7 @@ class PermisoService
             return false;
         }
 
-        // Los administradores tienen acceso total
+        // Administradores tienen acceso total
         if (Session::get('es_admin', false)) {
             return true;
         }
@@ -41,7 +41,7 @@ class PermisoService
 
         // Permiso granular por carpeta en sgc_carpetas_permisos
         if ($recurso === 'carpeta' && $recursoId > 0) {
-            $permiso = CarpetaPermiso::where('id_carpeta', $recursoId)
+            $permiso = CarpetasPermisos::where('id_carpeta', $recursoId)
                 ->where('id_usuario', $usuarioId)
                 ->first();
 
@@ -57,7 +57,6 @@ class PermisoService
 
     /**
      * Aborta con 403 si el usuario no tiene el permiso.
-     * Usar en controllers para proteger acciones.
      */
     public static function require(string $accion, string $recurso = 'global', int $recursoId = 0): void
     {

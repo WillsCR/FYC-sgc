@@ -31,14 +31,20 @@
     <div class="navbar-title">Control y Gestión Transversal</div>
 
     <div class="navbar-user">
+        {{-- Avatar con iniciales --}}
         <div class="navbar-avatar" title="{{ session('usuario_nombre') }}">
-            {{ strtoupper(substr(session('usuario_nombre', 'U'), 0, 2)) }}
+            {{ strtoupper(substr(session('usuario_nombre', 'U'), 0, 1)) }}{{ strtoupper(substr(strstr(session('usuario_nombre', 'U '), ' '), 1, 1)) }}
         </div>
         <span>{{ session('usuario_nombre') }}</span>
+
+        {{-- Botón logout --}}
         <form method="POST" action="{{ route('logout') }}" style="margin:0">
             @csrf
-            <button type="submit" style="background:none;border:none;cursor:pointer;color:var(--blue-muted);padding:0 4px" title="Cerrar sesión">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <button type="submit"
+                style="background:none;border:none;cursor:pointer;color:var(--blue-muted);padding:4px 6px;display:flex;align-items:center"
+                title="Cerrar sesión">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/>
                 </svg>
             </button>
@@ -60,10 +66,7 @@
 
 @stack('scripts')
 <script>
-    // CSRF token global para fetch/AJAX
     window.CSRF_TOKEN = '{{ csrf_token() }}';
-
-    // Helper fetch con CSRF incluido
     window.sgcFetch = (url, options = {}) => fetch(url, {
         headers: {
             'Content-Type': 'application/json',

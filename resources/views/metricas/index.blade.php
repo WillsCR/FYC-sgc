@@ -214,13 +214,59 @@
     .graf-row   { grid-template-columns: 1fr; }
     .graf-row-3 { grid-template-columns: 1fr 1fr; }
 }
+
+@media (max-width: 768px) {
+    .met-body   { padding: 16px; }
+    .met-header { margin-bottom: 16px; }
+    .kpi-grid   { gap: 8px; margin-bottom: 16px; }
+    .kpi-card   { padding: 12px 14px; }
+    .kpi-val    { font-size: 1.5rem; margin-bottom: 2px; }
+    .kpi-lbl    { font-size: .6rem; }
+    .graf-row, .graf-row-3 { gap: 10px; margin-bottom: 10px; }
+    .graf-card  { padding: 14px; }
+    .graf-title { padding-bottom: 8px; margin-bottom: 10px; font-size: .68rem; }
+}
+
 @media (max-width: 640px) {
     .met-body   { padding: 12px; }
-    .kpi-grid   { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-    .graf-row-3 { grid-template-columns: 1fr; }
-    .kpi-val    { font-size: 1.4rem; }
+    .met-header { margin-bottom: 12px; }
+    .met-header h2 { font-size: .95rem; margin-bottom: 2px; }
+    .met-header p { font-size: .7rem; }
+    .kpi-grid   { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
+    .kpi-card   { padding: 10px 12px; }
+    .kpi-val    { font-size: 1.4rem; margin-bottom: 2px; }
+    .kpi-lbl    { font-size: .58rem; }
+    .graf-row, .graf-row-3 { grid-template-columns: 1fr; gap: 10px; margin-bottom: 10px; }
     .graf-card  { padding: 12px; }
+    .graf-title { padding-bottom: 8px; margin-bottom: 8px; font-size: .65rem; gap: 4px; }
+    .graf-badge { font-size: .6rem; padding: 1px 8px; }
+    .resumen-table { font-size: .7rem; }
+    .resumen-table th { padding: 6px 8px; font-size: .62rem; }
+    .resumen-table td { padding: 6px 8px; }
 }
+
+@media (max-width: 480px) {
+    .met-body   { padding: 10px; }
+    .met-header { margin-bottom: 10px; }
+    .met-header h2 { font-size: .9rem; }
+    .met-header p { font-size: .65rem; }
+    .kpi-grid   { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin-bottom: 10px; }
+    .kpi-card   { padding: 8px 10px; border-radius: 4px; }
+    .kpi-val    { font-size: 1.2rem; margin-bottom: 1px; }
+    .kpi-lbl    { font-size: .55rem; }
+    .graf-row, .graf-row-3 { gap: 8px; margin-bottom: 8px; }
+    .graf-card  { padding: 10px; border-radius: 4px; }
+    .graf-title { padding-bottom: 6px; margin-bottom: 6px; font-size: .6rem; }
+    .graf-badge { font-size: .55rem; padding: 0px 6px; }
+    .donut-canvas-wrap { max-width: 150px; }
+    .donut-legend { max-width: 150px; }
+    .donut-legend-item { font-size: .7rem; }
+    .resumen-table { font-size: .65rem; }
+    .resumen-table th { padding: 5px 6px; font-size: .58rem; }
+    .resumen-table td { padding: 5px 6px; }
+    .pct-label { font-size: .65rem; }
+} .graf-card  { padding: 12px; }
+
 </style>
 @endpush
 

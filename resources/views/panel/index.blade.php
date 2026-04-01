@@ -90,16 +90,7 @@
         </div>
     </div>
 
-    {{-- Acceso rápido a métricas --}}
-    <div style="margin-top:14px;text-align:center">
-        <a href="{{ route('metricas') }}"
-           style="display:inline-flex;align-items:center;gap:7px;padding:9px 20px;
-                  background:var(--navy);color:#fff;border-radius:var(--radius-sm);
-                  font-size:.82rem;font-weight:600;text-decoration:none;
-                  transition:background .15s">
-            📊 Ver métricas detalladas
-        </a>
-    </div>
+    
 
 </div>
 @endsection

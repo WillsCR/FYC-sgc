@@ -2,17 +2,6 @@
 
 @section('title', 'Panel principal')
 
-@section('subnav')
-    <a href="{{ route('panel') }}"    class="subnav-item active">Inicio</a>
-    <a href="{{ route('metricas') }}" class="subnav-item">Métricas</a>
-    <a href="#" class="subnav-item">Planificación</a>
-    <a href="#" class="subnav-item">Minutas</a>
-    <a href="#" class="subnav-item">Información SIG</a>
-    <a href="#" class="subnav-item">Medio Ambiente</a>
-    @if(session('es_admin'))
-        <a href="#" class="subnav-item">Usuarios</a>
-    @endif
-@endsection
 
 @section('content')
 <div class="panel-body">

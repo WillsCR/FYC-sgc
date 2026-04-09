@@ -16,25 +16,25 @@ Route::post('/logout',[AuthController::class, 'logout'])->name('logout');
 // ─── Rutas protegidas ────────────────────────────────────────────────────────
 Route::middleware(['auth.sgc'])->group(function () {
 
-    // Sprint 1+2 — Panel y métricas
-    Route::get('/panel',    [PanelController::class,    'index'])->name('panel');
-    Route::get('/metricas', [MetricasController::class, 'index'])->name('metricas');
+    // Panel
+    Route::get('/panel', [PanelController::class, 'index'])->name('panel');
+
+    // Métricas + exportaciones
+    Route::get('/metricas',       [MetricasController::class, 'index'])->name('metricas');
+    Route::get('/metricas/excel', [MetricasController::class, 'exportarExcel'])->name('metricas.excel');
 
     // Sprint 3 — Gestión documental
-    Route::get('/carpetas',                  [CarpetaController::class, 'index'])->name('carpetas.index');
-    Route::get('/carpetas/{id}',             [CarpetaController::class, 'show'])->name('carpetas.show');
-    Route::get('/carpetas/{id}/hijos',       [CarpetaController::class, 'hijos'])->name('carpetas.hijos');
-    Route::post('/carpetas/{id}/store',      [CarpetaController::class, 'store'])->name('carpetas.store');
+    Route::get('/carpetas',                [CarpetaController::class, 'index'])->name('carpetas.index');
+    Route::get('/carpetas/{id}',           [CarpetaController::class, 'show'])->name('carpetas.show');
+    Route::get('/carpetas/{id}/hijos',     [CarpetaController::class, 'hijos'])->name('carpetas.hijos');
+    Route::post('/archivos/subir',         [ArchivoController::class, 'subir'])->name('archivos.subir');
+    Route::get('/archivos/{id}/descargar', [ArchivoController::class, 'descargar'])->name('archivos.descargar');
+    Route::delete('/archivos/{id}',        [ArchivoController::class, 'eliminar'])->name('archivos.eliminar');
 
-    Route::post('/archivos/subir',           [ArchivoController::class, 'subir'])->name('archivos.subir');
-    Route::get('/archivos/{id}/ver',         [ArchivoController::class, 'ver'])->name('archivos.ver');
-    Route::get('/archivos/{id}/descargar',   [ArchivoController::class, 'descargar'])->name('archivos.descargar');
-    Route::delete('/archivos/{id}',          [ArchivoController::class, 'eliminar'])->name('archivos.eliminar');
-
-    // Sprint 4: planificación y usuarios (próximo)
+    // Sprint 4 — próximo
     // Route::get('/planificacion', [PlanificacionController::class, 'index'])->name('planificacion.index');
     // Route::middleware(['admin.sgc'])->resource('/usuarios', UsuarioController::class);
 
-    // Sprint 5: minutas (próximo)
+    // Sprint 5 — próximo
     // Route::resource('/minutas', MinutaController::class);
 });

@@ -62,7 +62,7 @@
     <a href="#" class="subnav-item">Información SIG</a>
     <a href="#" class="subnav-item">Medio Ambiente</a>
     @if(session('es_admin'))
-        <a href="#" class="subnav-item">Usuarios</a>
+        <a href="{{ route('usuarios.index') }}"   class="subnav-item {{ request()->routeIs('usuarios*') ? 'active' : '' }}">Usuarios</a>
     @endif
 </div>
 

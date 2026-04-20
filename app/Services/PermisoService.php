@@ -11,44 +11,37 @@ class PermisoService
     /**
      * Verifica si el usuario actual puede realizar una acción.
      *
-     * Uso:
-     *   PermisoService::can('bloque_sig')              → permiso global en sgc_usuarios
-     *   PermisoService::can('carga', 'carpeta', 5)     → permiso granular por carpeta
+     * Perfiles:
+     *   id=1 (SuperAdmin) → acceso total a todo
+     *   id=2 (Admin)      → acceso a gestión documental y usuarios normales
+     *   id=4 (Trabajador) → solo lo que tenga asignado en carpetas/bloques
      */
     public static function can(string $accion, string $recurso = 'global', int $recursoId = 0): bool
     {
         $usuarioId = Session::get('usuario_id');
+        if (! $usuarioId) return false;
 
-        if (! $usuarioId) {
-            return false;
-        }
-
-        // Administradores tienen acceso total
-        if (Session::get('es_admin', false)) {
-            return true;
-        }
+        // SuperAdmin siempre puede todo
+        if ((int) Session::get('id_perfil') === 1) return true;
 
         $usuario = Usuario::find($usuarioId);
-
-        if (! $usuario) {
-            return false;
-        }
+        if (! $usuario) return false;
 
         // Permiso global en sgc_usuarios
         if ($recurso === 'global') {
             return $usuario->puedeVer($accion);
         }
 
-        // Permiso granular por carpeta en sgc_carpetas_permisos
+        // Permiso granular por carpeta
         if ($recurso === 'carpeta' && $recursoId > 0) {
+            // Admin también puede acceder a todas las carpetas
+            if ((int) $usuario->id_perfil === 2) return true;
+
             $permiso = CarpetasPermisos::where('id_carpeta', $recursoId)
                 ->where('id_usuario', $usuarioId)
                 ->first();
 
-            if (! $permiso) {
-                return false;
-            }
-
+            if (! $permiso) return false;
             return (bool) ($permiso->$accion ?? false);
         }
 
@@ -56,7 +49,7 @@ class PermisoService
     }
 
     /**
-     * Aborta con 403 si el usuario no tiene el permiso.
+     * Aborta con 403 si no tiene el permiso
      */
     public static function require(string $accion, string $recurso = 'global', int $recursoId = 0): void
     {
@@ -68,7 +61,7 @@ class PermisoService
     }
 
     /**
-     * Devuelve el usuario actual desde sesión + BD
+     * Retorna el usuario actual desde la BD
      */
     public static function usuarioActual(): ?Usuario
     {

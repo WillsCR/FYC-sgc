@@ -4,66 +4,72 @@ namespace App\Http\Controllers;
 
 use App\Models\Usuario;
 use App\Models\CarpetasPermisos;
+use App\Models\UsuarioArea;
 use App\Services\PermisoService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class UsuarioController extends Controller
 {
-    /**
-     * Lista de usuarios — filtrada según perfil del solicitante
-     * SuperAdmin (1): ve todos
-     * Admin (2):      ve solo Trabajadores (id_perfil=4)
-     */
+    // Áreas del sistema
+    private const AREAS = [
+        1  => 'Recursos Humanos',
+        2  => 'Seguridad y Salud en el Trabajo',
+        3  => 'Abastecimiento y Finanzas',
+        4  => 'Contrato Pozos',
+        5  => 'Medio Ambiente',
+        6  => 'Control SGI',
+        7  => 'SGI Gestión',
+        8  => 'Patios e Infraestructura',
+        9  => 'Gerencia de Operaciones',
+        10 => 'Gerencia General',
+    ];
+
     public function index()
     {
-        $actual  = PermisoService::usuarioActual();
-        $perfil  = (int) $actual->id_perfil;
-
+        $actual = PermisoService::usuarioActual();
+        $perfil = (int) $actual->id_perfil;
         $this->verificarAcceso($perfil);
 
-        $query = Usuario::with('perfil')
-            ->orderBy('nombre');
-
-        // Admin solo ve trabajadores
+        $query = Usuario::orderBy('nombre');
         if ($perfil === 2) {
             $query->where('id_perfil', 4);
         }
 
-        $usuarios = $query->get();
+        $usuarios = $query->get()->map(function ($u) {
+            // Áreas asignadas del usuario
+            $u->areas = UsuarioArea::where('id_usuario', $u->id)
+                ->pluck('id_area')
+                ->map(fn($id) => self::AREAS[$id] ?? null)
+                ->filter()
+                ->values();
+            return $u;
+        });
+
         $perfiles = $this->perfilesDisponibles($perfil);
 
         return view('usuarios.index', compact('usuarios', 'actual', 'perfiles'));
     }
 
-    /**
-     * Formulario de creación
-     */
     public function create()
     {
-        $actual  = PermisoService::usuarioActual();
-        $perfil  = (int) $actual->id_perfil;
+        $actual   = PermisoService::usuarioActual();
+        $perfil   = (int) $actual->id_perfil;
         $this->verificarAcceso($perfil);
 
-        $perfiles  = $this->perfilesDisponibles($perfil);
-        $carpetas  = DB::table('sgc_carpetas')
-            ->where('id_padre', 0)
-            ->orderBy('descripcion')
-            ->get();
+        $perfiles   = $this->perfilesDisponibles($perfil);
+        $carpetas   = DB::table('sgc_carpetas')->where('id_padre', 0)->orderBy('descripcion')->get();
+        $areas      = self::AREAS;
 
-        return view('usuarios.crear', compact('actual', 'perfiles', 'carpetas'));
+        return view('usuarios.crear', compact('actual', 'perfiles', 'carpetas', 'areas'));
     }
 
-    /**
-     * Guardar nuevo usuario
-     */
     public function store(Request $request)
     {
         $actual = PermisoService::usuarioActual();
         $perfil = (int) $actual->id_perfil;
         $this->verificarAcceso($perfil);
 
-        // Validar que no asigne un perfil superior al suyo
         $perfilNuevo = (int) $request->id_perfil;
         $this->validarPerfilAsignable($perfil, $perfilNuevo);
 
@@ -73,93 +79,77 @@ class UsuarioController extends Controller
             'id_perfil' => ['required', 'integer'],
             'password'  => ['required', 'string', 'min:6', 'confirmed'],
         ], [
-            'nombre.required'    => 'El nombre es obligatorio.',
-            'email.required'     => 'El correo es obligatorio.',
             'email.unique'       => 'Este correo ya está registrado.',
-            'password.required'  => 'La contraseña es obligatoria.',
             'password.min'       => 'La contraseña debe tener al menos 6 caracteres.',
             'password.confirmed' => 'Las contraseñas no coinciden.',
         ]);
 
-        // Crear usuario con hash bcrypt
         $usuario = new Usuario();
-        $usuario->nombre       = $request->nombre;
-        $usuario->email        = $request->email;
-        $usuario->id_perfil    = $perfilNuevo;
-        $usuario->quesera      = password_hash($request->password, PASSWORD_BCRYPT, ['cost' => 12]);
+        $usuario->nombre        = $request->nombre;
+        $usuario->email         = $request->email;
+        $usuario->id_perfil     = $perfilNuevo;
+        $usuario->quesera       = password_hash($request->password, PASSWORD_BCRYPT, ['cost' => 12]);
         $usuario->fecha_ingreso = now()->toDateString();
 
-        // Bloques por defecto según perfil
-        if ($perfilNuevo === 1 || $perfilNuevo === 2) {
-            // Admin y SuperAdmin: todos los bloques activos
+        if (in_array($perfilNuevo, [1, 2])) {
             foreach ($this->columnasBloque() as $col) {
                 $usuario->$col = 1;
             }
         }
-        // Trabajador: sin bloques por defecto (se asignan manualmente)
 
         $usuario->save();
 
-        // Asignar permisos de carpetas si se enviaron
+        // Guardar áreas
+        $this->guardarAreas($usuario->id, $request->input('areas', []));
+
+        // Guardar permisos de carpetas
         if ($request->has('carpetas')) {
-            $this->guardarPermisosCarpetas($usuario->id, $request->email, $usuario->quesera, $request->carpetas);
+            $this->guardarPermisosCarpetas($usuario->id, $usuario->email, $usuario->quesera, $request->carpetas);
         }
 
         return redirect()->route('usuarios.index')
             ->with('ok', "Usuario \"{$usuario->nombre}\" creado correctamente.");
     }
 
-    /**
-     * Formulario de edición / gestión de permisos
-     */
     public function edit(int $id)
     {
-        $actual  = PermisoService::usuarioActual();
-        $perfil  = (int) $actual->id_perfil;
+        $actual = PermisoService::usuarioActual();
+        $perfil = (int) $actual->id_perfil;
         $this->verificarAcceso($perfil);
 
         $usuario = Usuario::findOrFail($id);
 
-        // Admin no puede editar SuperAdmins ni otros Admins
         if ($perfil === 2 && in_array((int) $usuario->id_perfil, [1, 2])) {
             abort(403, 'No tienes permiso para editar este usuario.');
         }
 
-        $perfiles = $this->perfilesDisponibles($perfil);
-        $carpetas = DB::table('sgc_carpetas')
-            ->where('id_padre', 0)
-            ->orderBy('descripcion')
-            ->get();
+        $perfiles         = $this->perfilesDisponibles($perfil);
+        $carpetas         = DB::table('sgc_carpetas')->where('id_padre', 0)->orderBy('descripcion')->get();
+        $permisosCarpetas = CarpetasPermisos::where('id_usuario', $id)->get()->keyBy('id_carpeta');
+        $areas            = self::AREAS;
 
-        // Permisos actuales de carpetas
-        $permisosCarpetas = CarpetasPermisos::where('id_usuario', $id)
-            ->get()
-            ->keyBy('id_carpeta');
+        // Áreas actualmente asignadas
+        $areasAsignadas = UsuarioArea::where('id_usuario', $id)->pluck('id_area')->toArray();
 
-        // Bloques actuales del usuario
         $bloques = [];
         foreach ($this->columnasBloque() as $col) {
             $bloques[$col] = (bool) $usuario->$col;
         }
 
         return view('usuarios.editar', compact(
-            'usuario', 'actual', 'perfiles',
-            'carpetas', 'permisosCarpetas', 'bloques'
+            'usuario', 'actual', 'perfiles', 'carpetas',
+            'permisosCarpetas', 'bloques', 'areas', 'areasAsignadas'
         ));
     }
 
-    /**
-     * Guardar cambios de usuario + permisos
-     */
     public function update(Request $request, int $id)
     {
-        $actual  = PermisoService::usuarioActual();
-        $perfil  = (int) $actual->id_perfil;
+        $actual = PermisoService::usuarioActual();
+        $perfil = (int) $actual->id_perfil;
         $this->verificarAcceso($perfil);
 
         $usuario = Usuario::findOrFail($id);
 
-        // Admin no puede editar SuperAdmins
         if ($perfil === 2 && in_array((int) $usuario->id_perfil, [1, 2])) {
             abort(403, 'No tienes permiso para editar este usuario.');
         }
@@ -179,17 +169,18 @@ class UsuarioController extends Controller
         $usuario->email     = $request->email;
         $usuario->id_perfil = (int) $request->id_perfil;
 
-        // Cambiar contraseña solo si se envió una nueva
         if ($request->filled('password')) {
             $usuario->quesera = password_hash($request->password, PASSWORD_BCRYPT, ['cost' => 12]);
         }
 
-        // Actualizar bloques de módulos
         foreach ($this->columnasBloque() as $col) {
             $usuario->$col = $request->has("bloques.{$col}") ? 1 : 0;
         }
 
         $usuario->save();
+
+        // Actualizar áreas
+        $this->guardarAreas($id, $request->input('areas', []));
 
         // Actualizar permisos de carpetas
         CarpetasPermisos::where('id_usuario', $id)->delete();
@@ -201,32 +192,22 @@ class UsuarioController extends Controller
             ->with('ok', "Usuario \"{$usuario->nombre}\" actualizado correctamente.");
     }
 
-    /**
-     * Desactivar usuario (no se elimina de la BD)
-     */
     public function destroy(int $id)
     {
-        $actual  = PermisoService::usuarioActual();
-        $perfil  = (int) $actual->id_perfil;
-
-        // Solo SuperAdmin puede desactivar
-        if ($perfil !== 1) {
+        $actual = PermisoService::usuarioActual();
+        if ((int) $actual->id_perfil !== 1) {
             abort(403, 'Solo el Super Administrador puede desactivar usuarios.');
         }
-
-        // No puede desactivarse a sí mismo
         if ($id === $actual->id) {
             return back()->withErrors(['error' => 'No puedes desactivar tu propio usuario.']);
         }
 
         $usuario = Usuario::findOrFail($id);
 
-        // No puede desactivar otros SuperAdmins
-        if ((int) $usuario->id_perfil === 1 && $id !== $actual->id) {
+        if ((int) $usuario->id_perfil === 1) {
             return back()->withErrors(['error' => 'No puedes desactivar a otro Super Administrador.']);
         }
 
-        // Desactivar todos los bloques
         foreach ($this->columnasBloque() as $col) {
             $usuario->$col = 0;
         }
@@ -236,11 +217,24 @@ class UsuarioController extends Controller
             ->with('ok', "Usuario \"{$usuario->nombre}\" desactivado.");
     }
 
-    // ─── Helpers privados ────────────────────────────────────────────────────
+    // ─── Helpers ─────────────────────────────────────────────────────────────
 
-    /**
-     * Verifica que el usuario actual pueda acceder a gestión de usuarios
-     */
+    private function guardarAreas(int $usuarioId, array $areas): void
+    {
+        // Eliminar áreas anteriores y reasignar
+        UsuarioArea::where('id_usuario', $usuarioId)->delete();
+
+        foreach ($areas as $idArea) {
+            $idArea = (int) $idArea;
+            if (array_key_exists($idArea, self::AREAS)) {
+                UsuarioArea::create([
+                    'id_usuario' => $usuarioId,
+                    'id_area'    => $idArea,
+                ]);
+            }
+        }
+    }
+
     private function verificarAcceso(int $perfil): void
     {
         if (! in_array($perfil, [1, 2])) {
@@ -248,28 +242,14 @@ class UsuarioController extends Controller
         }
     }
 
-    /**
-     * Retorna los perfiles que puede asignar según el perfil del solicitante
-     */
     private function perfilesDisponibles(int $perfil): \Illuminate\Support\Collection
     {
         if ($perfil === 1) {
-            // SuperAdmin puede crear cualquier perfil
-            return DB::table('ser_perfiles')
-                ->where('estado', 1)
-                ->orderBy('id_perfil')
-                ->get();
+            return DB::table('ser_perfiles')->where('estado', 1)->orderBy('id_perfil')->get();
         }
-
-        // Admin solo puede crear Trabajadores (id_perfil=4)
-        return DB::table('ser_perfiles')
-            ->where('id_perfil', 4)
-            ->get();
+        return DB::table('ser_perfiles')->where('id_perfil', 4)->get();
     }
 
-    /**
-     * Valida que no se asigne un perfil igual o superior al del solicitante
-     */
     private function validarPerfilAsignable(int $perfilActual, int $perfilNuevo): void
     {
         if ($perfilActual === 2 && $perfilNuevo !== 4) {
@@ -277,14 +257,9 @@ class UsuarioController extends Controller
         }
     }
 
-    /**
-     * Guarda los permisos de carpetas para un usuario
-     * $carpetas = ['5' => ['carga'=>'1','descarga'=>'1',...], ...]
-     */
     private function guardarPermisosCarpetas(int $usuarioId, string $correo, string $clave, array $carpetas): void
     {
         foreach ($carpetas as $carpetaId => $perms) {
-            // Solo guardar si tiene al menos un permiso activo
             $tieneAlguno = collect(['carga','descarga','crear','eliminar','editar'])
                 ->some(fn($p) => ! empty($perms[$p]));
 
@@ -293,22 +268,19 @@ class UsuarioController extends Controller
             CarpetasPermisos::updateOrCreate(
                 ['id_carpeta' => $carpetaId, 'id_usuario' => $usuarioId],
                 [
-                    'correo'     => $correo,
-                    'clave'      => $clave,
-                    'carga'      => ! empty($perms['carga'])    ? 1 : 0,
-                    'descarga'   => ! empty($perms['descarga']) ? 1 : 0,
-                    'crear'      => ! empty($perms['crear'])    ? 1 : 0,
+                    'correo'       => $correo,
+                    'clave'        => $clave,
+                    'carga'        => ! empty($perms['carga'])    ? 1 : 0,
+                    'descarga'     => ! empty($perms['descarga']) ? 1 : 0,
+                    'crear'        => ! empty($perms['crear'])    ? 1 : 0,
                     'ocultar_raiz' => 0,
-                    'eliminar'   => ! empty($perms['eliminar']) ? 1 : 0,
-                    'editar'     => ! empty($perms['editar'])   ? 1 : 0,
+                    'eliminar'     => ! empty($perms['eliminar']) ? 1 : 0,
+                    'editar'       => ! empty($perms['editar'])   ? 1 : 0,
                 ]
             );
         }
     }
 
-    /**
-     * Columnas de bloque en sgc_usuarios
-     */
     private function columnasBloque(): array
     {
         return [

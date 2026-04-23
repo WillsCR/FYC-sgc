@@ -31,14 +31,30 @@ class PlanificacionController extends Controller
 
     private const POR_PAGINA = 20;
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // Helper: áreas donde el usuario tiene un permiso dado (ver o editar)
+    // ─────────────────────────────────────────────────────────────────────────
+    private function areasConPermiso(int $idUsuario, string $columna): array
+    {
+        return DB::table('sgc_usuarios_permisos_area')
+            ->where('id_usuario', $idUsuario)
+            ->where($columna, 1)
+            ->pluck('id_area')
+            ->map(fn($v) => (int) $v)
+            ->toArray();
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // INDEX
+    // ─────────────────────────────────────────────────────────────────────────
     public function index(Request $request)
     {
         $usuario = PermisoService::usuarioActual();
         $esAdmin = $usuario->esAdmin();
 
         // ── Parámetros de orden y paginación ────────────────────────────
-        $orden    = $request->get('orden', 'desc'); // desc = más recientes primero
-        $orden    = in_array($orden, ['asc', 'desc']) ? $orden : 'desc';
+        $orden     = $request->get('orden', 'desc');
+        $orden     = in_array($orden, ['asc', 'desc']) ? $orden : 'desc';
         $porPagina = (int) $request->get('por_pagina', self::POR_PAGINA);
         $porPagina = in_array($porPagina, [10, 20, 50]) ? $porPagina : self::POR_PAGINA;
 
@@ -46,10 +62,17 @@ class PlanificacionController extends Controller
         $query = DB::table('sgc_planificaciones');
 
         if (! $esAdmin) {
-            $query->where('correo', $usuario->email);
+            // Trabajador: ve planificaciones de las áreas donde tiene ver_planificacion = 1
+            $areasPermitidas = $this->areasConPermiso($usuario->id, 'ver_planificacion');
+
+            if (empty($areasPermitidas)) {
+                $query->whereRaw('1 = 0'); // Sin permisos → lista vacía
+            } else {
+                $query->whereIn('area', $areasPermitidas);
+            }
         }
 
-        // Filtros
+        // ── Filtros ──────────────────────────────────────────────────────
         if ($request->filled('area')) {
             $query->where('area', $request->area);
         }
@@ -59,13 +82,12 @@ class PlanificacionController extends Controller
         if ($request->filled('buscar')) {
             $query->where(function ($q) use ($request) {
                 $q->where('actividades', 'like', '%' . $request->buscar . '%')
-                  ->orWhere('responsable',  'like', '%' . $request->buscar . '%');
+                  ->orWhere('responsable', 'like', '%' . $request->buscar . '%');
             });
         }
 
-        // ── Total para stats (antes de paginar) ──────────────────────────
-        $queryStats = clone $query;
-        $total      = $queryStats->count();
+        // ── Stats (antes de paginar) ─────────────────────────────────────
+        $total      = (clone $query)->count();
         $pendientes = (clone $query)->where('id_estado', 1)->count();
         $cerradas   = (clone $query)->where('id_estado', 2)->count();
 
@@ -73,24 +95,32 @@ class PlanificacionController extends Controller
         $planificaciones = $query
             ->orderBy('termino', $orden)
             ->paginate($porPagina)
-            ->withQueryString(); // mantiene los filtros en los links de paginación
+            ->withQueryString();
 
         // ── Enriquecer con semáforo ──────────────────────────────────────
-        $hoy = Carbon::today();
+        $hoy      = Carbon::today();
         $vencidas = 0;
 
         $planificaciones->getCollection()->transform(function ($p) use ($hoy, &$vencidas) {
-            $p->area_nombre    = self::AREAS[$p->area]      ?? 'Área ' . $p->area;
-            $p->estado_nombre  = self::ESTADOS[$p->id_estado] ?? '—';
+            $p->area_nombre    = self::AREAS[$p->area]         ?? 'Área ' . $p->area;
+            $p->estado_nombre  = self::ESTADOS[$p->id_estado]  ?? '—';
             $p->semaforo       = $this->calcularSemaforo($p, $hoy);
             $p->dias_restantes = $p->termino
                 ? $hoy->diffInDays(Carbon::parse($p->termino), false)
                 : null;
+
             if ($p->semaforo === 'rojo' && (int) $p->id_estado === 1) {
                 $vencidas++;
             }
+
             return $p;
         });
+
+        // ── Permisos de edición para la vista ───────────────────────────
+        // El trabajador solo ve el botón editar en las áreas donde tiene editar_planificacion = 1
+        $areasConEdicion = $esAdmin
+            ? array_keys(self::AREAS)
+            : $this->areasConPermiso($usuario->id, 'editar_planificacion');
 
         $stats = [
             'total'      => $total,
@@ -99,15 +129,18 @@ class PlanificacionController extends Controller
             'vencidas'   => $vencidas,
         ];
 
-        $areas    = self::AREAS;
-        $estados  = self::ESTADOS;
+        $areas   = self::AREAS;
+        $estados = self::ESTADOS;
 
         return view('planificacion.index', compact(
             'planificaciones', 'stats', 'areas', 'estados',
-            'usuario', 'esAdmin', 'orden', 'porPagina'
+            'usuario', 'esAdmin', 'orden', 'porPagina', 'areasConEdicion'
         ));
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // CREATE
+    // ─────────────────────────────────────────────────────────────────────────
     public function create()
     {
         $usuario = PermisoService::usuarioActual();
@@ -123,6 +156,9 @@ class PlanificacionController extends Controller
         return view('planificacion.crear', compact('areas', 'responsables', 'usuario'));
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // STORE
+    // ─────────────────────────────────────────────────────────────────────────
     public function store(Request $request)
     {
         $usuario = PermisoService::usuarioActual();
@@ -154,6 +190,9 @@ class PlanificacionController extends Controller
             ->with('ok', 'Planificación creada correctamente.');
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // EDIT
+    // ─────────────────────────────────────────────────────────────────────────
     public function edit(int $id)
     {
         $usuario = PermisoService::usuarioActual();
@@ -161,11 +200,16 @@ class PlanificacionController extends Controller
 
         $plan = DB::table('sgc_planificaciones')->where('id', $id)->first();
         if (! $plan) abort(404);
-        if (! $esAdmin && $plan->correo !== $usuario->email) abort(403);
+
+        // Autorización: admin pasa siempre; trabajador necesita editar_planificacion en el área
+        if (! $esAdmin) {
+            $areasConEdicion = $this->areasConPermiso($usuario->id, 'editar_planificacion');
+            if (! in_array((int) $plan->area, $areasConEdicion, true)) abort(403);
+        }
 
         $areas = self::AREAS;
         unset($areas[0]);
-        $estados  = self::ESTADOS;
+        $estados = self::ESTADOS;
         unset($estados[0]);
 
         $responsables = DB::table('sgc_usuarios')
@@ -177,6 +221,9 @@ class PlanificacionController extends Controller
         ));
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // UPDATE
+    // ─────────────────────────────────────────────────────────────────────────
     public function update(Request $request, int $id)
     {
         $usuario = PermisoService::usuarioActual();
@@ -184,7 +231,12 @@ class PlanificacionController extends Controller
 
         $plan = DB::table('sgc_planificaciones')->where('id', $id)->first();
         if (! $plan) abort(404);
-        if (! $esAdmin && $plan->correo !== $usuario->email) abort(403);
+
+        // Autorización: admin pasa siempre; trabajador necesita editar_planificacion en el área
+        if (! $esAdmin) {
+            $areasConEdicion = $this->areasConPermiso($usuario->id, 'editar_planificacion');
+            if (! in_array((int) $plan->area, $areasConEdicion, true)) abort(403);
+        }
 
         $request->validate([
             'area'        => ['required', 'integer'],
@@ -211,6 +263,9 @@ class PlanificacionController extends Controller
             ->with('ok', 'Planificación actualizada correctamente.');
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // CERRAR
+    // ─────────────────────────────────────────────────────────────────────────
     public function cerrar(int $id)
     {
         $usuario = PermisoService::usuarioActual();
@@ -221,6 +276,9 @@ class PlanificacionController extends Controller
         return back()->with('ok', 'Planificación cerrada correctamente.');
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // Semáforo
+    // ─────────────────────────────────────────────────────────────────────────
     private function calcularSemaforo(object $p, Carbon $hoy): string
     {
         if ((int) $p->id_estado === 2) return 'verde';

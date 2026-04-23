@@ -5,13 +5,13 @@ namespace App\Http\Controllers;
 use App\Models\Usuario;
 use App\Models\CarpetasPermisos;
 use App\Models\UsuarioArea;
+use App\Models\UsuarioPermisoArea;
 use App\Services\PermisoService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class UsuarioController extends Controller
 {
-    // Áreas del sistema
     private const AREAS = [
         1  => 'Recursos Humanos',
         2  => 'Seguridad y Salud en el Trabajo',
@@ -37,40 +37,39 @@ class UsuarioController extends Controller
         }
 
         $usuarios = $query->get()->map(function ($u) {
-            // Áreas asignadas del usuario
             $u->areas = UsuarioArea::where('id_usuario', $u->id)
                 ->pluck('id_area')
                 ->map(fn($id) => self::AREAS[$id] ?? null)
-                ->filter()
-                ->values();
+                ->filter()->values();
             return $u;
         });
 
-        $perfiles = $this->perfilesDisponibles($perfil);
-
-        return view('usuarios.index', compact('usuarios', 'actual', 'perfiles'));
+        return view('usuarios.index', compact('usuarios', 'actual'));
     }
 
     public function create()
     {
-        $actual   = PermisoService::usuarioActual();
-        $perfil   = (int) $actual->id_perfil;
+        $actual  = PermisoService::usuarioActual();
+        $perfil  = (int) $actual->id_perfil;
         $this->verificarAcceso($perfil);
 
-        $perfiles   = $this->perfilesDisponibles($perfil);
-        $carpetas   = DB::table('sgc_carpetas')->where('id_padre', 0)->orderBy('descripcion')->get();
-        $areas      = self::AREAS;
+        $perfiles = $this->perfilesDisponibles($perfil);
+        $carpetas = DB::table('sgc_carpetas')->where('id_padre', 0)->orderBy('descripcion')->get();
+        $areas    = self::AREAS;
 
-        return view('usuarios.crear', compact('actual', 'perfiles', 'carpetas', 'areas'));
+        // Sin permisos previos al crear
+        $permisosArea = collect();
+
+        return view('usuarios.crear', compact('actual', 'perfiles', 'carpetas', 'areas', 'permisosArea'));
     }
 
     public function store(Request $request)
     {
-        $actual = PermisoService::usuarioActual();
-        $perfil = (int) $actual->id_perfil;
-        $this->verificarAcceso($perfil);
-
+        $actual      = PermisoService::usuarioActual();
+        $perfil      = (int) $actual->id_perfil;
         $perfilNuevo = (int) $request->id_perfil;
+
+        $this->verificarAcceso($perfil);
         $this->validarPerfilAsignable($perfil, $perfilNuevo);
 
         $request->validate([
@@ -99,8 +98,8 @@ class UsuarioController extends Controller
 
         $usuario->save();
 
-        // Guardar áreas
-        $this->guardarAreas($usuario->id, $request->input('areas', []));
+        // Guardar permisos por área (áreas + permisos de plan/minutas)
+        $this->guardarPermisosArea($usuario->id, $request->input('permisos_area', []));
 
         // Guardar permisos de carpetas
         if ($request->has('carpetas')) {
@@ -128,8 +127,10 @@ class UsuarioController extends Controller
         $permisosCarpetas = CarpetasPermisos::where('id_usuario', $id)->get()->keyBy('id_carpeta');
         $areas            = self::AREAS;
 
-        // Áreas actualmente asignadas
-        $areasAsignadas = UsuarioArea::where('id_usuario', $id)->pluck('id_area')->toArray();
+        // Permisos actuales por área (indexados por id_area)
+        $permisosArea = UsuarioPermisoArea::where('id_usuario', $id)
+            ->get()
+            ->keyBy('id_area');
 
         $bloques = [];
         foreach ($this->columnasBloque() as $col) {
@@ -138,7 +139,7 @@ class UsuarioController extends Controller
 
         return view('usuarios.editar', compact(
             'usuario', 'actual', 'perfiles', 'carpetas',
-            'permisosCarpetas', 'bloques', 'areas', 'areasAsignadas'
+            'permisosCarpetas', 'bloques', 'areas', 'permisosArea'
         ));
     }
 
@@ -160,7 +161,7 @@ class UsuarioController extends Controller
             'id_perfil' => ['required', 'integer'],
             'password'  => ['nullable', 'string', 'min:6', 'confirmed'],
         ], [
-            'email.unique'       => 'Este correo ya está en uso por otro usuario.',
+            'email.unique'       => 'Este correo ya está en uso.',
             'password.min'       => 'La contraseña debe tener al menos 6 caracteres.',
             'password.confirmed' => 'Las contraseñas no coinciden.',
         ]);
@@ -179,8 +180,8 @@ class UsuarioController extends Controller
 
         $usuario->save();
 
-        // Actualizar áreas
-        $this->guardarAreas($id, $request->input('areas', []));
+        // Actualizar permisos por área
+        $this->guardarPermisosArea($id, $request->input('permisos_area', []));
 
         // Actualizar permisos de carpetas
         CarpetasPermisos::where('id_usuario', $id)->delete();
@@ -195,15 +196,12 @@ class UsuarioController extends Controller
     public function destroy(int $id)
     {
         $actual = PermisoService::usuarioActual();
-        if ((int) $actual->id_perfil !== 1) {
-            abort(403, 'Solo el Super Administrador puede desactivar usuarios.');
-        }
+        if ((int) $actual->id_perfil !== 1) abort(403);
         if ($id === $actual->id) {
-            return back()->withErrors(['error' => 'No puedes desactivar tu propio usuario.']);
+            return back()->withErrors(['error' => 'No puedes desactivarte a ti mismo.']);
         }
 
         $usuario = Usuario::findOrFail($id);
-
         if ((int) $usuario->id_perfil === 1) {
             return back()->withErrors(['error' => 'No puedes desactivar a otro Super Administrador.']);
         }
@@ -219,27 +217,50 @@ class UsuarioController extends Controller
 
     // ─── Helpers ─────────────────────────────────────────────────────────────
 
-    private function guardarAreas(int $usuarioId, array $areas): void
+    /**
+     * Guarda los permisos por área desde el formulario.
+     * Estructura esperada del request:
+     * permisos_area[id_area][ver_planificacion] = 1
+     * permisos_area[id_area][editar_planificacion] = 1
+     * permisos_area[id_area][ver_minutas] = 1
+     * permisos_area[id_area][editar_minutas] = 1
+     */
+    private function guardarPermisosArea(int $usuarioId, array $permisosArea): void
     {
-        // Eliminar áreas anteriores y reasignar
+        // Eliminar permisos anteriores
+        UsuarioPermisoArea::where('id_usuario', $usuarioId)->delete();
         UsuarioArea::where('id_usuario', $usuarioId)->delete();
 
-        foreach ($areas as $idArea) {
+        foreach ($permisosArea as $idArea => $perms) {
             $idArea = (int) $idArea;
-            if (array_key_exists($idArea, self::AREAS)) {
-                UsuarioArea::create([
-                    'id_usuario' => $usuarioId,
-                    'id_area'    => $idArea,
-                ]);
-            }
+            if (! array_key_exists($idArea, self::AREAS)) continue;
+
+            $verPlan    = ! empty($perms['ver_planificacion']);
+            $editarPlan = ! empty($perms['editar_planificacion']);
+            $verMin     = ! empty($perms['ver_minutas']);
+            $editarMin  = ! empty($perms['editar_minutas']);
+
+            // Solo guardar si tiene al menos un permiso activo
+            if (! $verPlan && ! $editarPlan && ! $verMin && ! $editarMin) continue;
+
+            // Registrar área asignada
+            UsuarioArea::create(['id_usuario' => $usuarioId, 'id_area' => $idArea]);
+
+            // Registrar permisos
+            UsuarioPermisoArea::create([
+                'id_usuario'           => $usuarioId,
+                'id_area'              => $idArea,
+                'ver_planificacion'    => $verPlan   ? 1 : 0,
+                'editar_planificacion' => $editarPlan ? 1 : 0,
+                'ver_minutas'          => $verMin     ? 1 : 0,
+                'editar_minutas'       => $editarMin  ? 1 : 0,
+            ]);
         }
     }
 
     private function verificarAcceso(int $perfil): void
     {
-        if (! in_array($perfil, [1, 2])) {
-            abort(403, 'No tienes permiso para gestionar usuarios.');
-        }
+        if (! in_array($perfil, [1, 2])) abort(403);
     }
 
     private function perfilesDisponibles(int $perfil): \Illuminate\Support\Collection
@@ -252,9 +273,7 @@ class UsuarioController extends Controller
 
     private function validarPerfilAsignable(int $perfilActual, int $perfilNuevo): void
     {
-        if ($perfilActual === 2 && $perfilNuevo !== 4) {
-            abort(403, 'Los administradores solo pueden crear usuarios con perfil Trabajador.');
-        }
+        if ($perfilActual === 2 && $perfilNuevo !== 4) abort(403);
     }
 
     private function guardarPermisosCarpetas(int $usuarioId, string $correo, string $clave, array $carpetas): void
@@ -262,7 +281,6 @@ class UsuarioController extends Controller
         foreach ($carpetas as $carpetaId => $perms) {
             $tieneAlguno = collect(['carga','descarga','crear','eliminar','editar'])
                 ->some(fn($p) => ! empty($perms[$p]));
-
             if (! $tieneAlguno) continue;
 
             CarpetasPermisos::updateOrCreate(
@@ -284,10 +302,10 @@ class UsuarioController extends Controller
     private function columnasBloque(): array
     {
         return [
-            'bloque_sig', 'bloque_seguridad', 'bloque_ambiente',
-            'bloque_rrhh', 'bloque_abastecimiento', 'bloque_proyectos',
-            'bloque_gerencia', 'bloque_patio', 'bloque_calidad',
-            'bloque_docs_legales', 'bloque_formatos', 'bloque_listado_interes',
+            'bloque_sig','bloque_seguridad','bloque_ambiente','bloque_rrhh',
+            'bloque_abastecimiento','bloque_proyectos','bloque_gerencia',
+            'bloque_patio','bloque_calidad','bloque_docs_legales',
+            'bloque_formatos','bloque_listado_interes',
         ];
     }
 }

@@ -132,3 +132,29 @@ CREATE TABLE `sgc_usuarios_areas` (
 -- Verificar que quedó creada
 SHOW COLUMNS FROM `sgc_usuarios_areas`;
 
+-- ============================================================
+-- SGC F&C Chile SPA — Sprint 4
+-- Tabla de permisos por área para planificación y minutas
+-- Ejecutar en phpMyAdmin sobre cfc48507_epp
+-- ============================================================
+
+CREATE TABLE `sgc_usuarios_permisos_area` (
+    `id`                   int(11)    NOT NULL AUTO_INCREMENT,
+    `id_usuario`           int(11)    NOT NULL,
+    `id_area`              int(11)    NOT NULL,
+    -- Permisos de planificación
+    `ver_planificacion`    tinyint(1) NOT NULL DEFAULT 0,
+    `editar_planificacion` tinyint(1) NOT NULL DEFAULT 0,
+    -- Permisos de minutas
+    `ver_minutas`          tinyint(1) NOT NULL DEFAULT 0,
+    `editar_minutas`       tinyint(1) NOT NULL DEFAULT 0,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_usuario_area` (`id_usuario`, `id_area`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
+
+-- Agregar también la tabla de áreas si no tienes la anterior
+-- (solo si no ejecutaste el SQL de fix-areas antes)
+-- CREATE TABLE `sgc_usuarios_areas` ... (ya ejecutado)
+
+-- Verificar
+SHOW COLUMNS FROM `sgc_usuarios_permisos_area`;

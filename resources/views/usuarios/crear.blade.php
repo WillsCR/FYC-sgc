@@ -3,7 +3,7 @@
 
 @push('styles')
 <style>
-.form-body { padding: 20px; max-width: 900px; margin: 0 auto; }
+.form-body { padding: 20px; max-width: 960px; margin: 0 auto; }
 .form-card {
     background: var(--surface); border: 1px solid var(--border);
     border-radius: var(--radius-md); overflow: hidden; margin-bottom: 16px;
@@ -11,49 +11,88 @@
 .form-card-header {
     background: var(--navy); color: #fff;
     padding: 12px 18px; font-size: .82rem; font-weight: 700;
-    display: flex; align-items: center; gap: 8px;
 }
 .form-card-body { padding: 18px; }
 .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 
-/* Áreas */
-.areas-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 8px;
+/* ── Tabla de permisos por área (estilo legacy mejorado) ──── */
+.permisos-area-table {
+    width: 100%; border-collapse: collapse; font-size: .8rem;
 }
-.area-check {
-    display: flex; align-items: center; gap: 8px;
-    padding: 9px 12px; border: 1px solid var(--border);
-    border-radius: var(--radius-sm); cursor: pointer;
-    font-size: .8rem; color: var(--text-secondary);
-    transition: all .12s; user-select: none;
+.permisos-area-table th {
+    background: var(--navy); color: #fff;
+    padding: 9px 12px; text-align: center;
+    font-size: .7rem; font-weight: 600;
+    text-transform: uppercase; letter-spacing: .04em;
 }
-.area-check:hover { border-color: var(--blue-accent); background: var(--surface-2); }
-.area-check.activo {
-    border-color: var(--blue-accent);
-    background: #EFF6FF; color: #1D4ED8; font-weight: 600;
+.permisos-area-table th:first-child { text-align: left; min-width: 180px; }
+.permisos-area-table td {
+    padding: 8px 12px; border-bottom: 1px solid var(--border);
+    text-align: center; vertical-align: middle;
 }
-.area-check input[type=checkbox] { accent-color: var(--blue-accent); flex-shrink: 0; }
-.area-numero {
-    display: inline-flex; align-items: center; justify-content: center;
-    width: 20px; height: 20px; border-radius: 50%;
-    background: var(--surface-2); color: var(--text-muted);
-    font-size: .65rem; font-weight: 700; flex-shrink: 0;
+.permisos-area-table td:first-child {
+    text-align: left; color: var(--text-primary);
+    font-weight: 500; font-size: .8rem;
 }
-.area-check.activo .area-numero {
-    background: #DBEAFE; color: #1D4ED8;
+.permisos-area-table tr:last-child td { border-bottom: none; }
+.permisos-area-table tr:hover td { background: var(--surface-2); }
+.permisos-area-table tr.tiene-permisos td { background: #F0FDF4; }
+.permisos-area-table tr.tiene-permisos:hover td { background: #DCFCE7; }
+
+/* Grupo de permisos en la cabecera */
+.th-group {
+    border-left: 2px solid rgba(255,255,255,.2);
+    border-right: 2px solid rgba(255,255,255,.2);
 }
+.th-planificacion { background: #1D4ED8; }
+.th-minutas       { background: #7C3AED; }
+
+/* Checkbox estilizado */
+.perm-cb-wrap {
+    display: flex; align-items: center; justify-content: center;
+}
+.perm-cb {
+    width: 18px; height: 18px;
+    accent-color: var(--navy); cursor: pointer;
+}
+.perm-cb-plan { accent-color: #1D4ED8; }
+.perm-cb-min  { accent-color: #7C3AED; }
+
+/* Fila con separador de grupo */
+.col-plan { border-left: 2px solid #DBEAFE; border-right: 1px solid var(--border); }
+.col-plan-r { border-right: 2px solid #DBEAFE; }
+.col-min  { border-left: 2px solid #EDE9FE; border-right: 1px solid var(--border); }
+.col-min-r { border-right: 2px solid #EDE9FE; }
+
+/* Acciones rápidas */
+.tabla-acciones {
+    display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap;
+}
+.btn-tabla-accion {
+    padding: 4px 12px; border: 1px solid var(--border);
+    border-radius: var(--radius-sm); font-size: .72rem;
+    cursor: pointer; background: var(--surface-2); color: var(--text-secondary);
+    transition: all .12s;
+}
+.btn-tabla-accion:hover { border-color: var(--navy); color: var(--navy); }
+.btn-tabla-accion.plan { border-color: #BFDBFE; color: #1D4ED8; background: #EFF6FF; }
+.btn-tabla-accion.plan:hover { background: #DBEAFE; }
+.btn-tabla-accion.min  { border-color: #DDD6FE; color: #7C3AED; background: #F5F3FF; }
+.btn-tabla-accion.min:hover  { background: #EDE9FE; }
+
+/* Leyenda */
+.tabla-leyenda {
+    display: flex; gap: 14px; margin-bottom: 10px;
+    font-size: .72rem; flex-wrap: wrap;
+}
+.leyenda-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
 
 /* Bloques */
-.bloques-grid-form {
-    display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
-}
+.bloques-grid-form { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .bloque-check {
-    display: flex; align-items: center; gap: 8px;
-    padding: 8px 12px; border: 1px solid var(--border);
-    border-radius: var(--radius-sm); cursor: pointer;
-    font-size: .78rem; color: var(--text-secondary); transition: all .12s;
+    display: flex; align-items: center; gap: 8px; padding: 8px 12px;
+    border: 1px solid var(--border); border-radius: var(--radius-sm);
+    cursor: pointer; font-size: .78rem; color: var(--text-secondary); transition: all .12s;
 }
 .bloque-check:hover { border-color: var(--navy); background: var(--surface-2); }
 .bloque-check input[type=checkbox] { accent-color: var(--navy); }
@@ -62,10 +101,9 @@
 /* Carpetas */
 .carpeta-perm { border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; margin-bottom: 8px; }
 .carpeta-perm-header {
-    background: var(--surface-2); padding: 8px 14px;
-    font-size: .8rem; font-weight: 600; color: var(--navy);
-    display: flex; align-items: center; gap: 8px;
-    cursor: pointer; user-select: none;
+    background: var(--surface-2); padding: 8px 14px; font-size: .8rem;
+    font-weight: 600; color: var(--navy);
+    display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none;
 }
 .carpeta-perm-body { padding: 12px 14px; display: none; }
 .carpeta-perm-body.visible { display: block; }
@@ -81,8 +119,7 @@
 .form-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 8px; }
 .btn-guardar {
     padding: 10px 24px; background: var(--navy); color: #fff;
-    border: none; border-radius: var(--radius-sm);
-    font-size: .85rem; font-weight: 600; cursor: pointer;
+    border: none; border-radius: var(--radius-sm); font-size: .85rem; font-weight: 600; cursor: pointer;
 }
 .btn-guardar:hover { background: var(--navy-light); }
 .btn-cancelar {
@@ -98,24 +135,12 @@
 .breadcrumb-nav a { color: var(--text-muted); text-decoration: none; }
 .breadcrumb-nav a:hover { color: var(--navy); }
 
-/* Acciones rápidas de áreas */
-.areas-acciones {
-    display: flex; gap: 6px; margin-bottom: 10px;
-}
-.btn-areas-toggle {
-    padding: 4px 10px; border: 1px solid var(--border);
-    border-radius: var(--radius-sm); font-size: .72rem;
-    cursor: pointer; background: var(--surface-2); color: var(--text-secondary);
-    transition: all .12s;
-}
-.btn-areas-toggle:hover { border-color: var(--navy); color: var(--navy); }
-
 @media (max-width: 640px) {
     .form-body { padding: 12px; }
     .form-grid-2 { grid-template-columns: 1fr; }
-    .permisos-checks { grid-template-columns: repeat(3, 1fr); }
     .bloques-grid-form { grid-template-columns: repeat(2, 1fr); }
-    .areas-grid { grid-template-columns: 1fr 1fr; }
+    .permisos-checks { grid-template-columns: repeat(3, 1fr); }
+    .permisos-area-table { font-size: .72rem; }
 }
 </style>
 @endpush
@@ -134,6 +159,18 @@
             ? route('usuarios.update', $usuario->id)
             : route('usuarios.store');
         $metodo = isset($usuario) ? 'PUT' : 'POST';
+        $areas = [
+            1 => 'Recursos Humanos',
+            2 => 'Seguridad y Salud en el Trabajo',
+            3 => 'Abastecimiento y Finanzas',
+            4 => 'Contrato Pozos',
+            5 => 'Medio Ambiente',
+            6 => 'Control SGI',
+            7 => 'SGI Gestión',
+            8 => 'Patios e Infraestructura',
+            9 => 'Gerencia de Operaciones',
+            10 => 'Gerencia General',
+        ];
     @endphp
 
     <form method="POST" action="{{ $accion }}">
@@ -142,9 +179,7 @@
 
         {{-- ── Datos básicos ─────────────────────────────────── --}}
         <div class="form-card">
-            <div class="form-card-header">
-                👤 {{ isset($usuario) ? 'Editar usuario' : 'Nuevo usuario' }}
-            </div>
+            <div class="form-card-header">👤 {{ isset($usuario) ? 'Editar usuario' : 'Nuevo usuario' }}</div>
             <div class="form-card-body">
                 <div class="form-grid-2">
                     <div class="form-group">
@@ -153,7 +188,7 @@
                                class="form-control @error('nombre') is-invalid @enderror"
                                value="{{ old('nombre', $usuario->nombre ?? '') }}"
                                placeholder="Ej: Juan Pérez" required>
-                        @error('nombre') <div class="form-error">{{ $message }}</div> @enderror
+                        @error('nombre')<div class="form-error">{{ $message }}</div>@enderror
                     </div>
                     <div class="form-group">
                         <label class="form-label">Correo corporativo</label>
@@ -161,17 +196,17 @@
                                class="form-control @error('email') is-invalid @enderror"
                                value="{{ old('email', $usuario->email ?? '') }}"
                                placeholder="usuario@fycchilespa.cl" required>
-                        @error('email') <div class="form-error">{{ $message }}</div> @enderror
+                        @error('email')<div class="form-error">{{ $message }}</div>@enderror
                     </div>
                     <div class="form-group">
                         <label class="form-label">
-                            {{ isset($usuario) ? 'Nueva contraseña (dejar vacío para no cambiar)' : 'Contraseña' }}
+                            {{ isset($usuario) ? 'Nueva contraseña (vacío = no cambia)' : 'Contraseña' }}
                         </label>
                         <input type="password" name="password"
                                class="form-control @error('password') is-invalid @enderror"
                                placeholder="••••••••"
                                {{ isset($usuario) ? '' : 'required' }}>
-                        @error('password') <div class="form-error">{{ $message }}</div> @enderror
+                        @error('password')<div class="form-error">{{ $message }}</div>@enderror
                     </div>
                     <div class="form-group">
                         <label class="form-label">Confirmar contraseña</label>
@@ -193,42 +228,123 @@
             </div>
         </div>
 
-        {{-- ── Áreas asignadas ───────────────────────────────── --}}
+        {{-- ── Permisos por área ─────────────────────────────── --}}
         <div class="form-card">
-            <div class="form-card-header">🗂️ Áreas asignadas</div>
+            <div class="form-card-header">🗂️ Permisos de Planificación y Minutas por Área</div>
             <div class="form-card-body">
-                <p style="font-size:.78rem;color:var(--text-muted);margin-bottom:10px">
-                    Selecciona las áreas a las que pertenece este usuario.
-                    Esto determina qué planificaciones verá en su vista.
+                <p style="font-size:.78rem;color:var(--text-muted);margin-bottom:12px">
+                    Asigna las áreas y define qué puede hacer el usuario en cada una.
+                    Si "Editar" está marcado, "Ver" se activa automáticamente.
                 </p>
-                <div class="areas-acciones">
-                    <button type="button" class="btn-areas-toggle" onclick="seleccionarTodasAreas(true)">
-                        Seleccionar todas
+
+                {{-- Acciones rápidas --}}
+                <div class="tabla-acciones">
+                    <button type="button" class="btn-tabla-accion plan"
+                            onclick="marcarColumna('ver_planificacion', true)">
+                        ✓ Ver Plan. — todas
                     </button>
-                    <button type="button" class="btn-areas-toggle" onclick="seleccionarTodasAreas(false)">
-                        Quitar todas
+                    <button type="button" class="btn-tabla-accion plan"
+                            onclick="marcarColumna('editar_planificacion', true)">
+                        ✓ Editar Plan. — todas
+                    </button>
+                    <button type="button" class="btn-tabla-accion min"
+                            onclick="marcarColumna('ver_minutas', true)">
+                        ✓ Ver Min. — todas
+                    </button>
+                    <button type="button" class="btn-tabla-accion min"
+                            onclick="marcarColumna('editar_minutas', true)">
+                        ✓ Editar Min. — todas
+                    </button>
+                    <button type="button" class="btn-tabla-accion"
+                            onclick="limpiarTodos()">
+                        ✕ Quitar todos
                     </button>
                 </div>
-                <div class="areas-grid" id="areas-grid">
-                    @foreach($areas as $idArea => $nombreArea)
-                    @php
-                        $asignada = isset($areasAsignadas)
-                            ? in_array($idArea, $areasAsignadas)
-                            : false;
-                        $asignada = old("areas.{$idArea}", $asignada ? $idArea : null) == $idArea;
-                    @endphp
-                    <label class="area-check {{ $asignada ? 'activo' : '' }}"
-                           id="label-area-{{ $idArea }}">
-                        <input type="checkbox"
-                               name="areas[]"
-                               value="{{ $idArea }}"
-                               {{ $asignada ? 'checked' : '' }}
-                               onchange="toggleAreaStyle(this, {{ $idArea }})">
-                        <span class="area-numero">{{ $idArea }}</span>
-                        <span>{{ $nombreArea }}</span>
-                    </label>
-                    @endforeach
+
+                <div style="overflow-x:auto">
+                    <table class="permisos-area-table">
+                        <thead>
+                            <tr>
+                                <th rowspan="2">Área</th>
+                                <th colspan="2" class="th-group th-planificacion">📋 Planificación</th>
+                                <th colspan="2" class="th-group th-minutas">📅 Minutas</th>
+                            </tr>
+                            <tr>
+                                <th class="th-planificacion" style="font-size:.65rem">Ver</th>
+                                <th class="th-planificacion th-group" style="font-size:.65rem">Editar</th>
+                                <th class="th-minutas" style="font-size:.65rem">Ver</th>
+                                <th class="th-minutas th-group" style="font-size:.65rem">Editar</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($areas as $idArea => $nombreArea)
+                            @php
+                                $perm = isset($permisosArea) ? ($permisosArea[$idArea] ?? null) : null;
+                                $verPlan    = old("permisos_area.{$idArea}.ver_planificacion",    $perm ? (bool)$perm->ver_planificacion    : false);
+                                $editarPlan = old("permisos_area.{$idArea}.editar_planificacion", $perm ? (bool)$perm->editar_planificacion : false);
+                                $verMin     = old("permisos_area.{$idArea}.ver_minutas",          $perm ? (bool)$perm->ver_minutas          : false);
+                                $editarMin  = old("permisos_area.{$idArea}.editar_minutas",       $perm ? (bool)$perm->editar_minutas       : false);
+                                $tieneAlgo  = $verPlan || $editarPlan || $verMin || $editarMin;
+                            @endphp
+                            <tr class="{{ $tieneAlgo ? 'tiene-permisos' : '' }}" id="fila-area-{{ $idArea }}">
+                                <td>{{ $nombreArea }}</td>
+                                {{-- Ver planificación --}}
+                                <td class="col-plan">
+                                    <div class="perm-cb-wrap">
+                                        <input type="checkbox"
+                                               class="perm-cb perm-cb-plan"
+                                               name="permisos_area[{{ $idArea }}][ver_planificacion]"
+                                               value="1"
+                                               id="vp_{{ $idArea }}"
+                                               {{ $verPlan ? 'checked' : '' }}
+                                               onchange="onPermChange({{ $idArea }})">
+                                    </div>
+                                </td>
+                                {{-- Editar planificación --}}
+                                <td class="col-plan-r">
+                                    <div class="perm-cb-wrap">
+                                        <input type="checkbox"
+                                               class="perm-cb perm-cb-plan"
+                                               name="permisos_area[{{ $idArea }}][editar_planificacion]"
+                                               value="1"
+                                               id="ep_{{ $idArea }}"
+                                               {{ $editarPlan ? 'checked' : '' }}
+                                               onchange="onEditarPlan({{ $idArea }})">
+                                    </div>
+                                </td>
+                                {{-- Ver minutas --}}
+                                <td class="col-min">
+                                    <div class="perm-cb-wrap">
+                                        <input type="checkbox"
+                                               class="perm-cb perm-cb-min"
+                                               name="permisos_area[{{ $idArea }}][ver_minutas]"
+                                               value="1"
+                                               id="vm_{{ $idArea }}"
+                                               {{ $verMin ? 'checked' : '' }}
+                                               onchange="onPermChange({{ $idArea }})">
+                                    </div>
+                                </td>
+                                {{-- Editar minutas --}}
+                                <td class="col-min-r">
+                                    <div class="perm-cb-wrap">
+                                        <input type="checkbox"
+                                               class="perm-cb perm-cb-min"
+                                               name="permisos_area[{{ $idArea }}][editar_minutas]"
+                                               value="1"
+                                               id="em_{{ $idArea }}"
+                                               {{ $editarMin ? 'checked' : '' }}
+                                               onchange="onEditarMin({{ $idArea }})">
+                                    </div>
+                                </td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
                 </div>
+                <p style="font-size:.72rem;color:var(--text-muted);margin-top:10px">
+                    💡 Las filas en verde indican áreas con permisos activos.
+                    Los permisos se aplican al cerrar sesión y volver a ingresar.
+                </p>
             </div>
         </div>
 
@@ -248,21 +364,19 @@
                         'bloque_abastecimiento'  => ['🏗️', 'Abastecimiento'],
                         'bloque_proyectos'       => ['📈', 'Proyectos'],
                         'bloque_gerencia'        => ['🏢', 'Gerencia'],
-                        'bloque_patio'           => ['🏭', 'Patio e Infraestructura'],
+                        'bloque_patio'           => ['🏭', 'Patio'],
                         'bloque_calidad'         => ['✅', 'Calidad'],
                         'bloque_docs_legales'    => ['⚖️', 'Docs. Legales'],
                         'bloque_formatos'        => ['📝', 'Formatos'],
                         'bloque_listado_interes' => ['📌', 'Listado de Interés'],
                     ] as $col => [$emoji, $nombre])
                     @php
-                        $checked = old("bloques.{$col}",
-                            isset($bloques) ? ($bloques[$col] ?? false) : false);
+                        $checked = old("bloques.{$col}", isset($bloques) ? ($bloques[$col] ?? false) : false);
                     @endphp
-                    <label class="bloque-check {{ $checked ? 'activo' : '' }}"
-                           id="label-{{ $col }}">
+                    <label class="bloque-check {{ $checked ? 'activo' : '' }}" id="label-{{ $col }}">
                         <input type="checkbox" name="bloques[{{ $col }}]" value="1"
                                {{ $checked ? 'checked' : '' }}
-                               onchange="toggleBloqueStyle(this)">
+                               onchange="this.closest('.bloque-check').classList.toggle('activo', this.checked)">
                         <span>{{ $emoji }}</span>
                         <span>{{ $nombre }}</span>
                     </label>
@@ -280,17 +394,15 @@
                 </p>
                 @foreach($carpetas as $carpeta)
                 @php
-                    $perm      = isset($permisosCarpetas) ? ($permisosCarpetas[$carpeta->id] ?? null) : null;
-                    $tienePerm = $perm !== null;
+                    $perm2     = isset($permisosCarpetas) ? ($permisosCarpetas[$carpeta->id] ?? null) : null;
+                    $tienePerm = $perm2 !== null;
                 @endphp
                 <div class="carpeta-perm">
                     <div class="carpeta-perm-header" onclick="toggleCarpeta({{ $carpeta->id }})">
                         <span>{{ $tienePerm ? '📂' : '📁' }}</span>
                         <span>{{ $carpeta->descripcion }}</span>
                         @if($tienePerm)
-                            <span style="margin-left:auto;font-size:.68rem;color:#16A34A;font-weight:700">
-                                ✓ Con permisos
-                            </span>
+                            <span style="margin-left:auto;font-size:.68rem;color:#16A34A;font-weight:700">✓ Con permisos</span>
                         @endif
                         <svg id="arrow-{{ $carpeta->id }}" width="12" height="12" viewBox="0 0 24 24"
                              fill="none" stroke="currentColor" stroke-width="2.5"
@@ -298,23 +410,12 @@
                             <path d="M9 18l6-6-6-6"/>
                         </svg>
                     </div>
-                    <div class="carpeta-perm-body {{ $tienePerm ? 'visible' : '' }}"
-                         id="perm-{{ $carpeta->id }}">
+                    <div class="carpeta-perm-body {{ $tienePerm ? 'visible' : '' }}" id="perm-{{ $carpeta->id }}">
                         <div class="permisos-checks">
-                            @foreach([
-                                'carga'    => ['📤', 'Subir'],
-                                'descarga' => ['📥', 'Descargar'],
-                                'crear'    => ['📁', 'Crear'],
-                                'eliminar' => ['🗑️', 'Eliminar'],
-                                'editar'   => ['✏️', 'Editar'],
-                            ] as $permKey => [$icon, $label])
-                            @php
-                                $isChecked = old("carpetas.{$carpeta->id}.{$permKey}",
-                                    $perm ? (bool)$perm->$permKey : false);
-                            @endphp
+                            @foreach(['carga'=>['📤','Subir'],'descarga'=>['📥','Descargar'],'crear'=>['📁','Crear'],'eliminar'=>['🗑️','Eliminar'],'editar'=>['✏️','Editar']] as $permKey => [$icon, $label])
+                            @php $isChecked = old("carpetas.{$carpeta->id}.{$permKey}", $perm2 ? (bool)$perm2->$permKey : false); @endphp
                             <label class="perm-check {{ $isChecked ? 'activo' : '' }}">
-                                <input type="checkbox"
-                                       name="carpetas[{{ $carpeta->id }}][{{ $permKey }}]"
+                                <input type="checkbox" name="carpetas[{{ $carpeta->id }}][{{ $permKey }}]"
                                        value="1" {{ $isChecked ? 'checked' : '' }}>
                                 <span style="font-size:1.1rem">{{ $icon }}</span>
                                 <span>{{ $label }}</span>
@@ -327,7 +428,6 @@
             </div>
         </div>
 
-        {{-- Acciones --}}
         <div class="form-actions">
             <a href="{{ route('usuarios.index') }}" class="btn-cancelar">Cancelar</a>
             <button type="submit" class="btn-guardar">
@@ -340,27 +440,67 @@
 
 @push('scripts')
 <script>
+var AREAS = @json(array_keys($areas ?? []));
+
+// Al marcar "Editar planificación" activa automáticamente "Ver planificación"
+function onEditarPlan(idArea) {
+    var editar = document.getElementById('ep_' + idArea);
+    var ver    = document.getElementById('vp_' + idArea);
+    if (editar.checked) ver.checked = true;
+    onPermChange(idArea);
+}
+
+// Al marcar "Editar minutas" activa automáticamente "Ver minutas"
+function onEditarMin(idArea) {
+    var editar = document.getElementById('em_' + idArea);
+    var ver    = document.getElementById('vm_' + idArea);
+    if (editar.checked) ver.checked = true;
+    onPermChange(idArea);
+}
+
+// Resalta la fila si tiene algún permiso activo
+function onPermChange(idArea) {
+    var fila = document.getElementById('fila-area-' + idArea);
+    var checks = fila.querySelectorAll('input[type=checkbox]');
+    var alguno = Array.from(checks).some(function(cb) { return cb.checked; });
+    fila.classList.toggle('tiene-permisos', alguno);
+}
+
+// Marcar/desmarcar una columna completa
+function marcarColumna(nombre, valor) {
+    AREAS.forEach(function(id) {
+        var cb = document.querySelector('input[name="permisos_area[' + id + '][' + nombre + ']"]');
+        if (cb) {
+            cb.checked = valor;
+            // Si es editar, activar también ver
+            if (nombre === 'editar_planificacion' && valor) {
+                var ver = document.getElementById('vp_' + id);
+                if (ver) ver.checked = true;
+            }
+            if (nombre === 'editar_minutas' && valor) {
+                var ver = document.getElementById('vm_' + id);
+                if (ver) ver.checked = true;
+            }
+            onPermChange(id);
+        }
+    });
+}
+
+// Quitar todos los permisos de la tabla
+function limpiarTodos() {
+    AREAS.forEach(function(id) {
+        ['vp_','ep_','vm_','em_'].forEach(function(prefix) {
+            var cb = document.getElementById(prefix + id);
+            if (cb) cb.checked = false;
+        });
+        onPermChange(id);
+    });
+}
+
 function toggleCarpeta(id) {
     var body  = document.getElementById('perm-' + id);
     var arrow = document.getElementById('arrow-' + id);
-    var visible = body.classList.toggle('visible');
-    arrow.style.transform = visible ? 'rotate(90deg)' : '';
-}
-
-function toggleBloqueStyle(checkbox) {
-    checkbox.closest('.bloque-check').classList.toggle('activo', checkbox.checked);
-}
-
-function toggleAreaStyle(checkbox, id) {
-    document.getElementById('label-area-' + id).classList.toggle('activo', checkbox.checked);
-}
-
-function seleccionarTodasAreas(marcar) {
-    document.querySelectorAll('#areas-grid input[type=checkbox]').forEach(function(cb) {
-        cb.checked = marcar;
-        var id = cb.value;
-        document.getElementById('label-area-' + id).classList.toggle('activo', marcar);
-    });
+    arrow.style.transform = body.classList.toggle('visible') ? 'rotate(90deg)' : '';
 }
 </script>
 @endpush

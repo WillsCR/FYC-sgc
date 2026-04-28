@@ -61,6 +61,8 @@ class PlanificacionController extends Controller
         // ── Query base ───────────────────────────────────────────────────
         $query = DB::table('sgc_planificaciones');
 
+        $areasPermitidas = [];
+
         if (! $esAdmin) {
             // Trabajador: ve planificaciones de las áreas donde tiene ver_planificacion = 1
             $areasPermitidas = $this->areasConPermiso($usuario->id, 'ver_planificacion');
@@ -117,10 +119,22 @@ class PlanificacionController extends Controller
         });
 
         // ── Permisos de edición para la vista ───────────────────────────
-        // El trabajador solo ve el botón editar en las áreas donde tiene editar_planificacion = 1
         $areasConEdicion = $esAdmin
             ? array_keys(self::AREAS)
             : $this->areasConPermiso($usuario->id, 'editar_planificacion');
+
+        // ── Áreas disponibles para el filtro ────────────────────────────
+        // Admin ve todas; trabajador solo las que tiene ver_planificacion = 1
+        if ($esAdmin) {
+            $areasParaFiltro = self::AREAS;
+            unset($areasParaFiltro[0]);
+        } else {
+            $areasParaFiltro = array_filter(
+                self::AREAS,
+                fn($id) => in_array($id, $areasPermitidas, true),
+                ARRAY_FILTER_USE_KEY
+            );
+        }
 
         $stats = [
             'total'      => $total,
@@ -134,7 +148,8 @@ class PlanificacionController extends Controller
 
         return view('planificacion.index', compact(
             'planificaciones', 'stats', 'areas', 'estados',
-            'usuario', 'esAdmin', 'orden', 'porPagina', 'areasConEdicion'
+            'usuario', 'esAdmin', 'orden', 'porPagina',
+            'areasConEdicion', 'areasParaFiltro'
         ));
     }
 

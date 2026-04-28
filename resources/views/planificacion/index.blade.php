@@ -239,7 +239,7 @@
             <h2>📋 Planificación</h2>
             <p>
                 @if($esAdmin) Todas las planificaciones del sistema
-                @else Tus planificaciones asignadas
+                @else Planificaciones de tus áreas asignadas
                 @endif
                 · {{ number_format($stats['total']) }} {{ $stats['total'] === 1 ? 'registro' : 'registros' }}
             </p>
@@ -293,17 +293,15 @@
                 <input type="text" name="buscar" value="{{ request('buscar') }}"
                        placeholder="Escribe para buscar...">
             </div>
-            @if($esAdmin)
+            @if(count($areasParaFiltro) > 1)
             <div class="filtro-group">
                 <label>Área</label>
                 <select name="area">
                     <option value="">Todas las áreas</option>
-                    @foreach($areas as $id => $nombre)
-                        @if($id > 0)
+                    @foreach($areasParaFiltro as $id => $nombre)
                         <option value="{{ $id }}" {{ request('area') == $id ? 'selected' : '' }}>
                             {{ $nombre }}
                         </option>
-                        @endif
                     @endforeach
                 </select>
             </div>
@@ -431,8 +429,10 @@
                     </td>
                     <td>
                         <div style="display:flex;gap:5px;align-items:center">
+                            @if(in_array((int)$p->area, $areasConEdicion, true))
                             <a href="{{ route('planificacion.edit', $p->id) }}"
                                class="btn-accion btn-edit">✏️</a>
+                            @endif
                             @if($esAdmin && (int)$p->id_estado !== 2)
                             <form method="POST" action="{{ route('planificacion.cerrar', $p->id) }}"
                                   onsubmit="return confirm('¿Cerrar esta planificación?')">

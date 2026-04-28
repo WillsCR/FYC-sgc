@@ -58,7 +58,7 @@
     <a href="{{ route('metricas') }}"       class="subnav-item {{ request()->routeIs('metricas')   ? 'active' : '' }}">Métricas</a>
     <a href="{{ route('carpetas.index') }}" class="subnav-item {{ request()->routeIs('carpetas.*') ? 'active' : '' }}">Documentos</a>
     <a href="{{ route('planificacion.index') }}" class="subnav-item {{ request()->routeIs('planificacion*') ? 'active' : '' }}">Planificación</a>
-    <a href="#" class="subnav-item">Minutas</a>
+    <a href="{{ route('minutas.index') }}" class="subnav-item {{ request()->routeIs('minutas')? 'active' : ''}}">Minutas</a>
     <a href="#" class="subnav-item">Información SIG</a>
     <a href="#" class="subnav-item">Medio Ambiente</a>
     @if(session('es_admin'))

@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class Carpeta extends Model
+class Carpeta3 extends Model
 {
     protected $table = 'sgc_carpetas3';
     protected $primaryKey = 'id';
@@ -24,12 +24,12 @@ class Carpeta extends Model
 
     public function padre()
     {
-        return $this->belongsTo(Carpeta::class, 'id_padre');
+        return $this->belongsTo(Carpeta3::class, 'id_padre');
     }
 
     public function hijos()
     {
-        return $this->hasMany(Carpeta::class, 'id_padre');
+        return $this->hasMany(Carpeta3::class, 'id_padre');
     }
 
     public function documentos()
@@ -44,7 +44,7 @@ class Carpeta extends Model
 
     public function contenidos()
     {
-        return $this->hasMany(CarpetaContenido::class, 'id_carpeta');
+        return $this->hasMany(CarpetaContenido3::class, 'id_carpeta');
     }
 
     public function obtenerRuta(): string

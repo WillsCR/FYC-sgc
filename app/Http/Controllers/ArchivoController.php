@@ -2,15 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Carpeta;
+use App\Models\CarpetaContenido;
+use App\Models\Documento;
 use App\Services\PermisoService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class ArchivoController extends Controller
 {
-    // Tipos MIME permitidos — validación real de contenido
+    private const MAX_SIZE_MB = 20;
     private const MIMES_PERMITIDOS = [
         'application/pdf',
         'application/msword',
@@ -23,200 +25,189 @@ class ArchivoController extends Controller
         'image/png',
         'image/gif',
         'image/webp',
-        'text/plain',
         'application/zip',
-        'application/x-zip-compressed',
+        'application/x-rar-compressed',
+        'application/x-7z-compressed',
     ];
-
-    private const MAX_SIZE_MB = 20;
 
     /**
      * Subir archivo a una carpeta
      */
     public function subir(Request $request)
     {
-        $carpetaId = (int) $request->input('carpeta_id');
-
-        // Verificar permiso server-side
         $usuario = PermisoService::usuarioActual();
-        if (! $usuario->esAdmin()) {
-            PermisoService::require('carga', 'carpeta', $carpetaId);
-        }
+        $esAdmin = $usuario->esAdmin();
 
-        // Validación básica Laravel
         $request->validate([
-            'archivo'    => ['required', 'file', 'max:' . (self::MAX_SIZE_MB * 1024)],
-            'carpeta_id' => ['required', 'integer'],
-        ], [
-            'archivo.required' => 'Debes seleccionar un archivo.',
-            'archivo.max'      => 'El archivo no puede superar ' . self::MAX_SIZE_MB . ' MB.',
+            'archivo' => [
+                'required',
+                'file',
+                'max:' . (self::MAX_SIZE_MB * 1024),
+            ],
+            'id_carpeta' => ['required', 'integer', 'exists:sgc_carpetas3,id'],
+            'descripcion' => ['nullable', 'string', 'max:500'],
         ]);
 
-        $file = $request->file('archivo');
-
-        // Validación MIME real (no solo extensión)
-        $mimeReal = $file->getMimeType();
-        if (! in_array($mimeReal, self::MIMES_PERMITIDOS)) {
-            return back()->withErrors([
-                'archivo' => "Tipo de archivo no permitido ({$mimeReal}). Solo se permiten documentos, imágenes y archivos comprimidos."
-            ])->withInput();
+        // Verificar permisos
+        if (!$esAdmin) {
+            PermisoService::require('carga', 'archivo', $request->input('id_carpeta'));
         }
 
-        // Nombre UUID para almacenamiento — nunca el nombre original
-        $extension   = $file->getClientOriginalExtension();
-        $nombreDisco = Str::uuid() . '.' . $extension;
-        $nombreVisible = $file->getClientOriginalName();
+        $archivo = $request->file('archivo');
+        $mimeType = $archivo->getMimeType();
 
-        // Guardar fuera del webroot en storage/app/documentos/
-        $ruta = $file->storeAs('documentos', $nombreDisco, 'local');
-
-        // Registrar en sgc_carpetas_contenido
-        DB::table('sgc_carpetas_contenido')->insert([
-            'id_carpeta'  => $carpetaId,
-            'descripcion' => $nombreVisible,
-            'archivo'     => $nombreDisco,
-            'creada_el'   => now(),
-        ]);
-
-        return back()->with('ok', "Archivo \"{$nombreVisible}\" subido correctamente.");
-    }
-
-    /**
-     * Resuelve la ruta absoluta de un archivo, sea nuevo (storage) o legacy (sgc/inc/).
-     * Para archivos legacy usa sgc_carpetas.ruta para construir el path correcto.
-     */
-    private function resolverRuta(object $archivo): ?string
-    {
-        // Nuevo sistema: UUID en storage/app/documentos/
-        if (Storage::disk('local')->exists('documentos/' . $archivo->archivo)) {
-            return Storage::disk('local')->path('documentos/' . $archivo->archivo);
+        // Validar MIME
+        if (!in_array($mimeType, self::MIMES_PERMITIDOS)) {
+            return response()->json([
+                'error' => 'Tipo de archivo no permitido. Permitidos: PDF, Word, Excel, PowerPoint, imágenes, ZIP, RAR, 7Z'
+            ], 422);
         }
 
-        // Legacy: buscar la ruta de la carpeta en sgc_carpetas para construir el path completo
-        $carpeta = DB::table('sgc_carpetas')->where('id', $archivo->id_carpeta)->first();
-        if ($carpeta && $carpeta->ruta) {
-            $ruta = 'C:/xampp/htdocs/sgc/inc/' . $carpeta->ruta . '/' . $archivo->archivo;
-            if (file_exists($ruta)) {
-                return $ruta;
+        try {
+            // Leer contenido y generar hash MD5
+            $contenido = file_get_contents($archivo->getRealPath());
+            $hashMd5 = md5($contenido);
+
+            // Verificar si el documento ya existe (por hash)
+            $documentoExistente = Documento::where('hash_md5', $hashMd5)->first();
+
+            if ($documentoExistente) {
+                // Reutilizar documento existente
+                $documento = $documentoExistente;
+            } else {
+                // Crear nuevo documento con UUID como nombre
+                $nombreArchivo = (string) Str::uuid() . '.' . $archivo->getClientOriginalExtension();
+
+                // Guardar en C:\xampp\documentos\
+                Storage::disk('local')->put($nombreArchivo, $contenido);
+
+                // Crear registro en BD
+                $documento = Documento::create([
+                    'archivo' => $nombreArchivo,
+                    'nombre_original' => $archivo->getClientOriginalName(),
+                    'tipo_mime' => $mimeType,
+                    'tamaño' => $archivo->getSize(),
+                    'hash_md5' => $hashMd5,
+                    'creado_por' => $usuario->id,
+                    'creada_el' => now(),
+                ]);
             }
 
-            // Algunos archivos están guardados en carpetas padre — subir niveles iterativamente
-            $segmentos = explode('/', trim($carpeta->ruta, '/'));
-            while (count($segmentos) > 0) {
-                array_pop($segmentos);
-                $rutaPadre = 'C:/xampp/htdocs/sgc/inc/' . implode('/', $segmentos) . '/' . $archivo->archivo;
-                if (file_exists($rutaPadre)) {
-                    return $rutaPadre;
-                }
+            // Crear relación en carpeta_contenido
+            $existe = CarpetaContenido::where('id_carpeta', $request->input('id_carpeta'))
+                ->where('id_documento', $documento->id)
+                ->exists();
+
+            if (!$existe) {
+                CarpetaContenido::create([
+                    'id_carpeta' => $request->input('id_carpeta'),
+                    'id_documento' => $documento->id,
+                    'descripcion' => $request->input('descripcion', $documento->nombre_original),
+                    'metadata' => json_encode(['cargado_por' => $usuario->id]),
+                    'creada_el' => now(),
+                ]);
             }
-        }
 
-        // Fallback: nombre de archivo directo en inc/ (archivos sin subcarpeta)
-        $rutaDirecta = 'C:/xampp/htdocs/sgc/inc/' . $archivo->archivo;
-        if (file_exists($rutaDirecta)) {
-            return $rutaDirecta;
+            return response()->json([
+                'ok' => true,
+                'mensaje' => 'Archivo guardado correctamente',
+                'documento' => [
+                    'id' => $documento->id,
+                    'nombre' => $documento->nombre_original,
+                    'tamaño' => $documento->tamaño,
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Error al procesar archivo: ' . $e->getMessage()], 500);
         }
-
-        return null;
     }
 
     /**
-     * Descargar archivo — verifica permiso y sirve el archivo
+     * Descargar archivo
      */
-    public function descargar(int $id)
+    public function descargar($id)
     {
-        $archivo = DB::table('sgc_carpetas_contenido')->where('id', $id)->first();
-
-        if (! $archivo) {
-            abort(404, 'Archivo no encontrado.');
-        }
-
         $usuario = PermisoService::usuarioActual();
-        if (! $usuario->esAdmin()) {
-            PermisoService::require('descarga', 'carpeta', $archivo->id_carpeta);
+        $esAdmin = $usuario->esAdmin();
+
+        $contenido = CarpetaContenido::findOrFail($id);
+
+        // Verificar permisos
+        if (!$esAdmin) {
+            PermisoService::require('descarga', 'archivo', $contenido->id_carpeta);
         }
 
-        $rutaAbsoluta = $this->resolverRuta($archivo);
-        if (! $rutaAbsoluta) {
-            abort(404, 'El archivo físico no fue encontrado. Puede haber sido movido o eliminado del servidor.');
-        }
+        $documento = $contenido->documento;
 
-        return response()->download($rutaAbsoluta, $archivo->descripcion);
+        return Storage::disk('local')->download(
+            $documento->archivo,
+            $documento->nombre_original
+        );
     }
 
     /**
-     * Previsualizar archivo inline en el navegador — verifica permiso
+     * Ver archivo en línea (preview)
      */
-    public function ver(int $id)
+    public function ver($id)
     {
-        $archivo = DB::table('sgc_carpetas_contenido')->where('id', $id)->first();
-
-        if (! $archivo) {
-            abort(404, 'Archivo no encontrado.');
-        }
-
         $usuario = PermisoService::usuarioActual();
-        if (! $usuario->esAdmin()) {
-            PermisoService::require('descarga', 'carpeta', $archivo->id_carpeta);
+        $esAdmin = $usuario->esAdmin();
+
+        $contenido = CarpetaContenido::findOrFail($id);
+
+        // Verificar permisos
+        if (!$esAdmin) {
+            PermisoService::require('descarga', 'archivo', $contenido->id_carpeta);
         }
 
-        $rutaAbsoluta = $this->resolverRuta($archivo);
-        if (! $rutaAbsoluta) {
-            $nombre = e($archivo->descripcion);
-            $descUrl = route('archivos.descargar', $archivo->id);
-            return response(
-                "<!DOCTYPE html><html><head><meta charset='UTF-8'>
-                <style>body{margin:0;display:flex;align-items:center;justify-content:center;
-                height:100vh;font-family:sans-serif;background:#525659;color:#fff;text-align:center}
-                .box{padding:40px}.icon{font-size:3rem;margin-bottom:14px}
-                p{margin:0 0 8px;font-size:.95rem}small{opacity:.65;font-size:.8rem}
-                a{display:inline-block;margin-top:20px;padding:9px 20px;background:#fff;
-                color:#0D2B5E;border-radius:6px;text-decoration:none;font-weight:600;font-size:.85rem}
-                </style></head><body>
-                <div class='box'>
-                  <div class='icon'>📄</div>
-                  <p>El archivo físico no está disponible en el servidor.</p>
-                  <small>{$nombre}</small><br>
-                  <a href='{$descUrl}'>⬇ Intentar descargar</a>
-                </div></body></html>",
-                200
-            )->header('Content-Type', 'text/html; charset=UTF-8');
+        $documento = $contenido->documento;
+        $ruta = Storage::disk('local')->path($documento->archivo);
+
+        // Solo PDF e imágenes se pueden visualizar
+        if (!in_array($documento->tipo_mime, ['application/pdf', 'image/jpeg', 'image/png', 'image/gif', 'image/webp'])) {
+            return response()->json(['error' => 'No se puede visualizar este tipo de archivo'], 403);
         }
 
-        return response()->file($rutaAbsoluta, [
-            'Content-Disposition' => 'inline; filename="' . $archivo->descripcion . '"',
+        return response()->file($ruta, [
+            'Content-Type' => $documento->tipo_mime,
+            'Content-Disposition' => 'inline; filename="' . $documento->nombre_original . '"'
         ]);
     }
 
     /**
-     * Eliminar archivo — verifica permiso, borra físico y registro en BD
+     * Eliminar archivo (de la carpeta)
      */
-    public function eliminar(Request $request, int $id)
+    public function eliminar($id)
     {
-        $archivo = DB::table('sgc_carpetas_contenido')->where('id', $id)->first();
-
-        if (! $archivo) {
-            abort(404, 'Archivo no encontrado.');
-        }
-
         $usuario = PermisoService::usuarioActual();
-        if (! $usuario->esAdmin()) {
-            PermisoService::require('eliminar', 'carpeta', $archivo->id_carpeta);
+        $esAdmin = $usuario->esAdmin();
+
+        $contenido = CarpetaContenido::findOrFail($id);
+
+        // Verificar permisos
+        if (!$esAdmin) {
+            PermisoService::require('eliminar', 'archivo', $contenido->id_carpeta);
         }
 
-        $carpetaId = $archivo->id_carpeta;
+        $documento = $contenido->documento;
+        $documentoId = $documento->id;
 
-        // Eliminar archivo físico del nuevo sistema si existe
-        $rutaNuevo = 'documentos/' . $archivo->archivo;
-        if (Storage::disk('local')->exists($rutaNuevo)) {
-            Storage::disk('local')->delete($rutaNuevo);
+        // Eliminar relación
+        $contenido->delete();
+
+        // Si no hay más referencias a este documento, eliminar el archivo
+        $tieneOtrasReferencias = CarpetaContenido::where('id_documento', $documentoId)->exists();
+
+        if (!$tieneOtrasReferencias) {
+            try {
+                Storage::disk('local')->delete($documento->archivo);
+                $documento->delete();
+            } catch (\Exception $e) {
+                // Log error pero no falla
+                \Log::error('Error eliminando archivo: ' . $e->getMessage());
+            }
         }
 
-        // Eliminar registro en BD
-        DB::table('sgc_carpetas_contenido')->where('id', $id)->delete();
-
-        return redirect()
-            ->route('carpetas.show', $carpetaId)
-            ->with('ok', "Archivo \"{$archivo->descripcion}\" eliminado correctamente.");
+        return response()->json(['ok' => true, 'mensaje' => 'Archivo eliminado']);
     }
 }

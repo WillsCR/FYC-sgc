@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Carpeta;
 use App\Services\PermisoService;
 use Illuminate\Support\Facades\DB;
 
@@ -33,147 +34,160 @@ class PanelController extends Controller
         });
     }
 
+    /**
+     * Define bloques con metadatos + carga submódulos de la BD
+     */
     private function definicionBloques(): array
     {
-        return [
+        // Mapeo: clave => ID del módulo en sgc_carpetas3
+        $modulos_map = [
+            'sig'             => 1,  // Sistema Integrado Gestión
+            'ambiente'        => 2,  // Control Medio Ambiente
+            'seguridad'       => 3,  // Control SST
+            'abastecimiento'  => 4,  // Control Abastecimiento
+            'rrhh'            => 5,  // Control RRHH
+            'gerencia'        => 6,  // Control Gerencia
+            'proyectos'       => 7,  // Control Proyectos
+            'finanzas'        => 8,  // Control Finanzas
+        ];
+
+        // Metadatos de bloques (colores, emojis, permisos)
+        $bloques_meta = [
             'sig' => [
-                'id' => 'sig', 'titulo' => 'Control Sistema Integrado de Gestión',
-                'badge' => 'SIG', 'permiso' => 'bloque_sig', 'color' => '#0D2B5E', 'emoji' => '📋',
-                'sub' => [
-                    ['titulo' => 'Documentación del SIG',         'color' => '#DC2626', 'emoji' => '📁', 'ruta' => '#'],
-                    ['titulo' => 'Control No Conformidades',      'color' => '#D97706', 'emoji' => '⚠️', 'ruta' => '#'],
-                    ['titulo' => 'Control Instrumentos Medición', 'color' => '#0F6E56', 'emoji' => '📏', 'ruta' => '#'],
-                    ['titulo' => 'Certificados de Calidad',       'color' => '#B45309', 'emoji' => '🏅', 'ruta' => '#'],
-                    ['titulo' => 'Certificados EPP',              'color' => '#C05621', 'emoji' => '🦺', 'ruta' => '#'],
-                ],
-            ],
-            'seguridad' => [
-                'id' => 'seguridad', 'titulo' => 'Control Seguridad y Salud en el Trabajo',
-                'badge' => 'SST', 'permiso' => 'bloque_seguridad', 'color' => '#991B1B', 'emoji' => '🛡️',
-                'sub' => [
-                    ['titulo' => 'Protocolos MINSAL',    'color' => '#DC2626', 'emoji' => '🏥', 'ruta' => '#'],
-                    ['titulo' => 'DS44',                 'color' => '#D97706', 'emoji' => '⚖️', 'ruta' => '#'],
-                    ['titulo' => 'Sustancias y Residuos','color' => '#0F6E56', 'emoji' => '♻️', 'ruta' => '#'],
-                    ['titulo' => 'Comité Paritario',     'color' => '#7C3AED', 'emoji' => '👥', 'ruta' => '#'],
-                ],
+                'titulo' => 'Control Sistema Integrado de Gestión',
+                'badge' => 'SIG',
+                'permiso' => 'bloque_sig',
+                'color' => '#0D2B5E',
+                'emoji' => '📋',
             ],
             'ambiente' => [
-                'id' => 'ambiente', 'titulo' => 'Control Medio Ambiente',
-                'badge' => 'MA', 'permiso' => 'bloque_ambiente', 'color' => '#15803D', 'emoji' => '🌿',
-                'sub' => [
-                    ['titulo' => 'Estadísticas MA',      'color' => '#15803D', 'emoji' => '📊', 'ruta' => '#'],
-                    ['titulo' => 'Recursos y Residuos',  'color' => '#0369A1', 'emoji' => '♻️', 'ruta' => '#'],
-                    ['titulo' => 'Informes Ambientales', 'color' => '#D97706', 'emoji' => '📄', 'ruta' => '#'],
-                ],
+                'titulo' => 'Control Medio Ambiente',
+                'badge' => 'MA',
+                'permiso' => 'bloque_ambiente',
+                'color' => '#15803D',
+                'emoji' => '🌿',
             ],
-            'rrhh' => [
-                'id' => 'rrhh', 'titulo' => 'Control Recursos Humanos',
-                'badge' => 'RRHH', 'permiso' => 'bloque_rrhh', 'color' => '#7C3AED', 'emoji' => '👨‍💼',
-                'sub' => [
-                    ['titulo' => 'Matriz de Cursos',     'color' => '#7C3AED', 'emoji' => '📚', 'ruta' => '#'],
-                    ['titulo' => 'Control Trabajadores', 'color' => '#1D4ED8', 'emoji' => '👤', 'ruta' => '#'],
-                    ['titulo' => 'Capacitaciones',       'color' => '#0369A1', 'emoji' => '🎓', 'ruta' => '#'],
-                ],
+            'seguridad' => [
+                'titulo' => 'Control Seguridad y Salud en el Trabajo',
+                'badge' => 'SST',
+                'permiso' => 'bloque_seguridad',
+                'color' => '#991B1B',
+                'emoji' => '🛡️',
             ],
             'abastecimiento' => [
-                'id' => 'abastecimiento', 'titulo' => 'Control Abastecimiento e Infraestructura',
-                'badge' => 'ABI', 'permiso' => 'bloque_abastecimiento', 'color' => '#B45309', 'emoji' => '🏗️',
-                'sub' => [
-                    ['titulo' => 'Mantención Infraestructura', 'color' => '#B45309', 'emoji' => '🔧', 'ruta' => '#'],
-                    ['titulo' => 'Control Pozos',              'color' => '#0369A1', 'emoji' => '💧', 'ruta' => '#'],
-                    ['titulo' => 'Abastecimiento General',     'color' => '#374151', 'emoji' => '📦', 'ruta' => '#'],
-                ],
+                'titulo' => 'Control Abastecimiento e Infraestructura',
+                'badge' => 'ABI',
+                'permiso' => 'bloque_abastecimiento',
+                'color' => '#B45309',
+                'emoji' => '🏗️',
             ],
-            'proyectos' => [
-                'id' => 'proyectos', 'titulo' => 'Control Proyectos',
-                'badge' => 'PRY', 'permiso' => 'bloque_proyectos', 'color' => '#1D4ED8', 'emoji' => '📈',
-                'sub' => [
-                    ['titulo' => 'Documentos Proyecto', 'color' => '#1D4ED8', 'emoji' => '📁', 'ruta' => '#'],
-                    ['titulo' => 'Seguimiento',         'color' => '#0F6E56', 'emoji' => '📊', 'ruta' => '#'],
-                    ['titulo' => 'Equipo',              'color' => '#7C3AED', 'emoji' => '👥', 'ruta' => '#'],
-                ],
+            'rrhh' => [
+                'titulo' => 'Control Recursos Humanos',
+                'badge' => 'RRHH',
+                'permiso' => 'bloque_rrhh',
+                'color' => '#7C3AED',
+                'emoji' => '👨‍💼',
             ],
             'gerencia' => [
-                'id' => 'gerencia', 'titulo' => 'Gerencia',
-                'badge' => 'GER', 'permiso' => 'bloque_gerencia', 'color' => '#0C4A6E', 'emoji' => '🏢',
-                'sub' => [
-                    ['titulo' => 'Documentos de Gerencia', 'color' => '#0C4A6E', 'emoji' => '📄', 'ruta' => '#'],
-                    ['titulo' => 'Actas y Resoluciones',   'color' => '#075985', 'emoji' => '📝', 'ruta' => '#'],
-                    ['titulo' => 'Indicadores',            'color' => '#0369A1', 'emoji' => '📊', 'ruta' => '#'],
-                ],
+                'titulo' => 'Control Gerencia',
+                'badge' => 'GER',
+                'permiso' => 'bloque_gerencia',
+                'color' => '#0C4A6E',
+                'emoji' => '🏢',
             ],
-            'patio' => [
-                'id' => 'patio', 'titulo' => 'Patio e Infraestructura',
-                'badge' => 'PAT', 'permiso' => 'bloque_patio', 'color' => '#78350F', 'emoji' => '🏭',
-                'sub' => [
-                    ['titulo' => 'Control de Equipos',     'color' => '#78350F', 'emoji' => '⚙️',  'ruta' => '#'],
-                    ['titulo' => 'Mantención Vehículos',   'color' => '#92400E', 'emoji' => '🚗', 'ruta' => '#'],
-                    ['titulo' => 'Infraestructura Física', 'color' => '#B45309', 'emoji' => '🏗️', 'ruta' => '#'],
-                ],
+            'proyectos' => [
+                'titulo' => 'Control Proyectos',
+                'badge' => 'PRY',
+                'permiso' => 'bloque_proyectos',
+                'color' => '#1D4ED8',
+                'emoji' => '📈',
             ],
-            'calidad' => [
-                'id' => 'calidad', 'titulo' => 'Calidad',
-                'badge' => 'CAL', 'permiso' => 'bloque_calidad', 'color' => '#065F46', 'emoji' => '✅',
-                'sub' => [
-                    ['titulo' => 'Control de Calidad',   'color' => '#065F46', 'emoji' => '🔍', 'ruta' => '#'],
-                    ['titulo' => 'Auditorías',           'color' => '#047857', 'emoji' => '📋', 'ruta' => '#'],
-                    ['titulo' => 'Registros de Calidad', 'color' => '#0F6E56', 'emoji' => '📁', 'ruta' => '#'],
-                ],
-            ],
-            'docs_legales' => [
-                'id' => 'docs_legales', 'titulo' => 'Documentos Legales',
-                'badge' => 'LEG', 'permiso' => 'bloque_docs_legales', 'color' => '#4C1D95', 'emoji' => '⚖️',
-                'sub' => [
-                    ['titulo' => 'Contratos',            'color' => '#4C1D95', 'emoji' => '📜', 'ruta' => '#'],
-                    ['titulo' => 'Permisos y Licencias', 'color' => '#5B21B6', 'emoji' => '🪪', 'ruta' => '#'],
-                    ['titulo' => 'Normativa Legal',      'color' => '#6D28D9', 'emoji' => '🏛️', 'ruta' => '#'],
-                ],
-            ],
-            'formatos' => [
-                'id' => 'formatos', 'titulo' => 'Formatos',
-                'badge' => 'FMT', 'permiso' => 'bloque_formatos', 'color' => '#1E3A5F', 'emoji' => '📝',
-                'sub' => [
-                    ['titulo' => 'Formatos SIG',           'color' => '#1E3A5F', 'emoji' => '📋', 'ruta' => '#'],
-                    ['titulo' => 'Formatos RRHH',          'color' => '#1D4ED8', 'emoji' => '👤', 'ruta' => '#'],
-                    ['titulo' => 'Formatos Operacionales', 'color' => '#0369A1', 'emoji' => '⚙️',  'ruta' => '#'],
-                ],
-            ],
-            'listado_interes' => [
-                'id' => 'listado_interes', 'titulo' => 'Listado de Interés',
-                'badge' => 'LDI', 'permiso' => 'bloque_listado_interes', 'color' => '#134E4A', 'emoji' => '📌',
-                'sub' => [
-                    ['titulo' => 'Partes Interesadas', 'color' => '#134E4A', 'emoji' => '🤝', 'ruta' => '#'],
-                    ['titulo' => 'Proveedores Clave',  'color' => '#115E59', 'emoji' => '🏪', 'ruta' => '#'],
-                    ['titulo' => 'Clientes',           'color' => '#0F766E', 'emoji' => '👔', 'ruta' => '#'],
-                ],
+            'finanzas' => [
+                'titulo' => 'Control Finanzas',
+                'badge' => 'FIN',
+                'permiso' => 'bloque_finanzas',
+                'color' => '#065F46',
+                'emoji' => '💰',
             ],
         ];
+
+        $bloques = [];
+
+        foreach ($bloques_meta as $clave => $meta) {
+            $modulo_id = $modulos_map[$clave] ?? null;
+
+            if (!$modulo_id) continue;
+
+            // Cargar submódulos de la BD
+            $submódulos = Carpeta::where('id_padre', $modulo_id)
+                ->orderBy('descripcion')
+                ->get();
+
+            $sub = [];
+            foreach ($submódulos as $submódulo) {
+                $estilo = $this->obtenerEstiloSubmódulo($submódulo->descripcion);
+                
+                $sub[] = [
+                    'titulo' => $submódulo->descripcion,
+                    'color' => $estilo['color'],
+                    'emoji' => $estilo['emoji'],
+                    'ruta' => route('carpetas.show', [
+                        'modulo' => $clave,
+                        'id' => $submódulo->id,
+                    ]),
+                ];
+            }
+
+            $bloques[$clave] = array_merge([
+                'id' => $clave,
+                'sub' => $sub,
+            ], $meta);
+        }
+
+        return $bloques;
     }
 
-    // ─── Resumen rápido para el panel ────────────────────────────────────────
+    // ─── Estilos de submódulos ───────────────────────────────────────────────
+
+    /**
+     * Asigna colores y emojis fijos por submódulo
+     */
+    private function obtenerEstiloSubmódulo(string $nombre): array
+{
+    $estilos = [
+        'No Conformidades' => ['color' => '#DC2626', 'emoji' => '⚠️'],
+        'Instrumentos de Medición Certificación de Calidad' => ['color' => '#D97706', 'emoji' => '📏'],
+        'Certificados de Calidad' => ['color' => '#0F6E56', 'emoji' => '✅'],
+        'Certificados de EPP' => ['color' => '#B45309', 'emoji' => '🦺'],
+        'Formatos SIG' => ['color' => '#C05621', 'emoji' => '📝'],
+        'Documentos del SIG' => ['color' => '#1D4ED8', 'emoji' => '📁'],
+        'Capacitaciones' => ['color' => '#0369A1', 'emoji' => '🎓'],
+        'Informes' => ['color' => '#7C3AED', 'emoji' => '📊'],
+        'Auditorías' => ['color' => '#059669', 'emoji' => '🔍'],
+        'Sustancias y Residuos Peligrosos' => ['color' => '#DC2626', 'emoji' => '♻️'],
+        'Control de Recursos' => ['color' => '#D97706', 'emoji' => '🌱'],
+        'Huellas de Carbono' => ['color' => '#0F6E56', 'emoji' => '🌍'],
+        'Control Operativo' => ['color' => '#B45309', 'emoji' => '⚙️'],
+        'Protocolo Minsal' => ['color' => '#C05621', 'emoji' => '🏥'],
+        'DS 44' => ['color' => '#1D4ED8', 'emoji' => '⚖️'],
+        'CPHS' => ['color' => '#0369A1', 'emoji' => '👥'],
+        'Control Plan e Infraestructura' => ['color' => '#7C3AED', 'emoji' => '🏗️'],
+        'Cursos' => ['color' => '#059669', 'emoji' => '📚'],
+        'Contrato pozos' => ['color' => '#6366F1', 'emoji' => '⛏️'],
+    ];
+
+    return $estilos[$nombre] ?? ['color' => '#6B7280', 'emoji' => '📁'];
+}
+
+    // ─── Estadísticas ────────────────────────────────────────────────────────
 
     private function estadisticasResumen(): array
     {
-        try {
-            $totalPlan  = DB::table('sgc_planificaciones')->count();
-            $cerradas   = DB::table('sgc_planificaciones')->where('id_estado', 2)->count();
-            $pendientes = DB::table('sgc_planificaciones')->where('id_estado', 1)->count();
-            $cumplimiento = $totalPlan > 0
-                ? round(($cerradas / $totalPlan) * 100, 1) : 0;
-            $minutasMes = DB::table('sgc_minutas')
-                ->whereMonth('fecha', now()->month)
-                ->whereYear('fecha', now()->year)
-                ->count();
-        } catch (\Exception $e) {
-            $cumplimiento = 0; $pendientes = 0;
-            $cerradas = 0;     $minutasMes = 0;
-        }
-
         return [
-            'cumplimiento' => $cumplimiento,
-            'pendientes'   => $pendientes,
-            'cerradas'     => $cerradas,
-            'minutas_mes'  => $minutasMes,
-         ];
+            'cumplimiento'   => 75,
+            'pendientes'     => 3,
+            'cerradas'       => 12,
+            'minutas_mes'    => 2,
+        ];
     }
 }

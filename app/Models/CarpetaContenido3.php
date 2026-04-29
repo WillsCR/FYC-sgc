@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class CarpetaContenido extends Model
+class CarpetaContenido3 extends Model
 {
     protected $table = 'sgc_carpetas_contenido3';
     protected $primaryKey = 'id';
@@ -27,7 +27,7 @@ class CarpetaContenido extends Model
 
     public function carpeta()
     {
-        return $this->belongsTo(Carpeta::class, 'id_carpeta');
+        return $this->belongsTo(Carpeta3::class, 'id_carpeta');
     }
 
     public function documento()

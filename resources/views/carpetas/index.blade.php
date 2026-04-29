@@ -226,7 +226,7 @@
                 {{-- Subcarpetas --}}
                 @if(isset($subcarpetas) && $subcarpetas->count() > 0)
                 <div>
-                    <div class="section-label">📂 Subcarpetas ({{ $subcarpetas->count() }})</div>
+                    <div class="section-label">📂 Carpetas ({{ $subcarpetas->count() }})</div>
                     <div class="subcarpetas-grid">
                         @foreach($subcarpetas as $sub)
                         <a href="{{ route('carpetas.show', ['modulo' => $modulo, 'id' => $sub->id]) }}" class="subcarpeta-card">
@@ -271,9 +271,10 @@
                                         in_array($ext,['xls','xlsx','xlsm']) => 'ext-xls',
                                         in_array($ext,['jpg','jpeg','png','gif','webp']) => 'ext-img',
                                         default => 'ext-other',
+
                                     };
                                 @endphp
-                                <tr>
+                                <tr data-arquivo-id="{{ $archivo->id }}">
                                     <td>
                                         <div class="archivo-nombre">{{ $archivo->descripcion ?: 'Sin descripción' }}</div>
                                         <span style="font-size:.7rem;color:var(--text-muted)">{{ $nombre }}</span>
@@ -295,11 +296,9 @@
                                             </a>
                                             @endif
                                             @if(isset($permisos) && $permisos['eliminar'])
-                                            <form method="POST" action="{{ route('archivos.eliminar', $archivo->id) }}" style="display:inline;" onsubmit="return confirm('¿Eliminar este archivo?')">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="btn-accion btn-del">🗑️ Eliminar</button>
-                                            </form>
+                                            <button type="button" class="btn-accion btn-del" onclick="abrirModalEliminar({{ $archivo->id }}, '{{ addslashes($archivo->descripcion ?: $nombre) }}')">
+                                                🗑️ Eliminar
+                                            </button>
                                             @endif
                                         </div>
                                     </td>
@@ -386,6 +385,19 @@
     <div id="viewer-content"></div>
 </div>
 
+{{-- Modal: Confirmar eliminación --}}
+<div class="modal-overlay" id="modal-eliminar">
+    <div class="modal">
+        <div class="modal-title">⚠️ Confirmar eliminación</div>
+        <p id="eliminar-nombre" style="color:var(--text-secondary);font-size:.9rem;margin-bottom:20px"></p>
+        <p style="color:var(--text-muted);font-size:.8rem;margin-bottom:20px">¿Estás seguro de que deseas eliminar este archivo? Esta acción no se puede deshacer.</p>
+        <div class="modal-actions">
+            <button type="button" class="btn-cancel" onclick="cerrarModalEliminar()">Cancelar</button>
+            <button type="button" id="btn-confirmar-eliminar" class="btn-upload" style="background:var(--danger);color:#fff;border:none" onclick="confirmarEliminar()">Eliminar</button>
+        </div>
+    </div>
+</div>
+
 @endsection
 
 @push('scripts')
@@ -465,6 +477,43 @@ document.getElementById('form-upload')?.addEventListener('submit', async functio
     }
 });
 
+// Manejar envío del formulario de NUEVA CARPETA con AJAX
+document.getElementById('form-carpeta')?.addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const formData = new FormData(this);
+    const btn = this.querySelector('button[type="submit"]');
+    const originalText = btn.textContent;
+    
+    btn.disabled = true;
+    btn.textContent = '⏳ Creando...';
+
+    try {
+        const response = await fetch(this.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+            }
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.ok) {
+            mostrarAlerta('✅ ' + data.mensaje, 'success');
+            cerrarModalCarpeta();
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            mostrarAlerta('❌ ' + (data.error || 'Error al crear la carpeta'), 'error');
+        }
+    } catch (error) {
+        mostrarAlerta('❌ Error: ' + error.message, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = originalText;
+    }
+});
+
 function mostrarAlerta(mensaje, tipo) {
     const alertClass = tipo === 'success' ? 'alert-ok' : 'alert-err';
     const alertHtml = `<div class="${alertClass} alert-floating" style="position:fixed;top:20px;right:20px;z-index:1000;max-width:400px">${mensaje}</div>`;
@@ -497,7 +546,59 @@ function cerrarVisor() {
 }
 
 document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') cerrarVisor();
+    if (e.key === 'Escape') {
+        cerrarVisor();
+        cerrarModalEliminar();
+    }
 });
+
+// Variables globales para el modal de eliminación
+let archivoParaEliminar = null;
+
+function abrirModalEliminar(archivoId, nombre) {
+    archivoParaEliminar = archivoId;
+    document.getElementById('eliminar-nombre').textContent = 'Archivo: ' + nombre;
+    document.getElementById('modal-eliminar').classList.add('visible');
+}
+
+function cerrarModalEliminar() {
+    archivoParaEliminar = null;
+    document.getElementById('modal-eliminar').classList.remove('visible');
+}
+
+function confirmarEliminar() {
+    if (!archivoParaEliminar) return;
+    
+    const btn = document.getElementById('btn-confirmar-eliminar');
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '⏳ Eliminando...';
+    
+    fetch('{{ url("/archivos") }}/' + archivoParaEliminar, {
+        method: 'DELETE',
+        headers: {
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'X-Requested-With': 'XMLHttpRequest',
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.ok) {
+            mostrarAlerta('✅ ' + data.mensaje, 'success');
+            cerrarModalEliminar();
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            mostrarAlerta('❌ ' + (data.error || 'Error al eliminar'), 'error');
+        }
+    })
+    .catch(error => {
+        mostrarAlerta('❌ Error: ' + error.message, 'error');
+    })
+    .finally(() => {
+        btn.disabled = false;
+        btn.textContent = originalText;
+    });
+}
 </script>
 @endpush

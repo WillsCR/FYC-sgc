@@ -99,4 +99,44 @@ class CarpetaController extends Controller
             ->orderBy('creada_el', 'desc')
             ->get();
     }
+
+    /**
+     * Crea una nueva carpeta
+     */
+    public function store(Request $request, $modulo, $id)
+    {
+        // Validar permisos
+        $usuario = PermisoService::usuarioActual();
+        if (!$usuario->esAdmin()) {
+            return response()->json([
+                'ok' => false,
+                'error' => 'No tienes permisos para crear carpetas'
+            ], 403);
+        }
+
+        // Validar datos
+        $validated = $request->validate([
+            'descripcion' => 'required|string|max:255'
+        ]);
+
+        try {
+            // Crear la nueva carpeta
+            $carpeta = Carpeta::create([
+                'id_padre' => $id,
+                'descripcion' => $validated['descripcion'],
+                'activa' => 1
+            ]);
+
+            return response()->json([
+                'ok' => true,
+                'mensaje' => 'Carpeta creada exitosamente',
+                'carpeta' => $carpeta
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'ok' => false,
+                'error' => 'Error al crear la carpeta: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }

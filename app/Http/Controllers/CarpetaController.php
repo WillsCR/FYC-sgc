@@ -48,8 +48,9 @@ class CarpetaController extends Controller
         $usuario = PermisoService::usuarioActual();
         $esAdmin = $usuario->esAdmin();
 
-        if (! $esAdmin) {
-            PermisoService::require('descarga', 'carpeta', $id);
+        if (! $esAdmin && ! $this->tieneAcceso($id, $usuario->id)) {
+            return redirect()->route('panel')
+                ->with('sin_permiso_carpeta', 'No tienes permisos para acceder a ese módulo.');
         }
 
         $carpetaActual = Carpeta::findOrFail($id);

@@ -53,14 +53,12 @@ class UsuarioController extends Controller
         $perfil  = (int) $actual->id_perfil;
         $this->verificarAcceso($perfil);
 
-        $perfiles = $this->perfilesDisponibles($perfil);
-        $carpetas = DB::table('sgc_carpetas')->where('id_padre', 0)->orderBy('descripcion')->get();
-        $areas    = self::AREAS;
+        $perfiles       = $this->perfilesDisponibles($perfil);
+        $modulosCarpetas = $this->cargarModulosCarpetas();
+        $areas           = self::AREAS;
+        $permisosArea    = collect();
 
-        // Sin permisos previos al crear
-        $permisosArea = collect();
-
-        return view('usuarios.crear', compact('actual', 'perfiles', 'carpetas', 'areas', 'permisosArea'));
+        return view('usuarios.crear', compact('actual', 'perfiles', 'modulosCarpetas', 'areas', 'permisosArea'));
     }
 
     public function store(Request $request)
@@ -112,22 +110,19 @@ class UsuarioController extends Controller
 
     public function edit(int $id)
     {
-        $actual = PermisoService::usuarioActual();
-        $perfil = (int) $actual->id_perfil;
+        $actual     = PermisoService::usuarioActual();
+        $perfil     = (int) $actual->id_perfil;
+        $esSuCuenta = ($id === $actual->id);
         $this->verificarAcceso($perfil);
 
-        $usuario = Usuario::findOrFail($id);
+        $usuario     = Usuario::findOrFail($id);
+        $soloLectura = ($perfil === 2 && in_array((int) $usuario->id_perfil, [1, 2]));
 
-        if ($perfil === 2 && in_array((int) $usuario->id_perfil, [1, 2])) {
-            abort(403, 'No tienes permiso para editar este usuario.');
-        }
-
-        $perfiles         = $this->perfilesDisponibles($perfil);
-        $carpetas         = DB::table('sgc_carpetas')->where('id_padre', 0)->orderBy('descripcion')->get();
+        $perfiles        = $this->perfilesDisponibles($perfil);
+        $modulosCarpetas = $this->cargarModulosCarpetas();
         $permisosCarpetas = CarpetasPermisos::where('id_usuario', $id)->get()->keyBy('id_carpeta');
-        $areas            = self::AREAS;
+        $areas           = self::AREAS;
 
-        // Permisos actuales por área (indexados por id_area)
         $permisosArea = UsuarioPermisoArea::where('id_usuario', $id)
             ->get()
             ->keyBy('id_area');
@@ -138,15 +133,16 @@ class UsuarioController extends Controller
         }
 
         return view('usuarios.editar', compact(
-            'usuario', 'actual', 'perfiles', 'carpetas',
-            'permisosCarpetas', 'bloques', 'areas', 'permisosArea'
+            'usuario', 'actual', 'perfiles', 'modulosCarpetas',
+            'permisosCarpetas', 'bloques', 'areas', 'permisosArea', 'esSuCuenta', 'soloLectura'
         ));
     }
 
     public function update(Request $request, int $id)
     {
-        $actual = PermisoService::usuarioActual();
-        $perfil = (int) $actual->id_perfil;
+        $actual        = PermisoService::usuarioActual();
+        $perfil        = (int) $actual->id_perfil;
+        $esSuCuenta    = ($id === $actual->id);
         $this->verificarAcceso($perfil);
 
         $usuario = Usuario::findOrFail($id);
@@ -158,7 +154,7 @@ class UsuarioController extends Controller
         $request->validate([
             'nombre'    => ['required', 'string', 'max:150'],
             'email'     => ['required', 'email', "unique:sgc_usuarios,email,{$id}"],
-            'id_perfil' => ['required', 'integer'],
+            'id_perfil' => ['nullable', 'integer'],
             'password'  => ['nullable', 'string', 'min:6', 'confirmed'],
         ], [
             'email.unique'       => 'Este correo ya está en uso.',
@@ -166,9 +162,19 @@ class UsuarioController extends Controller
             'password.confirmed' => 'Las contraseñas no coinciden.',
         ]);
 
-        $usuario->nombre    = $request->nombre;
-        $usuario->email     = $request->email;
-        $usuario->id_perfil = (int) $request->id_perfil;
+        $usuario->nombre = $request->nombre;
+        $usuario->email  = $request->email;
+
+        // Nadie puede cambiar su propio perfil
+        // Super Admin puede asignar cualquier perfil; Admin solo puede asignar perfiles inferiores (no 1 ni 2)
+        if (! $esSuCuenta) {
+            $nuevoPerfilId = (int) $request->id_perfil;
+            if ($perfil === 1) {
+                $usuario->id_perfil = $nuevoPerfilId;
+            } elseif ($perfil === 2 && ! in_array($nuevoPerfilId, [1, 2])) {
+                $usuario->id_perfil = $nuevoPerfilId;
+            }
+        }
 
         if ($request->filled('password')) {
             $usuario->quesera = password_hash($request->password, PASSWORD_BCRYPT, ['cost' => 12]);
@@ -286,8 +292,8 @@ class UsuarioController extends Controller
             CarpetasPermisos::updateOrCreate(
                 ['id_carpeta' => $carpetaId, 'id_usuario' => $usuarioId],
                 [
-                    'correo'       => $correo,
-                    'clave'        => $clave,
+                    'correo'       => '',
+                    'clave'        => '',
                     'carga'        => ! empty($perms['carga'])    ? 1 : 0,
                     'descarga'     => ! empty($perms['descarga']) ? 1 : 0,
                     'crear'        => ! empty($perms['crear'])    ? 1 : 0,
@@ -299,13 +305,33 @@ class UsuarioController extends Controller
         }
     }
 
+    /**
+     * Carga los módulos raíz de sgc_carpetas3 con sus submodulos anidados.
+     */
+    private function cargarModulosCarpetas(): \Illuminate\Support\Collection
+    {
+        $raices = DB::table('sgc_carpetas3')
+            ->where('id_padre', 0)
+            ->orderBy('id')
+            ->get();
+
+        return $raices->map(function ($modulo) {
+            $modulo->submodulos = DB::table('sgc_carpetas3')
+                ->where('id_padre', $modulo->id)
+                ->orderBy('descripcion')
+                ->get();
+            return $modulo;
+        });
+    }
+
+    /**
+     * Las 8 columnas bloque_* que corresponden a los módulos actuales de sgc_carpetas3.
+     */
     private function columnasBloque(): array
     {
         return [
-            'bloque_sig','bloque_seguridad','bloque_ambiente','bloque_rrhh',
-            'bloque_abastecimiento','bloque_proyectos','bloque_gerencia',
-            'bloque_patio','bloque_calidad','bloque_docs_legales',
-            'bloque_formatos','bloque_listado_interes',
+            'bloque_sig', 'bloque_seguridad', 'bloque_ambiente', 'bloque_rrhh',
+            'bloque_abastecimiento', 'bloque_proyectos', 'bloque_gerencia', 'bloque_finanzas',
         ];
     }
 }

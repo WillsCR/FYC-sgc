@@ -4,6 +4,13 @@
 @section('content')
 <div class="panel-body">
 
+    @if(session('sin_permiso_carpeta'))
+    <div style="background:#FEF2F2;border-left:4px solid #DC2626;color:#991B1B;
+                padding:11px 16px;border-radius:4px;margin-bottom:16px;font-size:.84rem;display:flex;align-items:center;gap:8px">
+        🔒 {{ session('sin_permiso_carpeta') }}
+    </div>
+    @endif
+
     <div class="panel-welcome">
         <h2>Bienvenido, {{ session('usuario_nombre') }}</h2>
         <p>{{ now()->locale('es')->isoFormat('dddd D [de] MMMM, YYYY') }}

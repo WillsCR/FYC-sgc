@@ -129,18 +129,23 @@
             {{-- Breadcrumb --}}
             @if(isset($breadcrumb) && count($breadcrumb) > 0)
             <div class="breadcrumb">
-                @php $padreId = isset($carpetaActual) && $carpetaActual->id_padre > 0 ? $carpetaActual->id_padre : null; @endphp
-                @if($padreId)
-                    <a href="{{ route('carpetas.show', $padreId) }}" class="breadcrumb-item">← Atrás</a>
+                @php
+                    $padreId   = isset($carpetaActual) && $carpetaActual->id_padre > 0 ? $carpetaActual->id_padre : null;
+                    $backHref  = $esAdmin && $padreId ? route('carpetas.show', $padreId) : route('panel');
+                @endphp
+                @if($padreId || ! $esAdmin)
+                    <a href="{{ $backHref }}" class="breadcrumb-item">← Atrás</a>
                     <span class="breadcrumb-sep">·</span>
                 @endif
-                <a href="{{ route('carpetas.index') }}" class="breadcrumb-item">Inicio</a>
+                <a href="{{ route('panel') }}" class="breadcrumb-item">Inicio</a>
                 @foreach($breadcrumb as $i => $migaja)
                     <span class="breadcrumb-sep">›</span>
                     @if($i === count($breadcrumb) - 1)
                         <span class="breadcrumb-item activo">{{ $migaja['descripcion'] }}</span>
-                    @else
+                    @elseif($esAdmin)
                         <a href="{{ route('carpetas.show', $migaja['id']) }}" class="breadcrumb-item">{{ $migaja['descripcion'] }}</a>
+                    @else
+                        <span class="breadcrumb-item">{{ $migaja['descripcion'] }}</span>
                     @endif
                 @endforeach
             </div>

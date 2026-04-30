@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Carpeta;
 use App\Models\Usuario;
 use App\Models\CarpetasPermisos;
 use Illuminate\Support\Facades\Session;
@@ -32,17 +33,12 @@ class PermisoService
             return $usuario->puedeVer($accion);
         }
 
-        // Permiso granular por carpeta
+        // Permiso granular por carpeta (con herencia hacia arriba en el árbol)
         if ($recurso === 'carpeta' && $recursoId > 0) {
-            // Admin también puede acceder a todas las carpetas
+            // Admin puede acceder a todas las carpetas
             if ((int) $usuario->id_perfil === 2) return true;
 
-            $permiso = CarpetasPermisos::where('id_carpeta', $recursoId)
-                ->where('id_usuario', $usuarioId)
-                ->first();
-
-            if (! $permiso) return false;
-            return (bool) ($permiso->$accion ?? false);
+            return self::canEnCarpeta($accion, $recursoId, $usuarioId);
         }
 
         return false;
@@ -58,6 +54,30 @@ class PermisoService
                 ? abort(response()->json(['error' => 'Acceso no autorizado.'], 403))
                 : abort(403, 'No tienes permisos para realizar esta acción.');
         }
+    }
+
+    /**
+     * Busca el permiso de una acción en la carpeta dada o en sus ancestros.
+     * Los permisos se heredan hacia abajo: si tienes permiso en el padre,
+     * lo tienes en todos sus descendientes.
+     */
+    private static function canEnCarpeta(string $accion, int $carpetaId, int $usuarioId): bool
+    {
+        $permiso = CarpetasPermisos::where('id_carpeta', $carpetaId)
+            ->where('id_usuario', $usuarioId)
+            ->first();
+
+        if ($permiso) {
+            return (bool) ($permiso->$accion ?? false);
+        }
+
+        // Subir al padre
+        $carpeta = Carpeta::find($carpetaId);
+        if ($carpeta && (int) $carpeta->id_padre > 0) {
+            return self::canEnCarpeta($accion, $carpeta->id_padre, $usuarioId);
+        }
+
+        return false;
     }
 
     /**

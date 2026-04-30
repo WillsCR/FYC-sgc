@@ -175,6 +175,63 @@ class ArchivoController extends Controller
     }
 
     /**
+     * Eliminar múltiples archivos en lote
+     */
+    public function eliminarLote(Request $request)
+    {
+        $usuario = PermisoService::usuarioActual();
+        $esAdmin = $usuario->esAdmin();
+
+        $ids = $request->input('ids', []);
+        if (empty($ids) || ! is_array($ids)) {
+            return response()->json(['error' => 'No se recibieron archivos para eliminar.'], 422);
+        }
+
+        $eliminados = 0;
+        $errores    = [];
+
+        foreach ($ids as $id) {
+            $contenido = CarpetaContenido::find((int) $id);
+            if (! $contenido) continue;
+
+            if (! $esAdmin) {
+                if (! PermisoService::can('eliminar', 'carpeta', (int) $contenido->id_carpeta)) {
+                    $errores[] = $id;
+                    continue;
+                }
+            }
+
+            $documentoId = $contenido->id_documento;
+            $contenido->delete();
+
+            $tieneOtrasRefs = CarpetaContenido::where('id_documento', $documentoId)->exists();
+            if (! $tieneOtrasRefs) {
+                try {
+                    $doc = \App\Models\Documento::find($documentoId);
+                    if ($doc) {
+                        Storage::disk('local')->delete($doc->archivo);
+                        $doc->delete();
+                    }
+                } catch (\Exception $e) {
+                    \Log::error('Error eliminando archivo en lote: ' . $e->getMessage());
+                }
+            }
+
+            $eliminados++;
+        }
+
+        if ($eliminados === 0) {
+            return response()->json(['error' => 'No se pudo eliminar ningún archivo.'], 422);
+        }
+
+        $msg = $eliminados === 1
+            ? '1 archivo eliminado correctamente.'
+            : "{$eliminados} archivos eliminados correctamente.";
+
+        return response()->json(['ok' => true, 'mensaje' => $msg, 'eliminados' => $eliminados]);
+    }
+
+    /**
      * Eliminar archivo (de la carpeta)
      */
     public function eliminar($id)

@@ -287,7 +287,7 @@
         <div class="modal-title">📤 Subir documento</div>
         <form method="POST" action="{{ route('archivos.subir') }}" enctype="multipart/form-data">
             @csrf
-            <input type="hidden" name="carpeta_id" value="{{ isset($carpetaActual) ? $carpetaActual->id : '' }}">
+            <input type="hidden" name="id_carpeta" value="{{ isset($carpetaActual) ? $carpetaActual->id : '' }}">
             <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
                 <div style="font-size:2.4rem;margin-bottom:8px">📎</div>
                 <div style="font-size:.84rem;color:var(--text-muted)">

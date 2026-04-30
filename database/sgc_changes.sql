@@ -158,3 +158,11 @@ CREATE TABLE `sgc_usuarios_permisos_area` (
 
 -- Verificar
 SHOW COLUMNS FROM `sgc_usuarios_permisos_area`;
+
+
+ALTER TABLE sgc_usuarios 
+ADD COLUMN bloque_finanzas tinyint(1) NOT NULL DEFAULT 0 AFTER bloque_proyectos;
+
+ALTER TABLE sgc_documentos MODIFY COLUMN tipo_mime VARCHAR(255) NOT NULL DEFAULT '';
+
+-- Luego de hacer todas las querys se debe hacer un php artisan migrate

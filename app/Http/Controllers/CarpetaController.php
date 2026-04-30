@@ -136,17 +136,19 @@ class CarpetaController extends Controller
 
     private function contenidoCarpeta(int $carpetaId): \Illuminate\Support\Collection
     {
-        return DB::table('sgc_carpetas_contenido')
-            ->where('id_carpeta', $carpetaId)
-            ->orderBy('creada_el', 'desc')
+        return DB::table('sgc_carpetas_contenido3 as cc')
+            ->join('sgc_documentos as d', 'd.id', '=', 'cc.id_documento')
+            ->where('cc.id_carpeta', $carpetaId)
+            ->orderBy('cc.creada_el', 'desc')
+            ->select('cc.id', 'cc.descripcion', 'cc.creada_el', 'd.archivo', 'd.nombre_original')
             ->get()
             ->map(fn($row) => (object)[
                 'id'        => $row->id,
-                'nombre'    => $row->descripcion,
+                'nombre'    => $row->descripcion ?: $row->nombre_original,
                 'archivo'   => $row->archivo,
                 'creada_el' => $row->creada_el,
                 'extension' => strtolower(pathinfo($row->archivo, PATHINFO_EXTENSION)),
-                'es_legacy' => !str_contains($row->archivo, '-') || strlen($row->archivo) < 36,
+                'es_legacy' => false,
             ]);
     }
 

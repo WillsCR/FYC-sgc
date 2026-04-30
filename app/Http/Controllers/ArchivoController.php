@@ -50,7 +50,7 @@ class ArchivoController extends Controller
 
         // Verificar permisos
         if (!$esAdmin) {
-            PermisoService::require('carga', 'archivo', $request->input('id_carpeta'));
+            PermisoService::require('carga', 'carpeta', (int) $request->input('id_carpeta'));
         }
 
         $archivo = $request->file('archivo');
@@ -134,7 +134,7 @@ class ArchivoController extends Controller
 
         // Verificar permisos
         if (!$esAdmin) {
-            PermisoService::require('descarga', 'archivo', $contenido->id_carpeta);
+            PermisoService::require('descarga', 'carpeta', (int) $contenido->id_carpeta);
         }
 
         $documento = $contenido->documento;
@@ -157,7 +157,7 @@ class ArchivoController extends Controller
 
         // Verificar permisos
         if (!$esAdmin) {
-            PermisoService::require('descarga', 'archivo', $contenido->id_carpeta);
+            PermisoService::require('descarga', 'carpeta', (int) $contenido->id_carpeta);
         }
 
         $documento = $contenido->documento;
@@ -186,7 +186,7 @@ class ArchivoController extends Controller
 
         // Verificar permisos
         if (!$esAdmin) {
-            PermisoService::require('eliminar', 'archivo', $contenido->id_carpeta);
+            PermisoService::require('eliminar', 'carpeta', (int) $contenido->id_carpeta);
         }
 
         $documento = $contenido->documento;

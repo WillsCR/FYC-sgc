@@ -3,140 +3,191 @@
 namespace App\Http\Controllers;
 
 use App\Models\Carpeta;
-use App\Models\CarpetaContenido;
-use App\Models\Documento;
+use App\Models\CarpetasPermisos;
 use App\Services\PermisoService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class CarpetaController extends Controller
 {
-    /**
-     * Muestra la carpeta raíz de un módulo
-     */
-    public function index($modulo)
+    public function index()
     {
         $usuario = PermisoService::usuarioActual();
         $esAdmin = $usuario->esAdmin();
 
-        // Obtener la carpeta raíz del módulo
-        $carpetaRaiz = Carpeta::where('id_padre', 0)
-            ->where('descripcion', 'LIKE', '%' . ucfirst($modulo) . '%')
-            ->first();
-
-        if (!$carpetaRaiz) {
-            abort(404, 'Módulo no encontrado');
-        }
-
-        return $this->mostrarCarpeta($carpetaRaiz, $modulo, $usuario, $esAdmin);
-    }
-
-    /**
-     * Muestra una carpeta específica
-     */
-    public function show($modulo, $id)
-    {
-        $usuario = PermisoService::usuarioActual();
-        $esAdmin = $usuario->esAdmin();
-
-        $carpetaActual = Carpeta::findOrFail($id);
-
-        return $this->mostrarCarpeta($carpetaActual, $modulo, $usuario, $esAdmin);
-    }
-
-    /**
-     * Lógica compartida para mostrar una carpeta
-     */
-    private function mostrarCarpeta($carpeta, $modulo, $usuario, $esAdmin)
-    {
-        // Obtener todas las carpetas raíz para el menú
         $raices = Carpeta::where('id_padre', 0)
             ->orderBy('descripcion')
-            ->get();
+            ->get()
+            ->filter(fn($c) => $esAdmin || $this->tieneAcceso($c->id, $usuario->id));
 
-        // Obtener subcarpetas
-        $subcarpetas = $carpeta->hijos()
-            ->orderBy('descripcion')
-            ->get();
+        $carpetaActual = $raices->first();
+        $contenido     = $carpetaActual
+            ? $this->contenidoCarpeta($carpetaActual->id)
+            : collect();
 
-        // Obtener contenido (documentos)
-        $contenido = $this->obtenerContenidoCarpeta($carpeta->id);
+        $subcarpetas = $carpetaActual
+            ? Carpeta::where('id_padre', $carpetaActual->id)->orderBy('descripcion')->get()
+                ->filter(fn($c) => $esAdmin || $this->tieneAcceso($c->id, $usuario->id))
+            : collect();
 
-        // Definir permisos del usuario
-        $permisos = [
-            'carga' => $esAdmin,
-            'descarga' => $esAdmin,
-            'crear' => $esAdmin,
-            'eliminar' => $esAdmin,
-        ];
+        $permisos = $esAdmin
+            ? ['carga'=>true,'descarga'=>true,'crear'=>true,'eliminar'=>true,'editar'=>true]
+            : ($carpetaActual ? $this->permisosEnCarpeta($carpetaActual->id, $usuario->id) : []);
 
-        // Obtener breadcrumb si existe el método en el modelo
-        $breadcrumb = method_exists($carpeta, 'obtenerBreadcrumb') 
-            ? $carpeta->obtenerBreadcrumb() 
-            : [];
-
-        $carpetaActual = $carpeta;
+        $breadcrumb = $carpetaActual ? $this->buildBreadcrumb($carpetaActual) : [];
 
         return view('carpetas.index', compact(
-            'raices',
-            'carpetaActual',
-            'contenido',
-            'subcarpetas',
-            'usuario',
-            'esAdmin',
-            'modulo',
-            'permisos',
-            'breadcrumb'
+            'raices', 'carpetaActual', 'contenido',
+            'subcarpetas', 'permisos', 'breadcrumb',
+            'usuario', 'esAdmin'
         ));
     }
 
-    /**
-     * Obtiene el contenido (documentos) de una carpeta
-     */
-    private function obtenerContenidoCarpeta($carpetaId)
+    public function show(int $id)
     {
-        return CarpetaContenido::where('id_carpeta', $carpetaId)
-            ->with('documento')
-            ->orderBy('creada_el', 'desc')
-            ->get();
+        $usuario = PermisoService::usuarioActual();
+        $esAdmin = $usuario->esAdmin();
+
+        if (! $esAdmin && ! $this->tieneAcceso($id, $usuario->id)) {
+            return redirect()->route('panel')
+                ->with('sin_permiso_carpeta', 'No tienes permisos para acceder a ese módulo.');
+        }
+
+        $carpetaActual = Carpeta::findOrFail($id);
+
+        $raices = Carpeta::where('id_padre', 0)
+            ->orderBy('descripcion')
+            ->get()
+            ->filter(fn($c) => $esAdmin || $this->tieneAcceso($c->id, $usuario->id));
+
+        $contenido = $this->contenidoCarpeta($id);
+
+        $subcarpetas = Carpeta::where('id_padre', $id)
+            ->orderBy('descripcion')
+            ->get()
+            ->filter(fn($c) => $esAdmin || $this->tieneAcceso($c->id, $usuario->id));
+
+        $permisos = $esAdmin
+            ? ['carga'=>true,'descarga'=>true,'crear'=>true,'eliminar'=>true,'editar'=>true]
+            : $this->permisosEnCarpeta($id, $usuario->id);
+
+        $breadcrumb = $this->buildBreadcrumb($carpetaActual);
+
+        return view('carpetas.index', compact(
+            'raices', 'carpetaActual', 'contenido',
+            'subcarpetas', 'permisos', 'breadcrumb',
+            'usuario', 'esAdmin'
+        ));
     }
 
-    /**
-     * Crea una nueva carpeta
-     */
-    public function store(Request $request, $modulo, $id)
+    public function store(Request $request, int $id)
     {
-        // Validar permisos
         $usuario = PermisoService::usuarioActual();
-        if (!$usuario->esAdmin()) {
-            return response()->json([
-                'ok' => false,
-                'error' => 'No tienes permisos para crear carpetas'
-            ], 403);
+        $esAdmin = $usuario->esAdmin();
+
+        if (! $esAdmin) {
+            PermisoService::require('crear', 'carpeta', $id);
         }
 
-        // Validar datos
-        $validated = $request->validate([
-            'descripcion' => 'required|string|max:255'
+        $request->validate([
+            'descripcion' => ['required', 'string', 'max:200'],
+        ], [
+            'descripcion.required' => 'El nombre de la carpeta es obligatorio.',
+            'descripcion.max'      => 'El nombre no puede superar 200 caracteres.',
         ]);
 
-        try {
-            // Crear la nueva carpeta
-            $carpeta = Carpeta::create([
-                'id_padre' => $id,
-                'descripcion' => $validated['descripcion'],
-                'activa' => 1
-            ]);
+        $padre     = Carpeta::findOrFail($id);
+        $slug      = \Illuminate\Support\Str::slug($request->input('descripcion'), '_');
+        $rutaNueva = ltrim(($padre->ruta ?? '') . '/' . $slug, '/');
 
-            return response()->json([
-                'ok' => true,
-                'mensaje' => 'Carpeta creada exitosamente',
-                'carpeta' => $carpeta
+        Carpeta::create([
+            'descripcion' => $request->input('descripcion'),
+            'id_padre'    => $id,
+            'nivel'       => ($padre->nivel ?? 0) + 1,
+            'ruta'        => $rutaNueva,
+            'creada_el'   => now(),
+        ]);
+
+        return redirect()
+            ->route('carpetas.show', $id)
+            ->with('ok', 'Carpeta "' . $request->input('descripcion') . '" creada correctamente.');
+    }
+
+    public function hijos(int $id)
+    {
+        $usuario = PermisoService::usuarioActual();
+        $esAdmin = $usuario->esAdmin();
+
+        $hijos = Carpeta::where('id_padre', $id)
+            ->orderBy('descripcion')
+            ->get()
+            ->filter(fn($c) => $esAdmin || $this->tieneAcceso($c->id, $usuario->id))
+            ->map(fn($c) => [
+                'id'          => $c->id,
+                'descripcion' => $c->descripcion,
+                'tiene_hijos' => Carpeta::where('id_padre', $c->id)->exists(),
+            ])
+            ->values();
+
+        return response()->json($hijos);
+    }
+
+    // ─── Helpers ─────────────────────────────────────────────────────────────
+
+    private function contenidoCarpeta(int $carpetaId): \Illuminate\Support\Collection
+    {
+        return DB::table('sgc_carpetas_contenido3 as cc')
+            ->join('sgc_documentos as d', 'd.id', '=', 'cc.id_documento')
+            ->where('cc.id_carpeta', $carpetaId)
+            ->orderBy('cc.creada_el', 'desc')
+            ->select('cc.id', 'cc.descripcion', 'cc.creada_el', 'd.archivo', 'd.nombre_original')
+            ->get()
+            ->map(fn($row) => (object)[
+                'id'        => $row->id,
+                'nombre'    => $row->descripcion ?: $row->nombre_original,
+                'archivo'   => $row->archivo,
+                'creada_el' => $row->creada_el,
+                'extension' => strtolower(pathinfo($row->archivo, PATHINFO_EXTENSION)),
+                'es_legacy' => false,
             ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'ok' => false,
-                'error' => 'Error al crear la carpeta: ' . $e->getMessage()
-            ], 500);
+    }
+
+    private function tieneAcceso(int $carpetaId, int $usuarioId): bool
+    {
+        return CarpetasPermisos::where('id_carpeta', $carpetaId)
+            ->where('id_usuario', $usuarioId)
+            ->exists();
+    }
+
+    private function permisosEnCarpeta(int $carpetaId, int $usuarioId): array
+    {
+        $p = CarpetasPermisos::where('id_carpeta', $carpetaId)
+            ->where('id_usuario', $usuarioId)
+            ->first();
+
+        if (!$p) {
+            return ['carga'=>false,'descarga'=>false,'crear'=>false,'eliminar'=>false,'editar'=>false];
         }
+
+        return [
+            'carga'    => (bool) $p->carga,
+            'descarga' => (bool) $p->descarga,
+            'crear'    => (bool) $p->crear,
+            'eliminar' => (bool) $p->eliminar,
+            'editar'   => (bool) $p->editar,
+        ];
+    }
+
+    private function buildBreadcrumb(Carpeta $carpeta): array
+    {
+        $ruta   = [];
+        $actual = $carpeta;
+
+        while ($actual) {
+            array_unshift($ruta, ['id' => $actual->id, 'descripcion' => $actual->descripcion]);
+            $actual = $actual->id_padre > 0 ? Carpeta::find($actual->id_padre) : null;
+        }
+
+        return $ruta;
     }
 }

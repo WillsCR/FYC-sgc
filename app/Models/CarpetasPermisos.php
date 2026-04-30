@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class CarpetaPermisos extends Model
+class CarpetasPermisos extends Model
 {
     protected $table = 'sgc_carpetas_permisos';
     protected $primaryKey = 'id';

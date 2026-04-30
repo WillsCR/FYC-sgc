@@ -1,36 +1,31 @@
 @extends('layouts.app')
-
 @section('title', 'Panel principal')
-
-@section('subnav')
-    <a href="{{ route('panel') }}"    class="subnav-item active">Inicio</a>
-    <a href="{{ route('metricas') }}" class="subnav-item">Métricas</a>
-    <a href="#" class="subnav-item">Planificación</a>
-    <a href="#" class="subnav-item">Minutas</a>
-    <a href="#" class="subnav-item">Información SIG</a>
-    <a href="#" class="subnav-item">Medio Ambiente</a>
-    @if(session('es_admin'))
-        <a href="#" class="subnav-item">Usuarios</a>
-    @endif
-@endsection
 
 @section('content')
 <div class="panel-body">
 
-    {{-- Bienvenida --}}
+    @if(session('sin_permiso_carpeta'))
+    <div style="background:#FEF2F2;border-left:4px solid #DC2626;color:#991B1B;
+                padding:11px 16px;border-radius:4px;margin-bottom:16px;font-size:.84rem;display:flex;align-items:center;gap:8px">
+        🔒 {{ session('sin_permiso_carpeta') }}
+    </div>
+    @endif
+
     <div class="panel-welcome">
         <h2>Bienvenido, {{ session('usuario_nombre') }}</h2>
         <p>{{ now()->locale('es')->isoFormat('dddd D [de] MMMM, YYYY') }}
-            @if(session('es_admin'))
+            @if(session('es_superadmin'))
+                · <span style="color:var(--blue-accent);font-weight:500">Super Administrador</span>
+            @elseif(session('es_admin'))
                 · <span style="color:var(--blue-accent);font-weight:500">Administrador</span>
             @endif
         </p>
     </div>
 
-    {{-- ── Bloques principales ──────────────────────────────── --}}
+    {{-- Bloques --}}
     @if(count($bloques) > 0)
         <div class="section-label">Módulos del sistema</div>
-        <div class="bloques-grid" id="bloques-container">
+        <div class="bloques-grid">
             @foreach($bloques as $bloque)
             <div class="bloque" id="bloque-{{ $bloque['id'] }}"
                  onclick="toggleSubBloques('{{ $bloque['id'] }}')"
@@ -47,25 +42,21 @@
         @foreach($bloques as $bloque)
         <div class="sub-bloques" id="sub-{{ $bloque['id'] }}" style="display:none">
             @foreach($bloque['sub'] as $sub)
-            <a href="{{ $sub['ruta'] }}" class="sub-bloque"
-               style="background-color: {{ $sub['color'] }}">
+            <a href="{{ $sub['ruta'] }}" class="sub-bloque" style="background-color:{{ $sub['color'] }}">
                 <span style="font-size:.95rem">{{ $sub['emoji'] }}</span>
                 {{ $sub['titulo'] }}
             </a>
             @endforeach
         </div>
         @endforeach
-
     @else
         <div style="padding:40px 0;text-align:center">
             <div style="font-size:2.5rem;margin-bottom:12px">🔒</div>
-            <p style="color:var(--text-muted);font-size:.9rem">
-                No tienes módulos asignados. Contacta al administrador.
-            </p>
+            <p style="color:var(--text-muted);font-size:.9rem">No tienes módulos asignados. Contacta al administrador.</p>
         </div>
     @endif
 
-    {{-- ── Resumen del sistema ──────────────────────────────── --}}
+    {{-- Resumen --}}
     <div class="section-label">Resumen del sistema</div>
     <div class="stats-grid">
         <div class="stat-card">
@@ -90,8 +81,6 @@
         </div>
     </div>
 
-    
-
 </div>
 @endsection
 
@@ -101,7 +90,6 @@ window.history.pushState(null, '', window.location.href);
 window.addEventListener('popstate', function() {
     window.history.pushState(null, '', window.location.href);
 });
-
 var bloqueActivo = null;
 function toggleSubBloques(id) {
     var subEl    = document.getElementById('sub-' + id);

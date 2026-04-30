@@ -53,11 +53,18 @@
 </nav>
 
 {{-- ── Subnav ───────────────────────────────────────────── --}}
-@hasSection('subnav')
 <div class="subnav">
-    @yield('subnav')
+    <a href="{{ route('panel') }}"         class="subnav-item {{ request()->routeIs('panel')      ? 'active' : '' }}">Inicio</a>
+    <a href="{{ route('metricas') }}"       class="subnav-item {{ request()->routeIs('metricas')   ? 'active' : '' }}">Métricas</a>
+    
+    <a href="{{ route('planificacion.index') }}" class="subnav-item {{ request()->routeIs('planificacion*') ? 'active' : '' }}">Planificación</a>
+    <a href="{{ route('minutas.index') }}" class="subnav-item {{ request()->routeIs('minutas')? 'active' : ''}}">Minutas</a>
+    <a href="#" class="subnav-item">Información SIG</a>
+    <a href="#" class="subnav-item">Medio Ambiente</a>
+    @if(session('es_admin'))
+        <a href="{{ route('usuarios.index') }}"   class="subnav-item {{ request()->routeIs('usuarios*') ? 'active' : '' }}">Usuarios</a>
+    @endif
 </div>
-@endif
 
 {{-- ── Contenido principal ──────────────────────────────── --}}
 <main>

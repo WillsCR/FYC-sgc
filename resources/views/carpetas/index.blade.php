@@ -336,6 +336,19 @@
     </div>
 </div>
 
+{{-- Modal: Confirmar eliminación --}}
+<div class="modal-overlay" id="modal-eliminar">
+    <div class="modal">
+        <div class="modal-title">⚠️ Confirmar eliminación</div>
+        <p id="eliminar-nombre" style="color:var(--text-secondary);font-size:.9rem;margin-bottom:20px"></p>
+        <p style="color:var(--text-muted);font-size:.8rem;margin-bottom:20px">¿Estás seguro de que deseas eliminar este archivo? Esta acción no se puede deshacer.</p>
+        <div class="modal-actions">
+            <button type="button" class="btn-cancel" onclick="cerrarModalEliminar()">Cancelar</button>
+            <button type="button" id="btn-confirmar-eliminar" class="btn-upload" style="background:var(--danger);color:#fff;border:none" onclick="confirmarEliminar()">Eliminar</button>
+        </div>
+    </div>
+</div>
+
 @endsection
 
 @push('scripts')

@@ -113,6 +113,41 @@ class CarpetaController extends Controller
             ->with('ok', 'Carpeta "' . $request->input('descripcion') . '" creada correctamente.');
     }
 
+    public function destroy(int $id)
+    {
+        $usuario = PermisoService::usuarioActual();
+        $esAdmin = $usuario->esAdmin();
+
+        if (! $esAdmin) {
+            PermisoService::require('eliminar', 'carpeta', $id);
+        }
+
+        $carpeta = Carpeta::findOrFail($id);
+
+        // No se pueden eliminar carpetas raíz (módulos del sistema)
+        if ((int) $carpeta->id_padre === 0) {
+            return response()->json(['error' => 'No se pueden eliminar los módulos raíz del sistema.'], 403);
+        }
+
+        // No eliminar si tiene subcarpetas
+        $tieneHijos = Carpeta::where('id_padre', $id)->exists();
+        if ($tieneHijos) {
+            return response()->json(['error' => 'La carpeta tiene subcarpetas. Elimínalas primero.'], 422);
+        }
+
+        // No eliminar si tiene documentos
+        $tieneDocumentos = DB::table('sgc_carpetas_contenido3')->where('id_carpeta', $id)->exists();
+        if ($tieneDocumentos) {
+            return response()->json(['error' => 'La carpeta contiene documentos. Elimínalos primero.'], 422);
+        }
+
+        $nombre = $carpeta->descripcion;
+        $padreId = $carpeta->id_padre;
+        $carpeta->delete();
+
+        return response()->json(['ok' => true, 'mensaje' => "Carpeta \"{$nombre}\" eliminada.", 'padre_id' => $padreId]);
+    }
+
     public function hijos(int $id)
     {
         $usuario = PermisoService::usuarioActual();
@@ -152,20 +187,44 @@ class CarpetaController extends Controller
             ]);
     }
 
+    /**
+     * Verifica acceso a una carpeta o cualquiera de sus ancestros.
+     * Los permisos se heredan hacia abajo: si tienes acceso al padre,
+     * tienes acceso a todos sus descendientes.
+     */
     private function tieneAcceso(int $carpetaId, int $usuarioId): bool
     {
-        return CarpetasPermisos::where('id_carpeta', $carpetaId)
-            ->where('id_usuario', $usuarioId)
-            ->exists();
+        // Permiso directo en esta carpeta
+        if (CarpetasPermisos::where('id_carpeta', $carpetaId)
+                ->where('id_usuario', $usuarioId)->exists()) {
+            return true;
+        }
+
+        // Heredar del padre (subir el árbol hasta la raíz)
+        $carpeta = Carpeta::find($carpetaId);
+        if ($carpeta && (int) $carpeta->id_padre > 0) {
+            return $this->tieneAcceso($carpeta->id_padre, $usuarioId);
+        }
+
+        return false;
     }
 
+    /**
+     * Devuelve los permisos efectivos para una carpeta.
+     * Si la carpeta no tiene registro propio, busca en el ancestro más cercano.
+     */
     private function permisosEnCarpeta(int $carpetaId, int $usuarioId): array
     {
         $p = CarpetasPermisos::where('id_carpeta', $carpetaId)
             ->where('id_usuario', $usuarioId)
             ->first();
 
-        if (!$p) {
+        if (! $p) {
+            // Heredar del padre
+            $carpeta = Carpeta::find($carpetaId);
+            if ($carpeta && (int) $carpeta->id_padre > 0) {
+                return $this->permisosEnCarpeta($carpeta->id_padre, $usuarioId);
+            }
             return ['carga'=>false,'descarga'=>false,'crear'=>false,'eliminar'=>false,'editar'=>false];
         }
 

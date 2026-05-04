@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\Usuario;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
@@ -22,21 +24,33 @@ class AuthController extends Controller
     {
         $request->validate([
             'email' => ['required', 'email'],
-            'clave' => ['required', 'string', 'min:4'],
+            'clave' => ['required', 'string', 'min:6'],
         ], [
             'email.required' => 'El correo es obligatorio.',
             'email.email'    => 'Ingresa un correo válido.',
             'clave.required' => 'La contraseña es obligatoria.',
         ]);
 
+        // Clave de throttle por IP + email (evita enumeración de cuentas)
+        $throttleKey = Str::lower($request->input('email')) . '|' . $request->ip();
+
+        if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
+            $segundos = RateLimiter::availableIn($throttleKey);
+            return back()
+                ->withInput(['email' => $request->email])
+                ->withErrors(['credenciales' => "Demasiados intentos. Espera {$segundos} segundos."]);
+        }
+
         $usuario = Usuario::where('email', $request->email)->first();
 
         if (! $usuario || ! $this->verificarClave($request->clave, $usuario)) {
+            RateLimiter::hit($throttleKey, 60); // bloqueo de 60 segundos por intento
             return back()
                 ->withInput(['email' => $request->email])
                 ->withErrors(['credenciales' => 'Correo o contraseña incorrectos.']);
         }
 
+        RateLimiter::clear($throttleKey); // limpiar contador al autenticarse correctamente
         $this->migrarHashSiNecesario($request->clave, $usuario);
 
         Session::regenerate();

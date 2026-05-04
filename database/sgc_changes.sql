@@ -165,4 +165,49 @@ ADD COLUMN bloque_finanzas tinyint(1) NOT NULL DEFAULT 0 AFTER bloque_proyectos;
 
 ALTER TABLE sgc_documentos MODIFY COLUMN tipo_mime VARCHAR(255) NOT NULL DEFAULT '';
 
+-- ============================================================
+-- SEGURIDAD — Ampliar hash_md5 para SHA-256 (64 chars)
+-- El campo se reutiliza para SHA-256, que necesita 64 chars.
+-- MD5 = 32 chars, SHA-256 = 64 chars
+-- Fecha: Sprint actual
+-- ============================================================
+
+ALTER TABLE `sgc_documentos`
+    MODIFY COLUMN `hash_md5` varchar(64) NOT NULL DEFAULT '';
+
+-- ============================================================
+-- SEGURIDAD — Tamaño mínimo de contraseña
+-- Forzar que cuentas legacy sin bcrypt deban cambiar clave.
+-- Este UPDATE marca las cuentas legacy para que el sistema
+-- las obligue a restablecer contraseña (pendiente implementar).
+-- Solo informativo por ahora.
+-- ============================================================
+-- SELECT id, email FROM sgc_usuarios
+-- WHERE quesera NOT LIKE '$2y$%' AND quesera NOT LIKE '$2a$%';
+-- (Ejecutar para ver cuántas cuentas aún tienen hash legacy)
+
 -- Luego de hacer todas las querys se debe hacer un php artisan migrate
+
+-- ============================================================
+-- SPRINT 5 — Tabla de publicaciones (Información SIG / Medio Ambiente)
+-- Creada automáticamente via php artisan migrate
+-- Incluida aquí para sincronización manual si fuera necesario
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS `sgc_publicaciones` (
+    `id`              bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+    `seccion`         varchar(20)  NOT NULL,           -- 'sig' | 'ambiente'
+    `titulo`          varchar(300) NOT NULL,
+    `archivo`         varchar(120) NOT NULL,            -- UUID + extensión
+    `nombre_original` varchar(300) NOT NULL,
+    `tipo_mime`       varchar(100) NOT NULL,
+    `tamanio`         bigint(20)   UNSIGNED NOT NULL,  -- bytes
+    `creado_por`      int(10)      UNSIGNED NULL,
+    `creada_el`       timestamp    NOT NULL DEFAULT current_timestamp(),
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `sgc_publicaciones_archivo_unique` (`archivo`),
+    KEY `sgc_publicaciones_seccion_index` (`seccion`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Verificar
+SHOW COLUMNS FROM `sgc_publicaciones`;

@@ -54,7 +54,14 @@ class ArchivoController extends Controller
         }
 
         $archivo = $request->file('archivo');
-        $mimeType = $archivo->getMimeType();
+
+        // Validar MIME con magic bytes (finfo) — no confiar en el MIME declarado por el cliente
+        $finfo    = new \finfo(FILEINFO_MIME_TYPE);
+        $mimeType = $finfo->file($archivo->getRealPath());
+        if (! $mimeType) {
+            // Fallback conservador: rechazar si no se puede leer el tipo real
+            return response()->json(['error' => 'No se pudo verificar el tipo de archivo.'], 422);
+        }
 
         // Validar MIME
         if (!in_array($mimeType, self::MIMES_PERMITIDOS)) {
@@ -64,32 +71,33 @@ class ArchivoController extends Controller
         }
 
         try {
-            // Leer contenido y generar hash MD5
+            // Leer contenido y generar hash SHA-256 (MD5 tiene colisiones conocidas)
             $contenido = file_get_contents($archivo->getRealPath());
-            $hashMd5 = md5($contenido);
+            $hashSha256 = hash('sha256', $contenido);
+
+            // Sanitizar nombre original: eliminar caracteres peligrosos para headers HTTP
+            $nombreOriginal = preg_replace('/[\r\n\x00"\'\\\\]/', '', $archivo->getClientOriginalName());
+            $nombreOriginal = substr($nombreOriginal, 0, 250); // límite seguro
 
             // Verificar si el documento ya existe (por hash)
-            $documentoExistente = Documento::where('hash_md5', $hashMd5)->first();
+            $documentoExistente = Documento::where('hash_md5', $hashSha256)->first();
 
             if ($documentoExistente) {
-                // Reutilizar documento existente
                 $documento = $documentoExistente;
             } else {
-                // Crear nuevo documento con UUID como nombre
+                // UUID como nombre de archivo — sin relación con el nombre original
                 $nombreArchivo = (string) Str::uuid() . '.' . $archivo->getClientOriginalExtension();
 
-                // Guardar en C:\xampp\documentos\
                 Storage::disk('local')->put($nombreArchivo, $contenido);
 
-                // Crear registro en BD
                 $documento = Documento::create([
-                    'archivo' => $nombreArchivo,
-                    'nombre_original' => $archivo->getClientOriginalName(),
-                    'tipo_mime' => $mimeType,
-                    'tamaño' => $archivo->getSize(),
-                    'hash_md5' => $hashMd5,
-                    'creado_por' => $usuario->id,
-                    'creada_el' => now(),
+                    'archivo'         => $nombreArchivo,
+                    'nombre_original' => $nombreOriginal,
+                    'tipo_mime'       => $mimeType,
+                    'tamaño'          => $archivo->getSize(),
+                    'hash_md5'        => $hashSha256,  // columna reutilizada para SHA-256
+                    'creado_por'      => $usuario->id,
+                    'creada_el'       => now(),
                 ]);
             }
 
@@ -98,27 +106,31 @@ class ArchivoController extends Controller
                 ->where('id_documento', $documento->id)
                 ->exists();
 
-            if (!$existe) {
+            if (! $existe) {
                 CarpetaContenido::create([
-                    'id_carpeta' => $request->input('id_carpeta'),
-                    'id_documento' => $documento->id,
+                    'id_carpeta'  => $request->input('id_carpeta'),
+                    'id_documento'=> $documento->id,
                     'descripcion' => $request->input('descripcion', $documento->nombre_original),
-                    'metadata' => json_encode(['cargado_por' => $usuario->id]),
-                    'creada_el' => now(),
+                    'metadata'    => json_encode(['cargado_por' => $usuario->id]),
+                    'creada_el'   => now(),
                 ]);
             }
 
             return response()->json([
-                'ok' => true,
-                'mensaje' => 'Archivo guardado correctamente',
-                'documento' => [
-                    'id' => $documento->id,
+                'ok'       => true,
+                'mensaje'  => 'Archivo guardado correctamente',
+                'documento'=> [
+                    'id'     => $documento->id,
                     'nombre' => $documento->nombre_original,
                     'tamaño' => $documento->tamaño,
                 ]
             ]);
         } catch (\Exception $e) {
-            return response()->json(['error' => 'Error al procesar archivo: ' . $e->getMessage()], 500);
+            \Log::error('ArchivoController::subir — ' . $e->getMessage(), [
+                'usuario' => $usuario->id,
+                'carpeta' => $request->input('id_carpeta'),
+            ]);
+            return response()->json(['error' => 'No se pudo procesar el archivo. Inténtalo nuevamente.'], 500);
         }
     }
 
@@ -168,9 +180,12 @@ class ArchivoController extends Controller
             return response()->json(['error' => 'No se puede visualizar este tipo de archivo'], 403);
         }
 
+        // Sanitizar nombre para evitar header injection (CRLF, comillas)
+        $nombreSeguro = preg_replace('/[\r\n\x00"\'\\\\]/', '', $documento->nombre_original);
+
         return response()->file($ruta, [
-            'Content-Type' => $documento->tipo_mime,
-            'Content-Disposition' => 'inline; filename="' . $documento->nombre_original . '"'
+            'Content-Type'        => $documento->tipo_mime,
+            'Content-Disposition' => 'inline; filename="' . $nombreSeguro . '"',
         ]);
     }
 

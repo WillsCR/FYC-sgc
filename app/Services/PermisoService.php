@@ -9,6 +9,9 @@ use Illuminate\Support\Facades\Session;
 
 class PermisoService
 {
+    private const ACCIONES_VALIDAS = ['carga', 'descarga', 'crear', 'eliminar', 'editar'];
+    private const RECURSOS_VALIDOS = ['global', 'carpeta'];
+
     /**
      * Verifica si el usuario actual puede realizar una acción.
      *
@@ -19,6 +22,10 @@ class PermisoService
      */
     public static function can(string $accion, string $recurso = 'global', int $recursoId = 0): bool
     {
+        // Whitelist estricto — rechaza acciones o recursos desconocidos
+        if (! in_array($accion,  self::ACCIONES_VALIDAS, true)) return false;
+        if (! in_array($recurso, self::RECURSOS_VALIDOS, true)) return false;
+
         $usuarioId = Session::get('usuario_id');
         if (! $usuarioId) return false;
 

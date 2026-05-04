@@ -24,14 +24,22 @@ class AutenticadoMiddleware
 
         $response = $next($request);
 
-        // Estos headers le dicen al navegador que NO guarde
-        // esta página en caché — al presionar "atrás" después
-        // de logout, el navegador tendrá que pedir la página
-        // de nuevo al servidor, que detectará que no hay sesión
-        // y redirigirá al login.
+        // ── Caché: evita que el navegador guarde páginas protegidas ──
         $response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
-        $response->headers->set('Pragma', 'no-cache');
+        $response->headers->set('Pragma',  'no-cache');
         $response->headers->set('Expires', '0');
+
+        // ── Headers de seguridad HTTP ─────────────────────────────────
+        // Evita clickjacking (iframes de otros dominios)
+        $response->headers->set('X-Frame-Options', 'SAMEORIGIN');
+        // Evita que el navegador adivine el tipo de contenido
+        $response->headers->set('X-Content-Type-Options', 'nosniff');
+        // Reduce información enviada en el Referer
+        $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
+        // Deshabilita funcionalidades del navegador no usadas
+        $response->headers->set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+        // Protección básica XSS (legacy browsers)
+        $response->headers->set('X-XSS-Protection', '1; mode=block');
 
         return $response;
     }

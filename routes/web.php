@@ -8,12 +8,13 @@ use App\Http\Controllers\ArchivoController;
 use App\Http\Controllers\UsuarioController;
 use App\Http\Controllers\PlanificacionController;
 use App\Http\Controllers\MinutaController;
+use App\Http\Controllers\PublicacionController;
 use Illuminate\Support\Facades\Route;
 
 // ─── Rutas públicas ──────────────────────────────────────────────────────────
 Route::get('/', fn() => redirect()->route('login'));
 Route::get('/login',  [AuthController::class, 'showLogin'])->name('login');
-Route::post('/login', [AuthController::class, 'login'])->name('login.post');
+Route::post('/login', [AuthController::class, 'login'])->name('login.post')->middleware('throttle:5,1');
 Route::post('/logout',[AuthController::class, 'logout'])->name('logout');
 
 // ─── Rutas protegidas ────────────────────────────────────────────────────────
@@ -51,6 +52,15 @@ Route::middleware(['auth.sgc'])->group(function () {
     Route::get('/planificacion/{id}/editar',       [PlanificacionController::class, 'edit'])->name('planificacion.edit');
     Route::put('/planificacion/{id}',              [PlanificacionController::class, 'update'])->name('planificacion.update');
     Route::post('/planificacion/{id}/cerrar',      [PlanificacionController::class, 'cerrar'])->name('planificacion.cerrar');
+
+    // Sprint 5 — Información SIG y Medio Ambiente
+    Route::get('/sig',                              [PublicacionController::class, 'sig'])        ->name('sig.index');
+    Route::get('/ambiente',                         [PublicacionController::class, 'ambiente'])   ->name('ambiente.index');
+    Route::post('/publicaciones',                   [PublicacionController::class, 'store'])      ->name('publicaciones.store');
+    Route::patch('/publicaciones/{id}',             [PublicacionController::class, 'actualizar']) ->name('publicaciones.actualizar');
+    Route::get('/publicaciones/{id}/ver',           [PublicacionController::class, 'ver'])        ->name('publicaciones.ver');
+    Route::get('/publicaciones/{id}/descargar',     [PublicacionController::class, 'descargar'])  ->name('publicaciones.descargar');
+    Route::delete('/publicaciones/{id}',            [PublicacionController::class, 'eliminar'])   ->name('publicaciones.eliminar');
 
     // Sprint 5 — Minutas
     Route::get('/minutas',               [MinutaController::class, 'index'])  ->name('minutas.index');

@@ -27,28 +27,17 @@
         <div class="section-label">Módulos del sistema</div>
         <div class="bloques-grid">
             @foreach($bloques as $bloque)
-            <div class="bloque" id="bloque-{{ $bloque['id'] }}"
-                 onclick="toggleSubBloques('{{ $bloque['id'] }}')"
-                 style="border-top-color: {{ $bloque['color'] }}">
+            <a href="{{ route('carpetas.show', $bloque['carpeta_id']) }}"
+               class="bloque"
+               style="border-top-color: {{ $bloque['color'] }}; text-decoration:none">
                 <div class="bloque-icon-wrap" style="background: {{ $bloque['color'] }}18">
                     <span style="font-size:1.5rem;line-height:1">{{ $bloque['emoji'] }}</span>
                 </div>
                 <div class="bloque-title">{{ $bloque['titulo'] }}</div>
                 <div class="bloque-badge">{{ $bloque['badge'] }}</div>
-            </div>
-            @endforeach
-        </div>
-
-        @foreach($bloques as $bloque)
-        <div class="sub-bloques" id="sub-{{ $bloque['id'] }}" style="display:none">
-            @foreach($bloque['sub'] as $sub)
-            <a href="{{ $sub['ruta'] }}" class="sub-bloque" style="background-color:{{ $sub['color'] }}">
-                <span style="font-size:.95rem">{{ $sub['emoji'] }}</span>
-                {{ $sub['titulo'] }}
             </a>
             @endforeach
         </div>
-        @endforeach
     @else
         <div style="padding:40px 0;text-align:center">
             <div style="font-size:2.5rem;margin-bottom:12px">🔒</div>
@@ -90,18 +79,5 @@ window.history.pushState(null, '', window.location.href);
 window.addEventListener('popstate', function() {
     window.history.pushState(null, '', window.location.href);
 });
-var bloqueActivo = null;
-function toggleSubBloques(id) {
-    var subEl    = document.getElementById('sub-' + id);
-    var bloqueEl = document.getElementById('bloque-' + id);
-    if (bloqueActivo && bloqueActivo !== id) {
-        document.getElementById('sub-' + bloqueActivo).style.display = 'none';
-        document.getElementById('bloque-' + bloqueActivo).classList.remove('activo');
-    }
-    var estaAbierto = subEl.style.display === 'flex';
-    subEl.style.display = estaAbierto ? 'none' : 'flex';
-    bloqueEl.classList.toggle('activo', !estaAbierto);
-    bloqueActivo = estaAbierto ? null : id;
-}
 </script>
 @endpush

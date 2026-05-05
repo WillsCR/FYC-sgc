@@ -29,6 +29,14 @@
     font-weight: 600; cursor: pointer; transition: all .15s;
 }
 .btn-new-folder:hover { background: var(--surface-2); border-color: var(--navy); }
+.btn-volver {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 7px 14px; background: var(--surface); color: var(--text-secondary);
+    border: 1px solid var(--border); border-radius: 4px; font-size: .82rem;
+    font-weight: 500; cursor: pointer; transition: all .15s; text-decoration: none;
+    flex-shrink: 0;
+}
+.btn-volver:hover { background: var(--surface-2); color: var(--navy); border-color: var(--navy); }
 .content-scroll { flex: 1; padding: 20px 24px; }
 .section-label {
     font-size: .75rem; font-weight: 700; color: var(--navy);
@@ -37,7 +45,7 @@
 }
 .section-label:first-child { margin-top: 0; }
 
-/* Subcarpetas */
+/* ── Subcarpetas normales ─────────────────────────────────── */
 .subcarpetas-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
@@ -66,6 +74,37 @@
 }
 .subcarpeta-wrap:hover .subcarpeta-del { opacity: 1; }
 .subcarpeta-del:hover { background: #DC2626; color: #fff; }
+
+/* ── Submódulos con estilo coloreado (nivel módulo raíz) ──── */
+.submodulos-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 12px; margin-bottom: 28px;
+}
+.submodulo-wrap { position: relative; }
+.submodulo-card {
+    display: flex; align-items: center; gap: 10px;
+    padding: 14px 16px; border-radius: 8px;
+    text-decoration: none; color: #fff;
+    font-size: .85rem; font-weight: 600;
+    transition: transform .15s, box-shadow .15s, filter .15s;
+    box-shadow: 0 2px 6px rgba(0,0,0,.15);
+    width: 100%; box-sizing: border-box; min-height: 56px;
+}
+.submodulo-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 18px rgba(0,0,0,.2);
+    filter: brightness(1.08);
+}
+.submodulo-emoji { font-size: 1.2rem; line-height: 1; flex-shrink: 0; }
+.submodulo-nombre { flex: 1; line-height: 1.3; }
+.submodulo-wrap .subcarpeta-del {
+    top: 8px; right: 8px;
+    background: rgba(0,0,0,.30); border: none; color: #fff;
+    width: 26px; height: 26px; font-size: .75rem;
+}
+.submodulo-wrap:hover .subcarpeta-del { opacity: 1; }
+.submodulo-wrap .subcarpeta-del:hover { background: #DC2626; }
 
 /* Tabla documentos */
 .archivos-table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
@@ -260,18 +299,36 @@ tr.seleccionada td { background: #EFF6FF !important; }
             @endif
 
             <div class="content-actions">
+                {{-- Botón volver: solo dentro de submódulos (id_padre > 0) --}}
+                @if(isset($carpetaActual) && (int)$carpetaActual->id_padre > 0)
+                @php
+                    $backUrl = (int)$carpetaActual->id_padre > 0
+                        ? route('carpetas.show', $carpetaActual->id_padre)
+                        : route('panel');
+                @endphp
+                <a href="{{ $backUrl }}" class="btn-volver" title="Volver atrás">
+                    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"
+                         viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+                    Volver
+                </a>
+                @endif
+
                 <div class="content-title">
                     {{ isset($carpetaActual) ? $carpetaActual->descripcion : 'Gestión Documental' }}
                 </div>
-                @if(isset($permisos) && $permisos['crear'])
-                <button class="btn-new-folder" onclick="abrirModalCarpeta()">
-                    📂 Nueva carpeta
-                </button>
-                @endif
-                @if(isset($permisos) && $permisos['carga'])
-                <button class="btn-upload" onclick="abrirModalSubir()">
-                    📤 Subir archivo
-                </button>
+
+                {{-- Botones de acción: SOLO dentro de submódulos, no en la pantalla de módulo raíz --}}
+                @if(isset($carpetaActual) && (int)$carpetaActual->id_padre > 0)
+                    @if(isset($permisos) && $permisos['crear'])
+                    <button class="btn-new-folder" onclick="abrirModalCarpeta()">
+                        📂 Nueva carpeta
+                    </button>
+                    @endif
+                    @if(isset($permisos) && $permisos['carga'])
+                    <button class="btn-upload" onclick="abrirModalSubir()">
+                        📤 Subir archivo
+                    </button>
+                    @endif
                 @endif
             </div>
         </div>
@@ -283,7 +340,31 @@ tr.seleccionada td { background: #EFF6FF !important; }
 
                 {{-- Subcarpetas --}}
                 @if(isset($subcarpetas) && $subcarpetas->count() > 0)
+                @php $tieneEstilo = $subcarpetas->first() && $subcarpetas->first()->color_estilo; @endphp
                 <div class="section-label">📂 Carpetas ({{ $subcarpetas->count() }})</div>
+
+                @if($tieneEstilo)
+                {{-- Módulo raíz: tarjetas grandes coloreadas --}}
+                <div class="submodulos-grid">
+                    @foreach($subcarpetas as $sub)
+                    <div class="submodulo-wrap">
+                        <a href="{{ route('carpetas.show', $sub->id) }}"
+                           class="submodulo-card"
+                           style="background-color: {{ $sub->color_estilo }}">
+                            <span class="submodulo-emoji">{{ $sub->emoji_estilo }}</span>
+                            <span class="submodulo-nombre">{{ $sub->descripcion }}</span>
+                        </a>
+                        @if(isset($permisos) && $permisos['eliminar'])
+                        <button class="subcarpeta-del" title="Eliminar submódulo"
+                                onclick="pedirEliminarSubmodulo({{ $sub->id }}, '{{ addslashes($sub->descripcion) }}', this.closest('.submodulo-wrap'))">
+                            🗑
+                        </button>
+                        @endif
+                    </div>
+                    @endforeach
+                </div>
+                @else
+                {{-- Carpeta normal: tarjetas pequeñas con ícono de carpeta --}}
                 <div class="subcarpetas-grid">
                     @foreach($subcarpetas as $sub)
                     <div class="subcarpeta-wrap">
@@ -300,8 +381,10 @@ tr.seleccionada td { background: #EFF6FF !important; }
                     @endforeach
                 </div>
                 @endif
+                @endif
 
-                {{-- Documentos --}}
+                {{-- Documentos: solo dentro de submódulos, no en pantalla de módulo raíz --}}
+                @if(isset($carpetaActual) && (int)$carpetaActual->id_padre > 0)
                 <div class="section-label">
                     📄 Documentos
                     @if(isset($contenido))
@@ -395,6 +478,7 @@ tr.seleccionada td { background: #EFF6FF !important; }
                     @endif
                 </div>
                 @endif
+                @endif {{-- fin bloque documentos solo en submódulos --}}
 
             @else
             <div class="empty-state">
@@ -861,6 +945,72 @@ function confirmarEliminarCarpeta() {
         }
     })
     .catch(() => {
+        cerrarModalEliminar();
+        toast('Error de conexión. Intenta nuevamente.', 'error', 'Sin conexión');
+    });
+}
+
+// ═══════════════════════════════════════════════════════════
+// ELIMINACIÓN DE SUBMÓDULOS (cascada)
+// ═══════════════════════════════════════════════════════════
+var _elimSubId   = null;
+var _elimSubWrap = null;
+
+function pedirEliminarSubmodulo(id, nombre, wrap) {
+    _elimSubId   = id;
+    _elimSubWrap = wrap;
+
+    // Reutilizamos el modal de eliminar pero con texto de advertencia fuerte
+    var textoEl = document.getElementById('eliminar-texto');
+    textoEl.innerHTML =
+        '⚠️ ¿Eliminar el submódulo <strong>"' + nombre + '"</strong>?<br>' +
+        '<span style="font-size:.82rem;color:#991B1B;display:block;margin-top:8px">' +
+        'Se eliminarán <strong>todas las subcarpetas y documentos</strong> dentro de este submódulo. ' +
+        'Esta acción <strong>no se puede deshacer</strong>.' +
+        '</span>';
+
+    var btn = document.getElementById('btn-confirmar-eliminar');
+    btn.disabled    = false;
+    btn.textContent = 'Eliminar todo';
+    btn.style.background = '#DC2626';
+    btn.onclick = confirmarEliminarSubmodulo;
+    document.getElementById('modal-eliminar').classList.add('visible');
+}
+
+function confirmarEliminarSubmodulo() {
+    if (! _elimSubId) return;
+    var btn = document.getElementById('btn-confirmar-eliminar');
+    btn.disabled    = true;
+    btn.textContent = 'Eliminando...';
+
+    fetch('/submodulos/' + _elimSubId + '/cascade', {
+        method:  'DELETE',
+        headers: {
+            'X-CSRF-TOKEN':     window.CSRF_TOKEN,
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept':           'application/json',
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        // Restaurar estilo del botón para próximos usos
+        document.getElementById('btn-confirmar-eliminar').style.background = '';
+        cerrarModalEliminar();
+        if (data.ok) {
+            if (_elimSubWrap) {
+                _elimSubWrap.style.transition = 'opacity .3s, transform .3s';
+                _elimSubWrap.style.opacity    = '0';
+                _elimSubWrap.style.transform  = 'scale(.9)';
+                setTimeout(() => { _elimSubWrap && _elimSubWrap.remove(); }, 320);
+            }
+            toast(data.mensaje, 'ok', 'Submódulo eliminado');
+            _elimSubId = _elimSubWrap = null;
+        } else {
+            toast(data.error || 'No se pudo eliminar el submódulo.', 'error', 'Error');
+        }
+    })
+    .catch(() => {
+        document.getElementById('btn-confirmar-eliminar').style.background = '';
         cerrarModalEliminar();
         toast('Error de conexión. Intenta nuevamente.', 'error', 'Sin conexión');
     });

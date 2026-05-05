@@ -29,8 +29,9 @@ Route::middleware(['auth.sgc'])->group(function () {
     Route::get('/carpetas',                  [CarpetaController::class, 'index'])->name('carpetas.index');
     Route::get('/carpetas/{id}',             [CarpetaController::class, 'show'])->name('carpetas.show');
     Route::get('/carpetas/{id}/hijos',       [CarpetaController::class, 'hijos'])->name('carpetas.hijos');
-    Route::post('/carpetas/{id}/store',      [CarpetaController::class, 'store'])->name('carpetas.store');
-    Route::delete('/carpetas/{id}',          [CarpetaController::class, 'destroy'])->name('carpetas.destroy');
+    Route::post('/carpetas/{id}/store',         [CarpetaController::class, 'store'])->name('carpetas.store');
+    Route::delete('/submodulos/{id}/cascade',   [CarpetaController::class, 'destroySubmodulo'])->name('submodulos.destroy');
+    Route::delete('/carpetas/{id}',             [CarpetaController::class, 'destroy'])->name('carpetas.destroy');
     Route::post('/archivos/subir',           [ArchivoController::class, 'subir'])->name('archivos.subir');
     Route::delete('/archivos/lote',          [ArchivoController::class, 'eliminarLote'])->name('archivos.eliminar.lote');
     Route::get('/archivos/{id}/ver',         [ArchivoController::class, 'ver'])->name('archivos.ver');

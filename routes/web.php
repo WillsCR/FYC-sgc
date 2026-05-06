@@ -9,6 +9,7 @@ use App\Http\Controllers\UsuarioController;
 use App\Http\Controllers\PlanificacionController;
 use App\Http\Controllers\MinutaController;
 use App\Http\Controllers\PublicacionController;
+use App\Http\Controllers\VideoController;
 use Illuminate\Support\Facades\Route;
 
 // ─── Rutas públicas ──────────────────────────────────────────────────────────
@@ -71,4 +72,11 @@ Route::middleware(['auth.sgc'])->group(function () {
     Route::get('/minutas/{id}/editar',   [MinutaController::class, 'edit'])   ->name('minutas.edit');
     Route::put('/minutas/{id}',          [MinutaController::class, 'update']) ->name('minutas.update');
     Route::delete('/minutas/{id}',       [MinutaController::class, 'destroy'])->name('minutas.destroy');
+
+    // Sprint 6 — Videos
+    Route::get('/videos',                [VideoController::class, 'index'])    ->name('videos.index');
+    Route::post('/videos',               [VideoController::class, 'store'])    ->name('videos.store');
+    Route::get('/videos/{id}/stream',    [VideoController::class, 'stream'])   ->name('videos.stream');
+    Route::get('/videos/{id}/descargar', [VideoController::class, 'descargar'])->name('videos.descargar');
+    Route::delete('/videos/{id}',        [VideoController::class, 'eliminar']) ->name('videos.eliminar');
 });

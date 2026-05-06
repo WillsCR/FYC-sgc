@@ -21,6 +21,140 @@ class PanelController extends Controller
         return view('panel.index', compact('usuario', 'bloques', 'stats'));
     }
 
+    /**
+     * Crear nuevo módulo (nivel 0)
+     */
+    public function crearModulo(\Illuminate\Http\Request $request)
+    {
+        $usuario = PermisoService::usuarioActual();
+        if (!$usuario->esAdmin()) {
+            return response()->json(['error' => 'No tienes permisos para crear módulos.'], 403);
+        }
+
+        $request->validate([
+            'descripcion' => ['required', 'string', 'max:200'],
+            'color'       => ['nullable', 'string', 'max:50'],
+            'icono'       => ['nullable', 'string', 'max:100'],
+        ]);
+
+        $modulo = Carpeta::create([
+            'descripcion' => $request->input('descripcion'),
+            'id_padre'    => 0,
+            'nivel'       => 0,
+            'color'       => $request->input('color'),
+            'icono'       => $request->input('icono'),
+            'creada_el'   => now(),
+        ]);
+
+        return response()->json([
+            'ok'     => true,
+            'mensaje'=> 'Módulo creado correctamente.',
+            'modulo' => [
+                'id'          => $modulo->id,
+                'descripcion' => $modulo->descripcion,
+                'color'       => $modulo->color,
+                'icono'       => $modulo->icono,
+            ]
+        ]);
+    }
+
+    /**
+     * Crear nuevo submódulo (nivel 1)
+     */
+    public function crearSubmódulo(\Illuminate\Http\Request $request, int $moduloId)
+    {
+        $usuario = PermisoService::usuarioActual();
+        if (!$usuario->esAdmin()) {
+            return response()->json(['error' => 'No tienes permisos para crear submódulos.'], 403);
+        }
+
+        $modulo = Carpeta::where('id', $moduloId)->where('nivel', 0)->first();
+        if (!$modulo) {
+            return response()->json(['error' => 'El módulo no existe.'], 404);
+        }
+
+        $request->validate([
+            'descripcion' => ['required', 'string', 'max:200'],
+            'color'       => ['nullable', 'string', 'max:50'],
+            'icono'       => ['nullable', 'string', 'max:100'],
+        ]);
+
+        $submódulo = Carpeta::create([
+            'descripcion' => $request->input('descripcion'),
+            'id_padre'    => $moduloId,
+            'nivel'       => 1,
+            'color'       => $request->input('color'),
+            'icono'       => $request->input('icono'),
+            'creada_el'   => now(),
+        ]);
+
+        return response()->json([
+            'ok'     => true,
+            'mensaje'=> 'Submódulo creado correctamente.',
+            'submódulo' => [
+                'id'          => $submódulo->id,
+                'descripcion' => $submódulo->descripcion,
+                'color'       => $submódulo->color,
+                'icono'       => $submódulo->icono,
+            ]
+        ]);
+    }
+
+    /**
+     * Actualizar módulo o submódulo
+     */
+    public function actualizarModulo(\Illuminate\Http\Request $request, int $id)
+    {
+        $usuario = PermisoService::usuarioActual();
+        if (!$usuario->esAdmin()) {
+            return response()->json(['error' => 'No tienes permisos para actualizar módulos.'], 403);
+        }
+
+        $carpeta = Carpeta::findOrFail($id);
+
+        // Solo se pueden editar módulos y submódulos
+        if ((int) $carpeta->nivel > 1) {
+            return response()->json(['error' => 'Solo se pueden editar módulos y submódulos.'], 422);
+        }
+
+        $request->validate([
+            'descripcion' => ['nullable', 'string', 'max:200'],
+            'color'       => ['nullable', 'string', 'max:50'],
+            'icono'       => ['nullable', 'string', 'max:100'],
+        ]);
+
+        $dataToUpdate = [];
+
+        if ($request->filled('descripcion')) {
+            $dataToUpdate['descripcion'] = $request->input('descripcion');
+        }
+
+        if ($request->filled('color')) {
+            $dataToUpdate['color'] = $request->input('color');
+        }
+
+        if ($request->filled('icono')) {
+            $dataToUpdate['icono'] = $request->input('icono');
+        }
+
+        if (empty($dataToUpdate)) {
+            return response()->json(['error' => 'No hay cambios para guardar.'], 422);
+        }
+
+        $carpeta->update($dataToUpdate);
+
+        return response()->json([
+            'ok'     => true,
+            'mensaje'=> 'Módulo actualizado correctamente.',
+            'carpeta'=> [
+                'id'          => $carpeta->id,
+                'descripcion' => $carpeta->descripcion,
+                'color'       => $carpeta->color,
+                'icono'       => $carpeta->icono,
+            ]
+        ]);
+    }
+
     // ─── Bloques ─────────────────────────────────────────────────────────────
 
     private function bloquesVisibles($usuario): array
@@ -118,24 +252,37 @@ class PanelController extends Controller
 
             if (!$modulo_id) continue;
 
-            // Cargar submódulos de la BD
+            // Cargar módulo principal de la BD
+            $modulo = Carpeta::find($modulo_id);
+
+            // Cargar submódulos de la BD (con color e icono almacenados)
             $submódulos = Carpeta::where('id_padre', $modulo_id)
                 ->orderBy('descripcion')
                 ->get();
 
             $sub = [];
             foreach ($submódulos as $submódulo) {
-                $estilo = $this->obtenerEstiloSubmódulo($submódulo->descripcion);
+                // Usar color e icono de la BD, con fallback a la función si no existen
+                $color = $submódulo->color ?? $this->obtenerEstiloSubmódulo($submódulo->descripcion)['color'];
+                $emoji = $submódulo->icono ?? $this->obtenerEstiloSubmódulo($submódulo->descripcion)['emoji'];
                 
                 $sub[] = [
                     'titulo' => $submódulo->descripcion,
-                    'color' => $estilo['color'],
-                    'emoji' => $estilo['emoji'],
+                    'color' => $color,
+                    'emoji' => $emoji,
                     'ruta' => route('carpetas.show', [
                         'modulo' => $clave,
                         'id' => $submódulo->id,
                     ]),
                 ];
+            }
+
+            // Sobrescribir color e icono si existen en la BD
+            if ($modulo && $modulo->color) {
+                $meta['color'] = $modulo->color;
+            }
+            if ($modulo && $modulo->icono) {
+                $meta['emoji'] = $modulo->icono;
             }
 
             $bloques[$clave] = array_merge([

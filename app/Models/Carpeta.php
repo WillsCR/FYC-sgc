@@ -16,6 +16,8 @@ class Carpeta extends Model
         'nivel',
         'creada_el',
         'ruta',
+        'color',
+        'icono',
     ];
 
     protected $casts = [

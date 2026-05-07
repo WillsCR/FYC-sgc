@@ -70,12 +70,19 @@ class CarpetaController extends Controller
             ->get()
             ->filter(fn($c) => $esAdmin || $this->tieneAcceso($c->id, $usuario->id));
 
-        // Enriquecer subcarpetas con color y emoji cuando estén en un módulo raíz
-        $esModuloRaiz = in_array((int) $carpetaActual->id_padre, [0], true);
+        // Enriquecer subcarpetas con color y emoji cuando estén en un módulo raíz.
+        // Prioridad: columnas color/icono de BD (submódulos creados dinámicamente),
+        // fallback al helper hardcodeado (submódulos originales del sistema).
+        $esModuloRaiz = (int) $carpetaActual->id_padre === 0;
         $subcarpetas  = $subcarpetasRaw->map(function ($c) use ($esModuloRaiz) {
-            $estilo          = EstiloModulo::submodulo($c->descripcion);
-            $c->color_estilo = $esModuloRaiz ? $estilo['color'] : null;
-            $c->emoji_estilo = $esModuloRaiz ? $estilo['emoji'] : null;
+            if ($esModuloRaiz) {
+                $estilo          = EstiloModulo::submodulo($c->descripcion);
+                $c->color_estilo = $c->color ?: $estilo['color'];
+                $c->emoji_estilo = $c->icono ?: $estilo['emoji'];
+            } else {
+                $c->color_estilo = null;
+                $c->emoji_estilo = null;
+            }
             return $c;
         });
 
@@ -241,6 +248,29 @@ class CarpetaController extends Controller
 
         $nombre = $carpeta->descripcion;
 
+        // Verificar que el submódulo esté completamente vacío antes de permitir la eliminación.
+        // Se recorre en BFS toda la jerarquía descendente.
+        $todosLosIds = $this->recopilarDescendientes($carpeta->id);
+        $todosLosIds[] = $carpeta->id; // incluir el propio submódulo
+
+        // ¿Hay subcarpetas?
+        $tieneSubcarpetas = Carpeta::whereIn('id_padre', [$carpeta->id])->exists();
+        if ($tieneSubcarpetas) {
+            return response()->json([
+                'error' => 'No se puede eliminar: el submódulo contiene subcarpetas. Elimínalas primero.',
+            ], 422);
+        }
+
+        // ¿Hay documentos en algún nivel?
+        $tieneDocumentos = DB::table('sgc_carpetas_contenido3')
+            ->whereIn('id_carpeta', $todosLosIds)
+            ->exists();
+        if ($tieneDocumentos) {
+            return response()->json([
+                'error' => 'No se puede eliminar: el submódulo contiene documentos. Elimínalos primero.',
+            ], 422);
+        }
+
         try {
             DB::transaction(function () use ($carpeta) {
                 $this->eliminarCarpetaEnCascada($carpeta);
@@ -252,8 +282,24 @@ class CarpetaController extends Controller
 
         return response()->json([
             'ok'      => true,
-            'mensaje' => "Submódulo \"{$nombre}\" eliminado junto con todo su contenido.",
+            'mensaje' => "Submódulo \"{$nombre}\" eliminado correctamente.",
         ]);
+    }
+
+    /**
+     * Devuelve todos los IDs de carpetas descendientes (BFS) sin incluir el ID raíz.
+     */
+    private function recopilarDescendientes(int $carpetaId): array
+    {
+        $todos = [];
+        $cola  = Carpeta::where('id_padre', $carpetaId)->pluck('id')->toArray();
+
+        while (! empty($cola)) {
+            $todos = array_merge($todos, $cola);
+            $cola  = Carpeta::whereIn('id_padre', $cola)->pluck('id')->toArray();
+        }
+
+        return $todos;
     }
 
     /**

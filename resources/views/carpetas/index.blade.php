@@ -230,6 +230,50 @@
 /* Fila eliminada */
 .fila-eliminando td { opacity: .4; transition: opacity .3s; }
 
+/* ── Botón nuevo submódulo ───────────────────────────── */
+.btn-new-submodulo {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 16px; background: var(--navy); color: #fff;
+    border: none; border-radius: 4px; font-size: .82rem;
+    font-weight: 600; cursor: pointer; transition: background .15s;
+}
+.btn-new-submodulo:hover { background: var(--navy-light); }
+
+/* ── Modal nuevo submódulo ───────────────────────────── */
+.nsub-field { margin-bottom: 14px; }
+.nsub-label { display: block; font-size: .8rem; font-weight: 600; color: var(--navy); margin-bottom: 6px; }
+.nsub-input {
+    width: 100%; padding: 9px 12px;
+    border: 1px solid var(--border); border-radius: 4px;
+    font-size: .85rem; outline: none; box-sizing: border-box;
+    color: var(--text-primary); background: var(--surface);
+    transition: border-color .15s;
+}
+.nsub-input:focus { border-color: var(--blue-accent); }
+.nsub-color-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.nsub-color-presets { display: flex; gap: 6px; flex-wrap: wrap; }
+.nsub-color-preset {
+    width: 22px; height: 22px; border-radius: 4px;
+    border: 2px solid transparent; cursor: pointer; display: inline-block;
+    transition: transform .12s, border-color .12s;
+}
+.nsub-color-preset:hover { transform: scale(1.2); border-color: #fff; }
+.nsub-emoji-grid {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    max-height: 150px; overflow-y: auto;
+    padding: 8px; background: var(--surface-2);
+    border: 1px solid var(--border); border-radius: 6px;
+}
+.nsub-emoji-opt {
+    width: 34px; height: 34px; font-size: 1.1rem;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 6px; cursor: pointer;
+    border: 2px solid transparent; transition: all .12s;
+    user-select: none;
+}
+.nsub-emoji-opt:hover { background: #fff; border-color: var(--border); }
+.nsub-emoji-opt.selected { background: #fff; border-color: var(--blue-accent); box-shadow: 0 0 0 2px rgba(29,111,217,.18); }
+
 /* ── Checkboxes de selección ────────────────────────────── */
 .cb-check {
     width: 16px; height: 16px; cursor: pointer;
@@ -299,8 +343,8 @@ tr.seleccionada td { background: #EFF6FF !important; }
             @endif
 
             <div class="content-actions">
-                {{-- Botón volver: solo dentro de submódulos (id_padre > 0) --}}
-                @if(isset($carpetaActual) && (int)$carpetaActual->id_padre > 0)
+                {{-- Botón volver: en módulo raíz vuelve al panel, en subcarpetas vuelve al padre --}}
+                @if(isset($carpetaActual))
                 @php
                     $backUrl = (int)$carpetaActual->id_padre > 0
                         ? route('carpetas.show', $carpetaActual->id_padre)
@@ -316,6 +360,13 @@ tr.seleccionada td { background: #EFF6FF !important; }
                 <div class="content-title">
                     {{ isset($carpetaActual) ? $carpetaActual->descripcion : 'Gestión Documental' }}
                 </div>
+
+                {{-- Botón nuevo submódulo: solo en módulo raíz y para admins --}}
+                @if(isset($carpetaActual) && (int)$carpetaActual->id_padre === 0 && $esAdmin)
+                <button class="btn-new-submodulo" onclick="abrirModalNuevoSubmodulo()">
+                    ➕ Nuevo submódulo
+                </button>
+                @endif
 
                 {{-- Botones de acción: SOLO dentro de submódulos, no en la pantalla de módulo raíz --}}
                 @if(isset($carpetaActual) && (int)$carpetaActual->id_padre > 0)
@@ -583,6 +634,64 @@ tr.seleccionada td { background: #EFF6FF !important; }
         </div>
     </div>
 </div>
+
+@if(isset($carpetaActual) && (int)$carpetaActual->id_padre === 0 && $esAdmin)
+{{-- Modal: Nuevo submódulo --}}
+<div class="modal-overlay" id="modal-nuevo-submodulo">
+    <div class="modal" style="max-width:480px">
+        <div class="modal-title">📦 Nuevo submódulo</div>
+
+        <div class="nsub-field">
+            <label class="nsub-label" for="nsub-nombre">
+                Nombre <span style="color:var(--danger)">*</span>
+            </label>
+            <input type="text" id="nsub-nombre" class="nsub-input"
+                   placeholder="Ej: Contratos 2025" maxlength="200"
+                   onkeydown="if(event.key==='Enter') crearSubmodulo()">
+        </div>
+
+        <div class="nsub-field">
+            <label class="nsub-label">Color</label>
+            <div class="nsub-color-row">
+                <input type="color" id="nsub-color-picker" value="#0D2B5E"
+                       oninput="document.getElementById('nsub-color-hex').value=this.value"
+                       style="width:36px;height:36px;border:2px solid var(--border);border-radius:4px;padding:0;background:none;cursor:pointer;flex-shrink:0">
+                <input type="text" id="nsub-color-hex" class="nsub-input" value="#0D2B5E"
+                       maxlength="7" placeholder="#000000"
+                       oninput="sincronizarColorSub(this.value)"
+                       style="width:100px;font-family:monospace">
+                <div class="nsub-color-presets">
+                    @foreach(['#0D2B5E','#15803D','#991B1B','#B45309','#7C3AED','#0C4A6E','#1D4ED8','#065F46','#374151','#0891B2','#BE185D','#9A3412'] as $c)
+                    <span class="nsub-color-preset" title="{{ $c }}"
+                          style="background:{{ $c }}"
+                          onclick="elegirColorPresetSub('{{ $c }}')"></span>
+                    @endforeach
+                </div>
+            </div>
+        </div>
+
+        <div class="nsub-field">
+            <label class="nsub-label">Ícono</label>
+            <div class="nsub-emoji-grid" id="nsub-emoji-grid">
+                @foreach(['📋','🌿','🛡️','🏗️','👨‍💼','🏢','📈','💰','📁','📄','📊','🔧','⚙️','🔑','📌','📎','🗂️','💼','🧾','📦','🚧','🌐','📡','🔬','💡','🏆','✅','⚠️','🔍','📝','🏛️','📐','🧩','🎯','🔐','📮','🧪','📉','🗃️'] as $em)
+                <div class="nsub-emoji-opt{{ $em === '📁' ? ' selected' : '' }}"
+                     data-emoji="{{ $em }}"
+                     onclick="elegirEmojiSub(this)">{{ $em }}</div>
+                @endforeach
+            </div>
+            <input type="hidden" id="nsub-emoji-val" value="📁">
+        </div>
+
+        <div class="modal-actions">
+            <button type="button" class="btn-cancel" onclick="cerrarModalNuevoSubmodulo()">Cancelar</button>
+            <button type="button" id="nsub-btn-crear" onclick="crearSubmodulo()"
+                    class="btn-upload">
+                📦 Crear submódulo
+            </button>
+        </div>
+    </div>
+</div>
+@endif
 
 @endsection
 
@@ -963,15 +1072,14 @@ function pedirEliminarSubmodulo(id, nombre, wrap) {
     // Reutilizamos el modal de eliminar pero con texto de advertencia fuerte
     var textoEl = document.getElementById('eliminar-texto');
     textoEl.innerHTML =
-        '⚠️ ¿Eliminar el submódulo <strong>"' + nombre + '"</strong>?<br>' +
-        '<span style="font-size:.82rem;color:#991B1B;display:block;margin-top:8px">' +
-        'Se eliminarán <strong>todas las subcarpetas y documentos</strong> dentro de este submódulo. ' +
-        'Esta acción <strong>no se puede deshacer</strong>.' +
+        '¿Eliminar el submódulo <strong>"' + nombre + '"</strong>?<br>' +
+        '<span style="font-size:.82rem;color:var(--text-muted);display:block;margin-top:8px">' +
+        'Solo se puede eliminar si el submódulo está completamente vacío.' +
         '</span>';
 
     var btn = document.getElementById('btn-confirmar-eliminar');
     btn.disabled    = false;
-    btn.textContent = 'Eliminar todo';
+    btn.textContent = 'Eliminar';
     btn.style.background = '#DC2626';
     btn.onclick = confirmarEliminarSubmodulo;
     document.getElementById('modal-eliminar').classList.add('visible');
@@ -1081,6 +1189,178 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarVisor(
 @endif
 @if($errors->any())
     toast('{{ addslashes($errors->first()) }}', 'error', 'Error de validación');
+@endif
+
+// ═══════════════════════════════════════════════════════════
+// MODAL: NUEVO SUBMÓDULO
+// ═══════════════════════════════════════════════════════════
+@if(isset($carpetaActual) && (int)$carpetaActual->id_padre === 0 && $esAdmin)
+(function() {
+    var RUTA_CREAR_SUBMODULO = '{{ route('panel.crear.submodulo', $carpetaActual->id) }}';
+
+    function escHtml(s) {
+        return String(s)
+            .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+            .replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+    }
+    function escJs(s) {
+        return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    }
+
+    window.abrirModalNuevoSubmodulo = function() {
+        document.getElementById('nsub-nombre').value    = '';
+        document.getElementById('nsub-color-picker').value = '#0D2B5E';
+        document.getElementById('nsub-color-hex').value    = '#0D2B5E';
+        document.getElementById('nsub-emoji-val').value    = '📁';
+        document.querySelectorAll('.nsub-emoji-opt').forEach(function(el) {
+            el.classList.toggle('selected', el.dataset.emoji === '📁');
+        });
+        var btn = document.getElementById('nsub-btn-crear');
+        btn.disabled    = false;
+        btn.textContent = '📦 Crear submódulo';
+        document.getElementById('modal-nuevo-submodulo').classList.add('visible');
+        setTimeout(function() { document.getElementById('nsub-nombre').focus(); }, 120);
+    };
+
+    window.cerrarModalNuevoSubmodulo = function() {
+        document.getElementById('modal-nuevo-submodulo').classList.remove('visible');
+    };
+
+    window.elegirColorPresetSub = function(hex) {
+        document.getElementById('nsub-color-picker').value = hex;
+        document.getElementById('nsub-color-hex').value    = hex;
+    };
+
+    window.sincronizarColorSub = function(val) {
+        if (/^#[0-9a-fA-F]{6}$/.test(val)) {
+            document.getElementById('nsub-color-picker').value = val;
+        }
+    };
+
+    window.elegirEmojiSub = function(el) {
+        document.querySelectorAll('.nsub-emoji-opt').forEach(function(o) {
+            o.classList.remove('selected');
+        });
+        el.classList.add('selected');
+        document.getElementById('nsub-emoji-val').value = el.dataset.emoji;
+    };
+
+    window.crearSubmodulo = function() {
+        var nombre = document.getElementById('nsub-nombre').value.trim();
+        var color  = document.getElementById('nsub-color-hex').value.trim();
+        var icono  = document.getElementById('nsub-emoji-val').value;
+
+        if (!nombre) {
+            toast('Escribe un nombre para el submódulo.', 'error');
+            document.getElementById('nsub-nombre').focus();
+            return;
+        }
+        if (!/^#[0-9a-fA-F]{6}$/.test(color)) {
+            color = document.getElementById('nsub-color-picker').value;
+        }
+
+        var btn = document.getElementById('nsub-btn-crear');
+        btn.disabled    = true;
+        btn.textContent = 'Creando...';
+
+        fetch(RUTA_CREAR_SUBMODULO, {
+            method: 'POST',
+            headers: {
+                'Content-Type':     'application/json',
+                'X-CSRF-TOKEN':     window.CSRF_TOKEN,
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept':           'application/json',
+            },
+            body: JSON.stringify({ descripcion: nombre, color: color, icono: icono })
+        })
+        .then(function(res) { return res.text(); })
+        .then(function(raw) {
+            var data;
+            try { data = JSON.parse(raw); } catch(e) {
+                toast('Respuesta inesperada del servidor.', 'error', 'Error');
+                btn.disabled = false; btn.textContent = '📦 Crear submódulo';
+                return;
+            }
+            if (data.ok) {
+                cerrarModalNuevoSubmodulo();
+                var sub = data['submódulo'];
+                toast('"' + escHtml(sub.descripcion) + '" creado correctamente.', 'ok', 'Submódulo creado');
+                try { insertarTarjetaSubmodulo(sub); } catch(e) { console.warn('insertarTarjetaSubmodulo:', e); }
+            } else {
+                toast(data.error || 'No se pudo crear el submódulo.', 'error', 'Error');
+                btn.disabled = false; btn.textContent = '📦 Crear submódulo';
+            }
+        })
+        .catch(function(err) {
+            console.error('fetch error:', err);
+            toast('Error de red. Intenta nuevamente.', 'error', 'Sin conexión');
+            btn.disabled = false; btn.textContent = '📦 Crear submódulo';
+        });
+    };
+
+    function insertarTarjetaSubmodulo(sub) {
+        var grid = document.querySelector('.submodulos-grid');
+
+        if (!grid) {
+            // Aún no existe la grid (módulo sin submódulos todavía)
+            var scroll = document.querySelector('.content-scroll');
+            if (!scroll) return;
+
+            var lbl = document.createElement('div');
+            lbl.className   = 'section-label';
+            lbl.textContent = '📂 Carpetas (1)';
+            scroll.insertBefore(lbl, scroll.firstChild);
+
+            grid = document.createElement('div');
+            grid.className = 'submodulos-grid';
+            lbl.after(grid);
+        } else {
+            // Actualizar el contador en el label
+            var lbl = grid.previousElementSibling;
+            if (lbl && lbl.classList.contains('section-label')) {
+                var cnt = grid.querySelectorAll('.submodulo-wrap').length + 1;
+                lbl.textContent = '📂 Carpetas (' + cnt + ')';
+            }
+        }
+
+        var color  = sub.color  || '#374151';
+        var icono  = sub.icono  || '📁';
+        var nombre = sub.descripcion || '';
+
+        var wrap = document.createElement('div');
+        wrap.className = 'submodulo-wrap';
+        wrap.innerHTML =
+            '<a href="/carpetas/' + sub.id + '" class="submodulo-card"' +
+            ' style="background-color:' + escHtml(color) + '">' +
+                '<span class="submodulo-emoji">' + escHtml(icono)  + '</span>' +
+                '<span class="submodulo-nombre">' + escHtml(nombre) + '</span>' +
+            '</a>' +
+            '<button class="subcarpeta-del" title="Eliminar submódulo"' +
+            ' onclick="pedirEliminarSubmodulo(' + sub.id + ',\'' + escJs(nombre) + '\',this.closest(\'.submodulo-wrap\'))">' +
+                '🗑' +
+            '</button>';
+
+        // Animación de entrada
+        wrap.style.opacity   = '0';
+        wrap.style.transform = 'scale(.92)';
+        wrap.style.transition = 'opacity .25s, transform .25s';
+        grid.appendChild(wrap);
+        requestAnimationFrame(function() {
+            requestAnimationFrame(function() {
+                wrap.style.opacity   = '1';
+                wrap.style.transform = 'scale(1)';
+            });
+        });
+    }
+
+    // Cerrar modal al hacer clic fuera
+    var mNsub = document.getElementById('modal-nuevo-submodulo');
+    if (mNsub) {
+        mNsub.addEventListener('click', function(e) {
+            if (e.target === this) cerrarModalNuevoSubmodulo();
+        });
+    }
+})();
 @endif
 </script>
 @endpush

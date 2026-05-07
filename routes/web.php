@@ -23,9 +23,10 @@ Route::middleware(['auth.sgc'])->group(function () {
 
     // Panel y métricas
     Route::get('/panel',          [PanelController::class,    'index'])->name('panel');
-    Route::post('/panel/modulo',  [PanelController::class,    'crearModulo'])->name('panel.crear.modulo');
+    Route::post('/panel/modulo',             [PanelController::class, 'crearModulo'])   ->name('panel.crear.modulo');
     Route::post('/panel/modulo/{id}/submodulo', [PanelController::class, 'crearSubmódulo'])->name('panel.crear.submodulo');
-    Route::put('/panel/modulo/{id}', [PanelController::class, 'actualizarModulo'])->name('panel.actualizar.modulo');
+    Route::put('/panel/modulo/{id}',         [PanelController::class, 'actualizarModulo'])->name('panel.actualizar.modulo');
+    Route::delete('/panel/modulo/{id}',      [PanelController::class, 'destroyModulo'])  ->name('panel.eliminar.modulo');
     Route::get('/metricas',       [MetricasController::class, 'index'])->name('metricas');
     Route::get('/metricas/excel', [MetricasController::class, 'exportarExcel'])->name('metricas.excel');
 

@@ -307,19 +307,23 @@ class UsuarioController extends Controller
 
     /**
      * Carga los módulos raíz de sgc_carpetas3 con sus submodulos anidados.
+     * Marca como `es_dinamico` aquellos que no forman parte del sistema base.
      */
     private function cargarModulosCarpetas(): \Illuminate\Support\Collection
     {
+        $idsBase = array_keys($this->modulosBase());
+
         $raices = DB::table('sgc_carpetas3')
             ->where('id_padre', 0)
             ->orderBy('id')
             ->get();
 
-        return $raices->map(function ($modulo) {
-            $modulo->submodulos = DB::table('sgc_carpetas3')
+        return $raices->map(function ($modulo) use ($idsBase) {
+            $modulo->submodulos  = DB::table('sgc_carpetas3')
                 ->where('id_padre', $modulo->id)
                 ->orderBy('descripcion')
                 ->get();
+            $modulo->es_dinamico = ! in_array($modulo->id, $idsBase, true);
             return $modulo;
         });
     }
@@ -332,6 +336,23 @@ class UsuarioController extends Controller
         return [
             'bloque_sig', 'bloque_seguridad', 'bloque_ambiente', 'bloque_rrhh',
             'bloque_abastecimiento', 'bloque_proyectos', 'bloque_gerencia', 'bloque_finanzas',
+        ];
+    }
+
+    /**
+     * Módulos base del sistema: id => [emoji, nombre corto, columna_bloque]
+     */
+    private function modulosBase(): array
+    {
+        return [
+            1 => ['📋', 'Control SIG',      'bloque_sig'],
+            2 => ['🌿', 'Medio Ambiente',    'bloque_ambiente'],
+            3 => ['🛡️', 'Seguridad SST',    'bloque_seguridad'],
+            4 => ['🏗️', 'Abastecimiento',   'bloque_abastecimiento'],
+            5 => ['👨‍💼','RRHH',              'bloque_rrhh'],
+            6 => ['🏢', 'Gerencia',          'bloque_gerencia'],
+            7 => ['📈', 'Proyectos',         'bloque_proyectos'],
+            8 => ['💰', 'Finanzas',          'bloque_finanzas'],
         ];
     }
 }

@@ -164,6 +164,16 @@ p  { color: var(--text-secondary); }
     margin-bottom: 16px;
 }
 
+/* Wrapper para posicionar el botón eliminar sin romper el grid */
+.bloque-wrap {
+    position: relative;
+}
+.bloque-wrap .bloque {
+    display: block;
+    height: 100%;
+    box-sizing: border-box;
+}
+
 .bloque {
     background: var(--surface);
     border: 1px solid var(--border);

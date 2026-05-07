@@ -372,6 +372,7 @@
                     Selecciona qué bloques de módulos verá este usuario en su panel.
                 </p>
                 <div class="bloques-grid-form">
+                    {{-- Módulos base del sistema (bloque_xxx en sgc_usuarios) --}}
                     @foreach([
                         'bloque_sig'            => ['📋', 'Control SIG'],
                         'bloque_seguridad'      => ['🛡️', 'Seguridad SST'],
@@ -391,6 +392,23 @@
                                onchange="this.closest('.bloque-check').classList.toggle('activo', this.checked)">
                         <span>{{ $emoji }}</span>
                         <span>{{ $nombre }}</span>
+                    </label>
+                    @endforeach
+
+                    {{-- Módulos dinámicos (acceso vía sgc_carpetas_permisos) --}}
+                    @foreach($modulosCarpetas->where('es_dinamico', true) as $modDin)
+                    @php
+                        $tieneAccesoDin = isset($permisosCarpetas) && $permisosCarpetas->has($modDin->id);
+                        $checkedDin     = old("carpetas.{$modDin->id}.descarga", $tieneAccesoDin);
+                    @endphp
+                    <label class="bloque-check {{ $checkedDin ? 'activo' : '' }}" id="label-din-{{ $modDin->id }}">
+                        <input type="checkbox"
+                               name="carpetas[{{ $modDin->id }}][descarga]"
+                               value="1"
+                               {{ $checkedDin ? 'checked' : '' }}
+                               onchange="this.closest('.bloque-check').classList.toggle('activo', this.checked)">
+                        <span>{{ $modDin->icono ?? '📁' }}</span>
+                        <span>{{ $modDin->descripcion }}</span>
                     </label>
                     @endforeach
                 </div>
@@ -414,47 +432,47 @@
                         📦 {{ $modulo->descripcion }}
                     </div>
 
-                    @if($modulo->submodulos->isEmpty())
-                        <div style="padding:8px 14px;font-size:.75rem;color:var(--text-muted);
-                                    border:1px solid var(--border);border-top:none;border-radius:0 0 4px 4px">
-                            Sin submodulos
+                    @php
+                        // Para módulos sin submodulos (dinámicos), permitir asignar acceso al módulo raíz directamente
+                        $carpetasPermisionables = $modulo->submodulos->isEmpty()
+                            ? collect([$modulo])   // módulo raíz como entidad permisionable
+                            : $modulo->submodulos;
+                        $esModuloRaiz = $modulo->submodulos->isEmpty();
+                    @endphp
+                    @foreach($carpetasPermisionables as $carpeta)
+                    @php
+                        $perm2     = isset($permisosCarpetas) ? ($permisosCarpetas[$carpeta->id] ?? null) : null;
+                        $tienePerm = $perm2 !== null;
+                    @endphp
+                    <div class="carpeta-perm" style="border-radius:0;border-top:none;
+                         {{ $loop->last ? 'border-radius:0 0 4px 4px' : '' }}">
+                        <div class="carpeta-perm-header" onclick="toggleCarpeta({{ $carpeta->id }})">
+                            <span>{{ $tienePerm ? '📂' : '📁' }}</span>
+                            <span>{{ $esModuloRaiz ? 'Acceso al módulo' : $carpeta->descripcion }}</span>
+                            @if($tienePerm)
+                                <span style="margin-left:auto;font-size:.68rem;color:#16A34A;font-weight:700">✓ Con permisos</span>
+                            @endif
+                            <svg id="arrow-{{ $carpeta->id }}" width="12" height="12" viewBox="0 0 24 24"
+                                 fill="none" stroke="currentColor" stroke-width="2.5"
+                                 style="margin-left:{{ $tienePerm ? '6px' : 'auto' }};transition:transform .15s">
+                                <path d="M9 18l6-6-6-6"/>
+                            </svg>
                         </div>
-                    @else
-                        @foreach($modulo->submodulos as $carpeta)
-                        @php
-                            $perm2     = isset($permisosCarpetas) ? ($permisosCarpetas[$carpeta->id] ?? null) : null;
-                            $tienePerm = $perm2 !== null;
-                        @endphp
-                        <div class="carpeta-perm" style="border-radius:0;border-top:none;
-                             {{ $loop->last ? 'border-radius:0 0 4px 4px' : '' }}">
-                            <div class="carpeta-perm-header" onclick="toggleCarpeta({{ $carpeta->id }})">
-                                <span>{{ $tienePerm ? '📂' : '📁' }}</span>
-                                <span>{{ $carpeta->descripcion }}</span>
-                                @if($tienePerm)
-                                    <span style="margin-left:auto;font-size:.68rem;color:#16A34A;font-weight:700">✓ Con permisos</span>
-                                @endif
-                                <svg id="arrow-{{ $carpeta->id }}" width="12" height="12" viewBox="0 0 24 24"
-                                     fill="none" stroke="currentColor" stroke-width="2.5"
-                                     style="margin-left:{{ $tienePerm ? '6px' : 'auto' }};transition:transform .15s">
-                                    <path d="M9 18l6-6-6-6"/>
-                                </svg>
-                            </div>
-                            <div class="carpeta-perm-body {{ $tienePerm ? 'visible' : '' }}" id="perm-{{ $carpeta->id }}">
-                                <div class="permisos-checks">
-                                    @foreach(['carga'=>['📤','Subir'],'descarga'=>['📥','Descargar'],'crear'=>['📁','Crear'],'eliminar'=>['🗑️','Eliminar'],'editar'=>['✏️','Editar']] as $permKey => [$icon, $label])
-                                    @php $isChecked = old("carpetas.{$carpeta->id}.{$permKey}", $perm2 ? (bool)$perm2->$permKey : false); @endphp
-                                    <label class="perm-check {{ $isChecked ? 'activo' : '' }}">
-                                        <input type="checkbox" name="carpetas[{{ $carpeta->id }}][{{ $permKey }}]"
-                                               value="1" {{ $isChecked ? 'checked' : '' }}>
-                                        <span style="font-size:1.1rem">{{ $icon }}</span>
-                                        <span>{{ $label }}</span>
-                                    </label>
-                                    @endforeach
-                                </div>
+                        <div class="carpeta-perm-body {{ $tienePerm ? 'visible' : '' }}" id="perm-{{ $carpeta->id }}">
+                            <div class="permisos-checks">
+                                @foreach(['carga'=>['📤','Subir'],'descarga'=>['📥','Descargar'],'crear'=>['📁','Crear'],'eliminar'=>['🗑️','Eliminar'],'editar'=>['✏️','Editar']] as $permKey => [$icon, $label])
+                                @php $isChecked = old("carpetas.{$carpeta->id}.{$permKey}", $perm2 ? (bool)$perm2->$permKey : false); @endphp
+                                <label class="perm-check {{ $isChecked ? 'activo' : '' }}">
+                                    <input type="checkbox" name="carpetas[{{ $carpeta->id }}][{{ $permKey }}]"
+                                           value="1" {{ $isChecked ? 'checked' : '' }}>
+                                    <span style="font-size:1.1rem">{{ $icon }}</span>
+                                    <span>{{ $label }}</span>
+                                </label>
+                                @endforeach
                             </div>
                         </div>
-                        @endforeach
-                    @endif
+                    </div>
+                    @endforeach
                 </div>
                 @endforeach
             </div>

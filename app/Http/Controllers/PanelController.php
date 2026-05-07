@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\EstiloModulo;
 use App\Models\Carpeta;
 use App\Services\PermisoService;
 use Illuminate\Support\Facades\DB;
@@ -249,33 +250,7 @@ class PanelController extends Controller
 
         foreach ($bloques_meta as $clave => $meta) {
             $modulo_id = $modulos_map[$clave] ?? null;
-
-            if (!$modulo_id) continue;
-
-            // Cargar módulo principal de la BD
-            $modulo = Carpeta::find($modulo_id);
-
-            // Cargar submódulos de la BD (con color e icono almacenados)
-            $submódulos = Carpeta::where('id_padre', $modulo_id)
-                ->orderBy('descripcion')
-                ->get();
-
-            $sub = [];
-            foreach ($submódulos as $submódulo) {
-                // Usar color e icono de la BD, con fallback a la función si no existen
-                $color = $submódulo->color ?? $this->obtenerEstiloSubmódulo($submódulo->descripcion)['color'];
-                $emoji = $submódulo->icono ?? $this->obtenerEstiloSubmódulo($submódulo->descripcion)['emoji'];
-                
-                $sub[] = [
-                    'titulo' => $submódulo->descripcion,
-                    'color' => $color,
-                    'emoji' => $emoji,
-                    'ruta' => route('carpetas.show', [
-                        'modulo' => $clave,
-                        'id' => $submódulo->id,
-                    ]),
-                ];
-            }
+            if (! $modulo_id) continue;
 
             // Sobrescribir color e icono si existen en la BD
             if ($modulo && $modulo->color) {
@@ -286,45 +261,13 @@ class PanelController extends Controller
             }
 
             $bloques[$clave] = array_merge([
-                'id' => $clave,
-                'sub' => $sub,
+                'id'         => $clave,
+                'carpeta_id' => $modulo_id,
             ], $meta);
         }
 
         return $bloques;
     }
-
-    // ─── Estilos de submódulos ───────────────────────────────────────────────
-
-    /**
-     * Asigna colores y emojis fijos por submódulo
-     */
-    private function obtenerEstiloSubmódulo(string $nombre): array
-{
-    $estilos = [
-        'No Conformidades' => ['color' => '#DC2626', 'emoji' => '⚠️'],
-        'Instrumentos de Medición Certificación de Calidad' => ['color' => '#D97706', 'emoji' => '📏'],
-        'Certificados de Calidad' => ['color' => '#0F6E56', 'emoji' => '✅'],
-        'Certificados de EPP' => ['color' => '#B45309', 'emoji' => '🦺'],
-        'Formatos SIG' => ['color' => '#C05621', 'emoji' => '📝'],
-        'Documentos del SIG' => ['color' => '#1D4ED8', 'emoji' => '📁'],
-        'Capacitaciones' => ['color' => '#0369A1', 'emoji' => '🎓'],
-        'Informes' => ['color' => '#7C3AED', 'emoji' => '📊'],
-        'Auditorías' => ['color' => '#059669', 'emoji' => '🔍'],
-        'Sustancias y Residuos Peligrosos' => ['color' => '#DC2626', 'emoji' => '♻️'],
-        'Control de Recursos' => ['color' => '#D97706', 'emoji' => '🌱'],
-        'Huellas de Carbono' => ['color' => '#0F6E56', 'emoji' => '🌍'],
-        'Control Operativo' => ['color' => '#B45309', 'emoji' => '⚙️'],
-        'Protocolo Minsal' => ['color' => '#C05621', 'emoji' => '🏥'],
-        'DS 44' => ['color' => '#1D4ED8', 'emoji' => '⚖️'],
-        'CPHS' => ['color' => '#0369A1', 'emoji' => '👥'],
-        'Control Plan e Infraestructura' => ['color' => '#7C3AED', 'emoji' => '🏗️'],
-        'Cursos' => ['color' => '#059669', 'emoji' => '📚'],
-        'Contrato pozos' => ['color' => '#6366F1', 'emoji' => '⛏️'],
-    ];
-
-    return $estilos[$nombre] ?? ['color' => '#6B7280', 'emoji' => '📁'];
-}
 
     // ─── Estadísticas ────────────────────────────────────────────────────────
 

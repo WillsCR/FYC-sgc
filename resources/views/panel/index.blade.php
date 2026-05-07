@@ -32,24 +32,14 @@
         </div>
         <div class="bloques-grid">
             @foreach($bloques as $bloque)
-            <div class="bloque" id="bloque-{{ $bloque['id'] }}"
-                 onclick="toggleSubBloques('{{ $bloque['id'] }}')"
-                 style="border-top-color: {{ $bloque['color'] ?? '#6B7280' }}">
-                <div class="bloque-icon-wrap" style="background: {{ $bloque['color'] ?? '#6B7280' }}18">
-                    <span style="font-size:1.5rem;line-height:1">{{ $bloque['emoji'] ?? '📁' }}</span>
+            <a href="{{ route('carpetas.show', $bloque['carpeta_id']) }}"
+               class="bloque"
+               style="border-top-color: {{ $bloque['color'] }}; text-decoration:none">
+                <div class="bloque-icon-wrap" style="background: {{ $bloque['color'] }}18">
+                    <span style="font-size:1.5rem;line-height:1">{{ $bloque['emoji'] }}</span>
                 </div>
                 <div class="bloque-title">{{ $bloque['titulo'] }}</div>
                 <div class="bloque-badge">{{ $bloque['badge'] }}</div>
-            </div>
-            @endforeach
-        </div>
-
-        @foreach($bloques as $bloque)
-        <div class="sub-bloques" id="sub-{{ $bloque['id'] }}" style="display:none">
-            @foreach($bloque['sub'] as $sub)
-            <a href="{{ $sub['ruta'] }}" class="sub-bloque" style="background-color:{{ $sub['color'] ?? '#6B7280' }}">
-                <span style="font-size:.95rem">{{ $sub['emoji'] ?? '📁' }}</span>
-                {{ $sub['titulo'] }}
             </a>
             @endforeach
             @if(session('es_admin') || session('es_superadmin'))
@@ -58,7 +48,6 @@
             </button>
             @endif
         </div>
-        @endforeach
     @else
         <div style="padding:40px 0;text-align:center">
             <div style="font-size:2.5rem;margin-bottom:12px">🔒</div>
@@ -282,73 +271,6 @@ document.getElementById('modulo-color').addEventListener('change', function() {
     if (this.match(/^#[0-9A-F]{6}$/i)) {
         document.getElementById('modulo-color-picker').value = this.value;
     }
-});
-
-document.getElementById('modulo-color-picker').addEventListener('change', function() {
-    document.getElementById('modulo-color').value = this.value;
-});
-
-document.getElementById('submodulo-color').addEventListener('change', function() {
-    if (this.match(/^#[0-9A-F]{6}$/i)) {
-        document.getElementById('submodulo-color-picker').value = this.value;
-    }
-});
-
-document.getElementById('submodulo-color-picker').addEventListener('change', function() {
-    document.getElementById('submodulo-color').value = this.value;
-});
-
-// Enviar formulario crear módulo
-document.getElementById('form-crear-modulo').addEventListener('submit', function(e) {
-    e.preventDefault();
-    const formData = new FormData(this);
-    
-    fetch('{{ route("panel.crear.modulo") }}', {
-        method: 'POST',
-        headers: {
-            'X-CSRF-TOKEN': window.CSRF_TOKEN || document.querySelector('meta[name="csrf-token"]')?.content,
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(Object.fromEntries(formData))
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.ok) {
-            alert('Módulo creado correctamente.');
-            cerrarModalCrearModulo();
-            location.reload();
-        } else {
-            alert('Error: ' + (data.error || 'No se pudo crear el módulo'));
-        }
-    })
-    .catch(err => alert('Error: ' + err.message));
-});
-
-// Enviar formulario crear submódulo
-document.getElementById('form-crear-submodulo').addEventListener('submit', function(e) {
-    e.preventDefault();
-    const modulo_id = document.getElementById('submodulo-modulo-id').value;
-    const formData = new FormData(this);
-    
-    fetch('{{ route("panel.crear.submodulo", ":id") }}'.replace(':id', modulo_id), {
-        method: 'POST',
-        headers: {
-            'X-CSRF-TOKEN': window.CSRF_TOKEN || document.querySelector('meta[name="csrf-token"]')?.content,
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(Object.fromEntries(formData))
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.ok) {
-            alert('Submódulo creado correctamente.');
-            cerrarModalCrearSubmodulo();
-            location.reload();
-        } else {
-            alert('Error: ' + (data.error || 'No se pudo crear el submódulo'));
-        }
-    })
-    .catch(err => alert('Error: ' + err.message));
 });
 </script>
 

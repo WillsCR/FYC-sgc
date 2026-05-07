@@ -125,6 +125,65 @@ class CarpetaController extends Controller
             ->with('ok', 'Carpeta "' . $request->input('descripcion') . '" creada correctamente.');
     }
 
+    public function update(Request $request, int $id)
+    {
+        $usuario = PermisoService::usuarioActual();
+        $esAdmin = $usuario->esAdmin();
+
+        $carpeta = Carpeta::findOrFail($id);
+
+        // Solo admin puede editar propiedades visuales
+        if (!$esAdmin) {
+            return response()->json(['error' => 'No tienes permisos para editar esta carpeta.'], 403);
+        }
+
+        // Solo se pueden editar color e icono en módulos (nivel 0) y submódulos (nivel 1)
+        if ((int) $carpeta->nivel > 1) {
+            return response()->json(['error' => 'Solo se pueden editar propiedades en módulos y submódulos.'], 422);
+        }
+
+        $request->validate([
+            'descripcion' => ['nullable', 'string', 'max:200'],
+            'color'       => ['nullable', 'string', 'max:50'],
+            'icono'       => ['nullable', 'string', 'max:100'],
+        ], [
+            'descripcion.max' => 'El nombre no puede superar 200 caracteres.',
+            'color.max'       => 'El color no puede superar 50 caracteres.',
+            'icono.max'       => 'El icono no puede superar 100 caracteres.',
+        ]);
+
+        $dataToUpdate = [];
+
+        if ($request->has('descripcion') && $request->filled('descripcion')) {
+            $dataToUpdate['descripcion'] = $request->input('descripcion');
+        }
+
+        if ($request->has('color') && $request->filled('color')) {
+            $dataToUpdate['color'] = $request->input('color');
+        }
+
+        if ($request->has('icono') && $request->filled('icono')) {
+            $dataToUpdate['icono'] = $request->input('icono');
+        }
+
+        if (empty($dataToUpdate)) {
+            return response()->json(['error' => 'No hay cambios para guardar.'], 422);
+        }
+
+        $carpeta->update($dataToUpdate);
+
+        return response()->json([
+            'ok'       => true,
+            'mensaje'  => 'Módulo actualizado correctamente.',
+            'carpeta'  => [
+                'id'          => $carpeta->id,
+                'descripcion' => $carpeta->descripcion,
+                'color'       => $carpeta->color,
+                'icono'       => $carpeta->icono,
+            ]
+        ]);
+    }
+
     public function destroy(int $id)
     {
         $usuario = PermisoService::usuarioActual();

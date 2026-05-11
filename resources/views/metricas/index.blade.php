@@ -214,7 +214,7 @@
                 Descargar Excel
             </a>
 
-            {{-- Botón PDF (genera desde el navegador con los gráficos) --}}
+            {{-- Botón PDF: captura los canvas y los envía al servidor --}}
             <button class="btn-descarga btn-pdf" onclick="descargarPDF()">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
@@ -225,6 +225,14 @@
                 </svg>
                 Descargar PDF
             </button>
+
+            {{-- Formulario oculto para enviar las imágenes de los gráficos --}}
+            <form id="form-pdf" method="POST" action="{{ route('metricas.pdf') }}" style="display:none">
+                @csrf
+                <input type="hidden" id="pdf-img-area"    name="img_area">
+                <input type="hidden" id="pdf-img-donut"   name="img_donut">
+                <input type="hidden" id="pdf-img-minutas" name="img_minutas">
+            </form>
         </div>
     </div>
 
@@ -339,8 +347,6 @@
 @push('scripts')
 {{-- Chart.js --}}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-{{-- html2pdf para generar PDF con los gráficos --}}
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
 <script>
 var dataPorArea  = @json($graficoPorArea);
@@ -467,25 +473,41 @@ function mostrarSpinner(texto) {
     }, 4000);
 }
 
-// ── Generar PDF con html2pdf ──────────────────────────────────────────────
+// ── Generar PDF con gráficos ─────────────────────────────────────────────
 function descargarPDF() {
     mostrarSpinner('Generando PDF...');
 
-    var fecha = new Date().toLocaleDateString('es-CL').replace(/\//g, '-');
-    var elemento = document.getElementById('contenido-metricas');
+    // Esperar un tick para que el spinner sea visible antes de capturar
+    setTimeout(function () {
+        try {
+            var canvasArea    = document.getElementById('graficoPorArea');
+            var canvasDonut   = document.getElementById('graficoDonut');
+            var canvasMinutas = document.getElementById('graficoMinutas');
 
-    var opciones = {
-        margin:       [10, 10, 10, 10],
-        filename:     'Metricas_SGC_' + fecha + '.pdf',
-        image:        { type: 'jpeg', quality: 0.95 },
-        html2canvas:  { scale: 2, useCORS: true, logging: false },
-        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' },
-        pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
-    };
+            // Capturar cada canvas como PNG base64 (fondo blanco explícito)
+            function capturarCanvas(canvas) {
+                if (!canvas) return '';
+                var tmp = document.createElement('canvas');
+                tmp.width  = canvas.width;
+                tmp.height = canvas.height;
+                var ctx = tmp.getContext('2d');
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, tmp.width, tmp.height);
+                ctx.drawImage(canvas, 0, 0);
+                return tmp.toDataURL('image/png');
+            }
 
-    html2pdf().set(opciones).from(elemento).save().then(function() {
-        document.getElementById('spinner').classList.remove('visible');
-    });
+            document.getElementById('pdf-img-area').value    = capturarCanvas(canvasArea);
+            document.getElementById('pdf-img-donut').value   = capturarCanvas(canvasDonut);
+            document.getElementById('pdf-img-minutas').value = capturarCanvas(canvasMinutas);
+
+            document.getElementById('form-pdf').submit();
+        } catch (e) {
+            console.error('Error capturando gráficos:', e);
+            document.getElementById('spinner').classList.remove('visible');
+            alert('No se pudieron capturar los gráficos. Intenta nuevamente.');
+        }
+    }, 80);
 }
 
 // ── Fix botón atrás ───────────────────────────────────────────────────────

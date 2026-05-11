@@ -73,10 +73,11 @@ class UsuarioController extends Controller
         $request->validate([
             'nombre'    => ['required', 'string', 'max:150'],
             'email'     => ['required', 'email', 'unique:sgc_usuarios,email'],
-            'id_perfil' => ['required', 'integer'],
+            'id_perfil' => ['required', 'integer', 'in:1,2,4'],
             'password'  => ['required', 'string', 'min:6', 'confirmed'],
         ], [
             'email.unique'       => 'Este correo ya está registrado.',
+            'id_perfil.in'       => 'El perfil seleccionado no es válido.',
             'password.min'       => 'La contraseña debe tener al menos 6 caracteres.',
             'password.confirmed' => 'Las contraseñas no coinciden.',
         ]);
@@ -154,10 +155,11 @@ class UsuarioController extends Controller
         $request->validate([
             'nombre'    => ['required', 'string', 'max:150'],
             'email'     => ['required', 'email', "unique:sgc_usuarios,email,{$id}"],
-            'id_perfil' => ['nullable', 'integer'],
+            'id_perfil' => ['nullable', 'integer', 'in:1,2,4'],
             'password'  => ['nullable', 'string', 'min:6', 'confirmed'],
         ], [
             'email.unique'       => 'Este correo ya está en uso.',
+            'id_perfil.in'       => 'El perfil seleccionado no es válido.',
             'password.min'       => 'La contraseña debe tener al menos 6 caracteres.',
             'password.confirmed' => 'Las contraseñas no coinciden.',
         ]);
@@ -271,14 +273,22 @@ class UsuarioController extends Controller
 
     private function perfilesDisponibles(int $perfil): \Illuminate\Support\Collection
     {
+        // Solo se usan 3 perfiles en esta plataforma: Super Admin (1), Admin (2), Trabajador (4)
         if ($perfil === 1) {
-            return DB::table('ser_perfiles')->where('estado', 1)->orderBy('id_perfil')->get();
+            return DB::table('ser_perfiles')
+                ->whereIn('id_perfil', [1, 2, 4])
+                ->orderBy('id_perfil')
+                ->get();
         }
+        // Admin solo puede crear/editar Trabajadores
         return DB::table('ser_perfiles')->where('id_perfil', 4)->get();
     }
 
     private function validarPerfilAsignable(int $perfilActual, int $perfilNuevo): void
     {
+        // Solo se permiten los 3 perfiles activos en la plataforma
+        if (! in_array($perfilNuevo, [1, 2, 4])) abort(403);
+        // Admin solo puede asignar Trabajador
         if ($perfilActual === 2 && $perfilNuevo !== 4) abort(403);
     }
 

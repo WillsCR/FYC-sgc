@@ -29,11 +29,13 @@ Route::middleware(['auth.sgc'])->group(function () {
     Route::delete('/panel/modulo/{id}',      [PanelController::class, 'destroyModulo'])  ->name('panel.eliminar.modulo');
     Route::get('/metricas',       [MetricasController::class, 'index'])->name('metricas');
     Route::get('/metricas/excel', [MetricasController::class, 'exportarExcel'])->name('metricas.excel');
+    Route::post('/metricas/pdf',  [MetricasController::class, 'exportarPdf'])  ->name('metricas.pdf');
 
     // Sprint 3 — Gestión documental
     Route::get('/carpetas',                  [CarpetaController::class, 'index'])->name('carpetas.index');
     Route::get('/carpetas/{id}',             [CarpetaController::class, 'show'])->name('carpetas.show');
     Route::get('/carpetas/{id}/hijos',       [CarpetaController::class, 'hijos'])->name('carpetas.hijos');
+    Route::get('/carpetas/{id}/buscar',      [CarpetaController::class, 'buscar'])->name('carpetas.buscar');
     Route::post('/carpetas/{id}/store',         [CarpetaController::class, 'store'])->name('carpetas.store');
     Route::delete('/submodulos/{id}/cascade',   [CarpetaController::class, 'destroySubmodulo'])->name('submodulos.destroy');
     Route::delete('/carpetas/{id}',             [CarpetaController::class, 'destroy'])->name('carpetas.destroy');

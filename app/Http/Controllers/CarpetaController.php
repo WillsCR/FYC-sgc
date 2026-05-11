@@ -347,6 +347,102 @@ class CarpetaController extends Controller
         $carpeta->delete();
     }
 
+    /**
+     * Búsqueda de documentos dentro de un submódulo (y todos sus descendientes).
+     * GET /carpetas/{id}/buscar?q=texto
+     *
+     * Devuelve JSON con los resultados incluyendo la ruta de carpetas de cada archivo.
+     */
+    public function buscar(Request $request, int $id)
+    {
+        $usuario = PermisoService::usuarioActual();
+        $esAdmin = $usuario->esAdmin();
+
+        if (! $esAdmin && ! $this->tieneAcceso($id, $usuario->id)) {
+            return response()->json(['error' => 'Sin permiso.'], 403);
+        }
+
+        $q = trim($request->query('q', ''));
+        if (mb_strlen($q) < 2) {
+            return response()->json(['resultados' => [], 'total' => 0]);
+        }
+
+        // Recopilar todos los IDs de carpetas del árbol (incluyendo la raíz)
+        $descendientes   = $this->recopilarDescendientes($id);
+        $descendientes[] = $id;
+
+        // Buscar documentos cuyo nombre coincida con el término
+        $filas = DB::table('sgc_carpetas_contenido3 as cc')
+            ->join('sgc_documentos as d', 'd.id', '=', 'cc.id_documento')
+            ->join('sgc_carpetas3 as c', 'c.id', '=', 'cc.id_carpeta')
+            ->whereIn('cc.id_carpeta', $descendientes)
+            ->where(function ($query) use ($q) {
+                $query->where('cc.descripcion',    'like', "%{$q}%")
+                      ->orWhere('d.nombre_original', 'like', "%{$q}%");
+            })
+            ->orderBy('cc.creada_el', 'desc')
+            ->select(
+                'cc.id',
+                'cc.descripcion',
+                'cc.creada_el',
+                'cc.id_carpeta',
+                'd.archivo',
+                'd.nombre_original',
+                'c.descripcion as carpeta_nombre',
+                'c.id_padre   as carpeta_padre'
+            )
+            ->limit(100)
+            ->get();
+
+        // Construir la ruta legible para cada resultado
+        $resultados = $filas->map(function ($fila) use ($esAdmin, $usuario) {
+            $ext    = strtolower(pathinfo($fila->archivo, PATHINFO_EXTENSION));
+            $nombre = $fila->descripcion ?: $fila->nombre_original;
+
+            // Permisos del archivo
+            $puedeVer      = $esAdmin || $this->permisosEnCarpeta($fila->id_carpeta, $usuario->id)['descarga'];
+            $visualizable  = in_array($ext, ['pdf', 'jpg', 'jpeg', 'png', 'gif', 'webp']);
+
+            return [
+                'id'           => $fila->id,
+                'nombre'       => $nombre,
+                'ext'          => $ext ?: 'file',
+                'fecha'        => $fila->creada_el
+                    ? \Carbon\Carbon::parse($fila->creada_el)->format('d/m/Y')
+                    : null,
+                'carpeta_id'   => $fila->id_carpeta,
+                'ruta'         => $this->buildBreadcrumbTexto($fila->id_carpeta),
+                'puede_ver'    => $puedeVer && $visualizable,
+                'puede_dl'     => $puedeVer,
+                'url_ver'      => route('archivos.ver',       $fila->id),
+                'url_dl'       => route('archivos.descargar', $fila->id),
+                'url_carpeta'  => route('carpetas.show',      $fila->id_carpeta),
+            ];
+        });
+
+        return response()->json([
+            'resultados' => $resultados,
+            'total'      => $resultados->count(),
+            'termino'    => $q,
+        ]);
+    }
+
+    /**
+     * Devuelve la ruta de una carpeta como texto legible: "Submódulo › Carpeta › Subcarpeta"
+     */
+    private function buildBreadcrumbTexto(int $carpetaId): string
+    {
+        $partes = [];
+        $actual = Carpeta::find($carpetaId);
+
+        while ($actual && (int) $actual->id_padre > 0) {
+            array_unshift($partes, $actual->descripcion);
+            $actual = Carpeta::find($actual->id_padre);
+        }
+
+        return implode(' › ', $partes) ?: '—';
+    }
+
     public function hijos(int $id)
     {
         $usuario = PermisoService::usuarioActual();

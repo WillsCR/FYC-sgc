@@ -176,6 +176,87 @@
     .archivos-table th:nth-child(3), .archivos-table td:nth-child(3) { display: none; }
 }
 
+/* ── Buscador de archivos ───────────────────────────────── */
+.search-bar-wrap {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-md); padding: 8px 14px;
+    margin-bottom: 20px; transition: border-color .15s, box-shadow .15s;
+}
+.search-bar-wrap:focus-within {
+    border-color: var(--blue-accent);
+    box-shadow: 0 0 0 3px rgba(29,111,217,.12);
+}
+.search-bar-icon { color: var(--text-muted); font-size: 1rem; flex-shrink: 0; }
+.search-bar-input {
+    flex: 1; border: none; outline: none; font-size: .88rem;
+    font-family: var(--font); color: var(--text-primary); background: transparent;
+}
+.search-bar-input::placeholder { color: var(--text-muted); }
+.search-bar-clear {
+    background: none; border: none; cursor: pointer;
+    color: var(--text-muted); font-size: .9rem; padding: 2px 4px;
+    border-radius: 4px; line-height: 1; display: none;
+    transition: color .12s;
+}
+.search-bar-clear:hover { color: var(--danger); }
+.search-bar-spinner {
+    width: 16px; height: 16px;
+    border: 2px solid var(--border); border-top-color: var(--blue-accent);
+    border-radius: 50%; animation: spin .7s linear infinite;
+    flex-shrink: 0; display: none;
+}
+
+/* Panel de resultados */
+.search-results {
+    display: none; margin-bottom: 24px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-md); overflow: hidden;
+}
+.search-results-header {
+    padding: 10px 16px; background: var(--surface-2);
+    border-bottom: 1px solid var(--border);
+    font-size: .75rem; font-weight: 700; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: .06em;
+    display: flex; align-items: center; justify-content: space-between;
+}
+.search-results-count {
+    background: var(--navy); color: #fff;
+    padding: 1px 8px; border-radius: 99px; font-size: .7rem;
+}
+.search-result-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 11px 16px; border-bottom: 1px solid #F1F5F9;
+    transition: background .12s;
+}
+.search-result-item:last-child { border-bottom: none; }
+.search-result-item:hover { background: var(--surface-2); }
+.search-result-ext {
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: .6rem; font-weight: 700; padding: 3px 7px;
+    border-radius: 4px; text-transform: uppercase; flex-shrink: 0;
+}
+.search-result-info { flex: 1; min-width: 0; }
+.search-result-nombre {
+    font-size: .83rem; font-weight: 600; color: var(--text-primary);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.search-result-ruta {
+    font-size: .72rem; color: var(--text-muted); margin-top: 2px;
+    display: flex; align-items: center; gap: 4px;
+}
+.search-result-ruta a {
+    color: var(--blue-accent); text-decoration: none; font-weight: 500;
+}
+.search-result-ruta a:hover { text-decoration: underline; }
+.search-result-fecha { font-size: .72rem; color: var(--text-muted); flex-shrink: 0; }
+.search-result-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.search-empty {
+    text-align: center; padding: 40px 20px;
+    color: var(--text-muted); font-size: .84rem;
+}
+.search-empty-icon { font-size: 2rem; margin-bottom: 10px; }
+
 /* ── Toasts ─────────────────────────────────────────────── */
 #toast-container {
     position: fixed; top: 20px; right: 20px; z-index: 9999;
@@ -386,6 +467,26 @@ tr.seleccionada td { background: #EFF6FF !important; }
 
         <div class="content-scroll">
 
+            {{-- Buscador: solo dentro de submódulos (id_padre > 0) --}}
+            @if(isset($carpetaActual) && (int)$carpetaActual->id_padre > 0)
+            <div class="search-bar-wrap">
+                <span class="search-bar-icon">🔍</span>
+                <input type="text" class="search-bar-input" id="search-input"
+                       placeholder="Buscar archivos en este submódulo..."
+                       autocomplete="off" maxlength="100">
+                <div class="search-bar-spinner" id="search-spinner"></div>
+                <button class="search-bar-clear" id="search-clear" title="Limpiar búsqueda">✕</button>
+            </div>
+
+            {{-- Panel de resultados (oculto por defecto) --}}
+            <div class="search-results" id="search-results">
+                <div class="search-results-header">
+                    <span>Resultados de búsqueda</span>
+                    <span class="search-results-count" id="search-count">0</span>
+                </div>
+                <div id="search-results-body"></div>
+            </div>
+            @endif
 
             @if(isset($carpetaActual))
 
@@ -1189,6 +1290,181 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarVisor(
 @endif
 @if($errors->any())
     toast('{{ addslashes($errors->first()) }}', 'error', 'Error de validación');
+@endif
+
+// ═══════════════════════════════════════════════════════════
+// BUSCADOR DE ARCHIVOS
+// ═══════════════════════════════════════════════════════════
+@if(isset($carpetaActual) && (int)$carpetaActual->id_padre > 0)
+(function () {
+    var URL_BUSCAR   = '{{ route('carpetas.buscar', $carpetaActual->id) }}';
+    var input        = document.getElementById('search-input');
+    var spinner      = document.getElementById('search-spinner');
+    var clearBtn     = document.getElementById('search-clear');
+    var panel        = document.getElementById('search-results');
+    var body         = document.getElementById('search-results-body');
+    var countEl      = document.getElementById('search-count');
+    var contenido    = document.querySelector('.content-scroll > .section-label');
+    var debounceTimer = null;
+    var ultimaQuery   = '';
+
+    // Clases de extensión (reutiliza las de la tabla principal)
+    function extClass(ext) {
+        if (ext === 'pdf') return 'ext-pdf';
+        if (['doc','docx'].indexOf(ext) !== -1) return 'ext-doc';
+        if (['xls','xlsx','xlsm'].indexOf(ext) !== -1) return 'ext-xls';
+        if (['jpg','jpeg','png','gif','webp'].indexOf(ext) !== -1) return 'ext-img';
+        return 'ext-other';
+    }
+
+    function escHtml(s) {
+        return String(s)
+            .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+            .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    // Resaltar el término buscado dentro de un texto
+    function highlight(texto, q) {
+        if (!q) return escHtml(texto);
+        var escaped = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        return escHtml(texto).replace(
+            new RegExp('(' + escaped + ')', 'gi'),
+            '<mark style="background:#FEF08A;border-radius:2px;padding:0 1px">$1</mark>'
+        );
+    }
+
+    function mostrarResultados(data) {
+        spinner.style.display = 'none';
+
+        if (data.resultados.length === 0) {
+            countEl.textContent = '0';
+            body.innerHTML =
+                '<div class="search-empty">' +
+                    '<div class="search-empty-icon">📭</div>' +
+                    '<div>Sin resultados para <strong>"' + escHtml(data.termino) + '"</strong></div>' +
+                '</div>';
+            panel.style.display = 'block';
+            ocultarContenidoNormal(true);
+            return;
+        }
+
+        countEl.textContent = data.total + (data.total === 100 ? '+' : '');
+
+        var html = data.resultados.map(function (r) {
+            var acciones = '';
+            if (r.puede_ver) {
+                acciones +=
+                    '<button class="btn-accion btn-ver" ' +
+                    'onclick="abrirVisor(\'' + r.url_ver + '\',\'' + escHtml(r.nombre).replace(/'/g,"\\'") + '\',\'' + r.ext + '\')">' +
+                    '👁 Ver</button>';
+            }
+            if (r.puede_dl) {
+                acciones +=
+                    '<a href="' + r.url_dl + '" class="btn-accion btn-dl">⬇ Descargar</a>';
+            }
+
+            return '<div class="search-result-item">' +
+                '<span class="search-result-ext ' + extClass(r.ext) + '">' + escHtml(r.ext.toUpperCase() || 'FILE') + '</span>' +
+                '<div class="search-result-info">' +
+                    '<div class="search-result-nombre">' + highlight(r.nombre, data.termino) + '</div>' +
+                    '<div class="search-result-ruta">' +
+                        '📂 <a href="' + r.url_carpeta + '">' + escHtml(r.ruta) + '</a>' +
+                    '</div>' +
+                '</div>' +
+                (r.fecha ? '<div class="search-result-fecha">' + r.fecha + '</div>' : '') +
+                '<div class="search-result-actions">' + acciones + '</div>' +
+            '</div>';
+        }).join('');
+
+        body.innerHTML = html;
+        panel.style.display = 'block';
+        ocultarContenidoNormal(true);
+    }
+
+    function ocultarContenidoNormal(ocultar) {
+        // Ocultar/mostrar las secciones de carpetas y documentos normales
+        document.querySelectorAll(
+            '.content-scroll > .section-label, ' +
+            '.content-scroll > .submodulos-grid, ' +
+            '.content-scroll > .subcarpetas-grid, ' +
+            '.content-scroll > .archivos-table-wrap, ' +
+            '.content-scroll > .empty-state, ' +
+            '.bulk-bar'
+        ).forEach(function (el) {
+            el.style.display = ocultar ? 'none' : '';
+        });
+    }
+
+    function limpiar() {
+        input.value     = '';
+        ultimaQuery     = '';
+        clearBtn.style.display  = 'none';
+        spinner.style.display   = 'none';
+        panel.style.display     = 'none';
+        body.innerHTML          = '';
+        ocultarContenidoNormal(false);
+    }
+
+    function buscar(q) {
+        if (q === ultimaQuery) return;
+        ultimaQuery = q;
+
+        if (q.length < 2) {
+            spinner.style.display = 'none';
+            panel.style.display   = 'none';
+            ocultarContenidoNormal(false);
+            return;
+        }
+
+        spinner.style.display = 'block';
+        panel.style.display   = 'none';
+
+        fetch(URL_BUSCAR + '?q=' + encodeURIComponent(q), {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json',
+            }
+        })
+        .then(function (res) { return res.text(); })
+        .then(function (raw) {
+            var data;
+            try { data = JSON.parse(raw); } catch(e) {
+                spinner.style.display = 'none';
+                toast('Error al procesar la búsqueda.', 'error');
+                return;
+            }
+            if (data.error) {
+                spinner.style.display = 'none';
+                toast(data.error, 'error');
+                return;
+            }
+            mostrarResultados(data);
+        })
+        .catch(function () {
+            spinner.style.display = 'none';
+            toast('Error de conexión al buscar.', 'error');
+        });
+    }
+
+    // Eventos
+    input.addEventListener('input', function () {
+        var q = this.value.trim();
+        clearBtn.style.display = q.length > 0 ? 'block' : 'none';
+
+        clearTimeout(debounceTimer);
+        if (q.length === 0) { limpiar(); return; }
+
+        spinner.style.display = 'block';
+        debounceTimer = setTimeout(function () { buscar(q); }, 320);
+    });
+
+    clearBtn.addEventListener('click', function () { limpiar(); input.focus(); });
+
+    // Limpiar con Escape
+    input.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') { limpiar(); input.blur(); }
+    });
+})();
 @endif
 
 // ═══════════════════════════════════════════════════════════

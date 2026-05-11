@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\PermisoService;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\DB;
 
 class MetricasController extends Controller
@@ -19,6 +20,47 @@ class MetricasController extends Controller
         return view('metricas.index', compact(
             'usuario', 'stats', 'graficoPorArea', 'graficoMinutas'
         ));
+    }
+
+    /**
+     * Descarga el PDF profesional con las métricas.
+     * Recibe los gráficos como imágenes base64 capturadas desde el frontend.
+     */
+    public function exportarPdf(\Illuminate\Http\Request $request)
+    {
+        $usuario = PermisoService::usuarioActual();
+        if (! $usuario) return redirect()->route('login');
+
+        $stats          = $this->estadisticasGlobales();
+        $graficoPorArea = $this->graficoCumplimientoPorArea();
+        $graficoMinutas = $this->graficoMinutasPorMes();
+
+        // Gráficos capturados desde el canvas del navegador (base64 PNG)
+        $imgArea    = $request->input('img_area',    null);
+        $imgDonut   = $request->input('img_donut',   null);
+        $imgMinutas = $request->input('img_minutas', null);
+
+        // Validación básica: deben ser data URIs de imagen PNG
+        $validarImg = fn($v) => is_string($v) && str_starts_with($v, 'data:image/png;base64,') ? $v : null;
+        $imgArea    = $validarImg($imgArea);
+        $imgDonut   = $validarImg($imgDonut);
+        $imgMinutas = $validarImg($imgMinutas);
+
+        $pdf = Pdf::loadView('metricas.pdf', compact(
+                'stats', 'graficoPorArea', 'graficoMinutas',
+                'imgArea', 'imgDonut', 'imgMinutas'
+            ))
+            ->setPaper('a4', 'portrait')
+            ->setOptions([
+                'defaultFont'          => 'DejaVu Sans',
+                'isHtml5ParserEnabled' => true,
+                'isRemoteEnabled'      => false,
+                'dpi'                  => 150,
+            ]);
+
+        $nombreArchivo = 'Metricas_SGC_' . now()->format('d-m-Y') . '.pdf';
+
+        return $pdf->download($nombreArchivo);
     }
 
     /**

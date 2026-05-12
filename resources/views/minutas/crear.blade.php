@@ -68,14 +68,17 @@
 }
 .dyn-table tr:last-child td { border-bottom: none; }
 .dyn-table input,
-.dyn-table select {
+.dyn-table select,
+.dyn-table textarea {
     width: 100%; padding: 6px 8px;
     border: 1px solid var(--border); border-radius: var(--radius-sm);
     font-size: .78rem; font-family: var(--font);
     background: var(--body-bg); color: var(--text-primary); outline: none;
 }
+.dyn-table textarea { resize: vertical; min-height: 50px; }
 .dyn-table input:focus,
-.dyn-table select:focus { border-color: var(--blue-accent); }
+.dyn-table select:focus,
+.dyn-table textarea:focus { border-color: var(--blue-accent); }
 
 /* Botones */
 .btn-add-row {
@@ -86,6 +89,18 @@
     background: transparent; transition: all .12s;
 }
 .btn-add-row:hover { background: var(--navy); color: #fff; border-style: solid; }
+
+/* Botones de agregar fila dentro del header oscuro */
+.form-card-header .btn-add-row {
+    border-color: rgba(255,255,255,.6);
+    color: #fff;
+}
+.form-card-header .btn-add-row:hover {
+    background: rgba(255,255,255,.15);
+    border-color: #fff;
+    border-style: dashed;
+    color: #fff;
+}
 
 .btn-del-row {
     display: inline-flex; align-items: center; justify-content: center;
@@ -124,6 +139,17 @@
 .num-cell {
     text-align: center; font-weight: 700; color: var(--navy);
     font-size: .78rem; width: 32px;
+}
+
+/* Tipo participante */
+.tipo-conv {
+    font-weight: 600; cursor: pointer;
+    border-color: var(--blue-accent) !important;
+    color: var(--navy) !important;
+}
+.tipo-conv.externo {
+    border-color: #7c3aed !important;
+    color: #7c3aed !important;
 }
 
 /* Responsive */
@@ -231,9 +257,10 @@
                 <table class="dyn-table" id="tabla-convocados">
                     <thead>
                         <tr>
-                            <th style="width:140px">Empresa</th>
+                            <th style="width:120px">Empresa</th>
+                            <th style="width:95px">Tipo</th>
                             <th>Nombre y Apellidos</th>
-                            <th style="width:180px">Cargo</th>
+                            <th style="width:170px">Cargo</th>
                             <th style="width:36px"></th>
                         </tr>
                     </thead>
@@ -242,6 +269,12 @@
                         <tr>
                             <td><input type="text" name="conv_empresa[]" placeholder="Empresa"></td>
                             <td>
+                                <select onchange="cambiarTipo(this)" class="tipo-conv">
+                                    <option value="interno">Interno</option>
+                                    <option value="externo">Externo</option>
+                                </select>
+                            </td>
+                            <td class="nombre-cell">
                                 <select name="conv_id_usuario[]" onchange="autocompletarCargo(this)">
                                     <option value="">— Seleccionar usuario —</option>
                                     @foreach($usuariosSelect as $u)
@@ -333,6 +366,12 @@ function plantillaConvocado() {
     return `<tr>
         <td><input type="text" name="conv_empresa[]" placeholder="Empresa"></td>
         <td>
+            <select onchange="cambiarTipo(this)" class="tipo-conv">
+                <option value="interno">Interno</option>
+                <option value="externo">Externo</option>
+            </select>
+        </td>
+        <td class="nombre-cell">
             <select name="conv_id_usuario[]" onchange="autocompletarCargo(this)">
                 <option value="">— Seleccionar usuario —</option>
                 ${opciones}
@@ -404,6 +443,33 @@ function autocompletarCargo(select) {
     const hidden  = fila.querySelector('input[name="conv_nom_ape[]"]');
     const opt     = select.options[select.selectedIndex];
     if (hidden) hidden.value = opt ? (opt.dataset.nombre || '') : '';
+}
+
+// ── Cambiar entre participante interno / externo ──────────────────────────────
+function cambiarTipo(select) {
+    const fila = select.closest('tr');
+    const cell = fila.querySelector('.nombre-cell');
+    const esExterno = select.value === 'externo';
+
+    select.classList.toggle('externo', esExterno);
+
+    if (esExterno) {
+        cell.innerHTML = `
+            <input type="hidden" name="conv_id_usuario[]" value="">
+            <input type="text"   name="conv_nom_ape[]"    placeholder="Nombre y apellidos completos...">
+        `;
+    } else {
+        const opciones = usuariosData.map(u =>
+            `<option value="${u.id}" data-nombre="${u.nombre}">${u.nombre}</option>`
+        ).join('');
+        cell.innerHTML = `
+            <select name="conv_id_usuario[]" onchange="autocompletarCargo(this)">
+                <option value="">— Seleccionar usuario —</option>
+                ${opciones}
+            </select>
+            <input type="hidden" name="conv_nom_ape[]" value="">
+        `;
+    }
 }
 </script>
 @endpush

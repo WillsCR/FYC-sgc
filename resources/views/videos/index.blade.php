@@ -226,23 +226,56 @@ function subirVideo() {
 
     xhr.addEventListener('load', () => {
         document.getElementById('btnSubir').disabled = false;
+        document.getElementById('progressWrap').style.display = 'none';
+
+        // 413: PHP rechazó el archivo por límites de php.ini
+        if (xhr.status === 413) {
+            showToast(
+                'El servidor rechazó el archivo. El límite de subida de PHP es demasiado pequeño. ' +
+                'Ejecuta: php artisan sgc:setup',
+                'err'
+            );
+            return;
+        }
+
+        // Respuesta vacía: PHP puede haber cortado la conexión silenciosamente
+        if (! xhr.responseText || xhr.responseText.trim() === '') {
+            showToast(
+                'El servidor no respondió. Probablemente el archivo supera el límite de PHP (upload_max_filesize). ' +
+                'Ejecuta: php artisan sgc:setup',
+                'err'
+            );
+            return;
+        }
+
         try {
             const res = JSON.parse(xhr.responseText);
             if (xhr.status === 200 && res.ok) {
                 cerrarModalSubir();
                 showToast('Video subido correctamente.', 'ok');
                 insertarCard(res.video);
+            } else if (xhr.status === 422 && res.errors) {
+                // Error de validación de Laravel — mostrar el primero
+                const primerError = Object.values(res.errors)[0][0];
+                showToast(primerError, 'err');
             } else {
-                showToast(res.error || 'Error al subir el video.', 'err');
+                showToast(res.error || res.message || 'Error al subir el video.', 'err');
             }
         } catch {
-            showToast('Error inesperado. Inténtalo de nuevo.', 'err');
+            showToast('Respuesta inesperada del servidor. Intenta nuevamente.', 'err');
         }
     });
 
     xhr.addEventListener('error', () => {
         document.getElementById('btnSubir').disabled = false;
-        showToast('Error de red al subir el video.', 'err');
+        document.getElementById('progressWrap').style.display = 'none';
+        showToast('Error de red al subir el video. Verifica tu conexión.', 'err');
+    });
+
+    xhr.addEventListener('abort', () => {
+        document.getElementById('btnSubir').disabled = false;
+        document.getElementById('progressWrap').style.display = 'none';
+        showToast('La subida fue cancelada.', 'err');
     });
 
     xhr.send(fd);

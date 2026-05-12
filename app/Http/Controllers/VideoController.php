@@ -36,6 +36,21 @@ class VideoController extends Controller
             return response()->json(['error' => 'Solo los administradores pueden subir videos.'], 403);
         }
 
+        // Detectar cuando PHP descartó el archivo por exceder upload_max_filesize o post_max_size.
+        // En ese caso $_FILES llega vacío pero Content-Length indica el tamaño real enviado.
+        $contentLength = (int) $request->server('CONTENT_LENGTH', 0);
+        $postMaxBytes  = $this->parseIniBytes(ini_get('post_max_size'));
+        $uploadMaxBytes= $this->parseIniBytes(ini_get('upload_max_filesize'));
+        $limiteMinimo  = min($postMaxBytes, $uploadMaxBytes);
+
+        if ($contentLength > 0 && ! $request->hasFile('video') && $contentLength > $limiteMinimo) {
+            $limiteMB = round($limiteMinimo / 1024 / 1024);
+            return response()->json([
+                'error' => "El servidor rechazó el archivo porque supera el límite de PHP ({$limiteMB} MB). "
+                         . 'Pide al administrador del servidor que ejecute: php artisan sgc:setup',
+            ], 413);
+        }
+
         $request->validate([
             'titulo' => ['required', 'string', 'max:300'],
             'video'  => [
@@ -156,6 +171,19 @@ class VideoController extends Controller
         $nombreDescarga = preg_replace('/[^\w\.\-]/', '_', $video->nombre_original);
 
         return response()->download($path, $nombreDescarga);
+    }
+
+    private function parseIniBytes(string $val): int
+    {
+        $val  = trim($val);
+        $last = strtoupper(substr($val, -1));
+        $num  = (int) $val;
+        return match ($last) {
+            'G'     => $num * 1024 * 1024 * 1024,
+            'M'     => $num * 1024 * 1024,
+            'K'     => $num * 1024,
+            default => $num,
+        };
     }
 
     public function eliminar(int $id)

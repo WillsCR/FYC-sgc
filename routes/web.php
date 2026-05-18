@@ -74,10 +74,11 @@ Route::middleware(['auth.sgc'])->group(function () {
     Route::get('/minutas',               [MinutaController::class, 'index'])  ->name('minutas.index');
     Route::get('/minutas/crear',         [MinutaController::class, 'create']) ->name('minutas.create');
     Route::post('/minutas',              [MinutaController::class, 'store'])  ->name('minutas.store');
-    Route::get('/minutas/{id}',          [MinutaController::class, 'show'])   ->name('minutas.show');
-    Route::get('/minutas/{id}/editar',   [MinutaController::class, 'edit'])   ->name('minutas.edit');
-    Route::put('/minutas/{id}',          [MinutaController::class, 'update']) ->name('minutas.update');
-    Route::delete('/minutas/{id}',       [MinutaController::class, 'destroy'])->name('minutas.destroy');
+    Route::get('/minutas/{id}',          [MinutaController::class, 'show'])     ->name('minutas.show');
+    Route::get('/minutas/{id}/editar',   [MinutaController::class, 'edit'])     ->name('minutas.edit');
+    Route::get('/minutas/{id}/pdf',      [MinutaController::class, 'descargar'])->name('minutas.pdf');
+    Route::put('/minutas/{id}',          [MinutaController::class, 'update'])   ->name('minutas.update');
+    Route::delete('/minutas/{id}',       [MinutaController::class, 'destroy'])  ->name('minutas.destroy');
 
     // Sprint 6 — Videos
     Route::get('/videos',                [VideoController::class, 'index'])    ->name('videos.index');

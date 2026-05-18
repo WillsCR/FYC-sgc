@@ -41,8 +41,8 @@
             <div class="bloque-wrap" data-modulo-id="{{ $bloque['carpeta_id'] }}">
                 <a href="{{ route('carpetas.show', $bloque['carpeta_id']) }}"
                    class="bloque"
-                   style="border-top-color: {{ $bloque['color'] }}; text-decoration:none">
-                    <div class="bloque-icon-wrap" style="background: {{ $bloque['color'] }}18">
+                   style="background: {{ $bloque['color'] }}; border-color: {{ $bloque['color'] }}; text-decoration:none">
+                    <div class="bloque-icon-wrap" style="background: rgba(255,255,255,.2)">
                         <span style="font-size:1.5rem;line-height:1">{{ $bloque['emoji'] }}</span>
                     </div>
                     <div class="bloque-title">{{ $bloque['titulo'] }}</div>
@@ -99,36 +99,13 @@
 .modal-overlay.visible { display: flex; }
 .modal { background: var(--surface); border-radius: 8px; padding: 28px; width: 100%; max-width: 500px; box-shadow: 0 24px 64px rgba(0,0,0,.2); }
 .modal-title { font-size: 1rem; font-weight: 700; color: var(--navy); margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
-.modal-field { margin-bottom: 16px; }
-.modal-label { display: block; font-size: .8rem; font-weight: 600; color: var(--navy); margin-bottom: 8px; }
-.modal-input { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 4px; font-size: .85rem; outline: none; box-sizing: border-box; }
-.modal-input:focus { border-color: var(--blue-accent); }
 .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px; }
 .btn-cancel { padding: 9px 18px; border-radius: 4px; border: 1px solid var(--border); background: transparent; font-size: .82rem; cursor: pointer; color: var(--text-secondary); font-weight: 500; }
 .btn-cancel:hover { background: var(--surface-2); }
 .btn-submit { padding: 9px 18px; border-radius: 4px; border: none; background: var(--navy); color: #fff; font-size: .82rem; cursor: pointer; font-weight: 600; }
 .btn-submit:hover { background: #0a2147; }
-.icon-btn {
-    border: 2px solid var(--border);
-    background: var(--surface-2);
-    border-radius: 6px;
-    padding: 10px;
-    font-size: 1.2rem;
-    cursor: pointer;
-    transition: all .2s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-.icon-btn:hover {
-    border-color: var(--blue-accent);
-    transform: scale(1.1);
-}
-.icon-btn.selected {
-    border-color: var(--navy);
-    background: #EFF6FF;
-    transform: scale(1.15);
-}
+.btn-submit:disabled { opacity: .6; cursor: not-allowed; }
+
 /* Botón eliminar módulo */
 .btn-del-modulo {
     position: absolute;
@@ -151,9 +128,45 @@
     padding: 0;
 }
 .bloque-wrap:hover .btn-del-modulo { opacity: 1; }
+
 /* Modal confirmar eliminar módulo */
 .btn-danger-mod { background:#c62828;color:#fff;padding:9px 20px;border-radius:6px;border:none;cursor:pointer;font-size:.88rem;font-weight:600; }
 .btn-cancel-mod { background:#e0e0e0;color:#333;padding:9px 20px;border-radius:6px;border:none;cursor:pointer;font-size:.88rem;font-weight:600; }
+
+/* ── Estilos compartidos con modal nuevo submódulo ───────── */
+.nsub-field { margin-bottom: 14px; }
+.nsub-label { display: block; font-size: .8rem; font-weight: 600; color: var(--navy); margin-bottom: 6px; }
+.nsub-input {
+    width: 100%; padding: 9px 12px;
+    border: 1px solid var(--border); border-radius: 4px;
+    font-size: .85rem; outline: none; box-sizing: border-box;
+    color: var(--text-primary); background: var(--surface);
+    transition: border-color .15s;
+}
+.nsub-input:focus { border-color: var(--blue-accent); }
+.nsub-color-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.nsub-color-presets { display: flex; gap: 6px; flex-wrap: wrap; }
+.nsub-color-preset {
+    width: 22px; height: 22px; border-radius: 4px;
+    border: 2px solid transparent; cursor: pointer; display: inline-block;
+    transition: transform .12s, border-color .12s;
+}
+.nsub-color-preset:hover { transform: scale(1.2); border-color: rgba(0,0,0,.25); }
+.nsub-emoji-grid {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    max-height: 150px; overflow-y: auto;
+    padding: 8px; background: var(--surface-2);
+    border: 1px solid var(--border); border-radius: 6px;
+}
+.nsub-emoji-opt {
+    width: 34px; height: 34px; font-size: 1.1rem;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 6px; cursor: pointer;
+    border: 2px solid transparent; transition: all .12s;
+    user-select: none;
+}
+.nsub-emoji-opt:hover  { background: #fff; border-color: var(--border); }
+.nsub-emoji-opt.selected { background: #fff; border-color: var(--blue-accent); box-shadow: 0 0 0 2px rgba(29,111,217,.18); }
 </style>
 
 {{-- Modal: Confirmar eliminar módulo --}}
@@ -175,60 +188,54 @@
 
 {{-- Modal: Crear módulo --}}
 <div class="modal-overlay" id="modal-crear-modulo">
-    <div class="modal" style="max-width:600px">
+    <div class="modal" style="max-width:480px">
         <div class="modal-title">➕ Nuevo módulo</div>
         <form id="form-crear-modulo">
-            <div class="modal-field">
-                <label class="modal-label">Nombre del módulo</label>
-                <input type="text" name="descripcion" id="modulo-nombre" class="modal-input" placeholder="Ej: Auditoría Interna" required>
+
+            <div class="nsub-field">
+                <label class="nsub-label" for="modulo-nombre">
+                    Nombre <span style="color:#DC2626">*</span>
+                </label>
+                <input type="text" name="descripcion" id="modulo-nombre" class="nsub-input"
+                       placeholder="Ej: Auditoría Interna" maxlength="200" required
+                       onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('form-crear-modulo').requestSubmit();}">
             </div>
-            <div class="modal-field">
-                <label class="modal-label">Color (hexadecimal o nombre)</label>
-                <div style="display:flex;gap:8px;align-items:center">
-                    <input type="text" name="color" id="modulo-color" class="modal-input" placeholder="#0D2B5E" style="flex:1">
-                    <input type="color" id="modulo-color-picker" style="width:45px;height:38px;border:1px solid var(--border);border-radius:4px;cursor:pointer">
+
+            <div class="nsub-field">
+                <label class="nsub-label">Color</label>
+                <div class="nsub-color-row">
+                    <input type="color" id="modulo-color-picker" value="#0D2B5E"
+                           oninput="document.getElementById('modulo-color').value=this.value"
+                           style="width:36px;height:36px;border:2px solid var(--border);border-radius:4px;padding:0;background:none;cursor:pointer;flex-shrink:0">
+                    <input type="text" name="color" id="modulo-color" class="nsub-input" value="#0D2B5E"
+                           maxlength="7" placeholder="#000000"
+                           oninput="sincronizarColorMod(this.value)"
+                           style="width:100px;font-family:monospace">
+                    <div class="nsub-color-presets">
+                        @foreach(['#0D2B5E','#15803D','#991B1B','#B45309','#7C3AED','#0C4A6E','#1D4ED8','#065F46','#374151','#0891B2','#BE185D','#9A3412'] as $c)
+                        <span class="nsub-color-preset" title="{{ $c }}"
+                              style="background:{{ $c }}"
+                              onclick="elegirColorPresetMod('{{ $c }}')"></span>
+                        @endforeach
+                    </div>
                 </div>
             </div>
-            <div class="modal-field">
-                <label class="modal-label">Icono</label>
-                <div style="display:grid;grid-template-columns:repeat(8,1fr);gap:8px;margin-bottom:12px;max-height:150px;overflow-y:auto;padding:8px">
-                    <button type="button" class="icon-btn" onclick="seleccionarIcono('📋')">📋</button>
-                    <button type="button" class="icon-btn" onclick="seleccionarIcono('🌿')">🌿</button>
-                    <button type="button" class="icon-btn" onclick="seleccionarIcono('🛡️')">🛡️</button>
-                    <button type="button" class="icon-btn" onclick="seleccionarIcono('🏗️')">🏗️</button>
-                    <button type="button" class="icon-btn" onclick="seleccionarIcono('👨‍💼')">👨‍💼</button>
-                    <button type="button" class="icon-btn" onclick="seleccionarIcono('🏢')">🏢</button>
-                    <button type="button" class="icon-btn" onclick="seleccionarIcono('📈')">📈</button>
-                    <button type="button" class="icon-btn" onclick="seleccionarIcono('💰')">💰</button>
-                    <button type="button" class="icon-btn" onclick="seleccionarIcono('⚠️')">⚠️</button>
-                    <button type="button" class="icon-btn" onclick="seleccionarIcono('📏')">📏</button>
-                    <button type="button" class="icon-btn" onclick="seleccionarIcono('✅')">✅</button>
-                    <button type="button" class="icon-btn" onclick="seleccionarIcono('🦺')">🦺</button>
-                    <button type="button" class="icon-btn" onclick="seleccionarIcono('📝')">📝</button>
-                    <button type="button" class="icon-btn" onclick="seleccionarIcono('📁')">📁</button>
-                    <button type="button" class="icon-btn" onclick="seleccionarIcono('🎓')">🎓</button>
-                    <button type="button" class="icon-btn" onclick="seleccionarIcono('📊')">📊</button>
-                    <button type="button" class="icon-btn" onclick="seleccionarIcono('🔍')">🔍</button>
-                    <button type="button" class="icon-btn" onclick="seleccionarIcono('♻️')">♻️</button>
-                    <button type="button" class="icon-btn" onclick="seleccionarIcono('🌱')">🌱</button>
-                    <button type="button" class="icon-btn" onclick="seleccionarIcono('🌍')">🌍</button>
-                    <button type="button" class="icon-btn" onclick="seleccionarIcono('⚙️')">⚙️</button>
-                    <button type="button" class="icon-btn" onclick="seleccionarIcono('🏥')">🏥</button>
-                    <button type="button" class="icon-btn" onclick="seleccionarIcono('⚖️')">⚖️</button>
-                    <button type="button" class="icon-btn" onclick="seleccionarIcono('👥')">👥</button>
-                    <button type="button" class="icon-btn" onclick="seleccionarIcono('📚')">📚</button>
-                    <button type="button" class="icon-btn" onclick="seleccionarIcono('⛏️')">⛏️</button>
-                    <button type="button" class="icon-btn" onclick="seleccionarIcono('🔐')">🔐</button>
-                    <button type="button" class="icon-btn" onclick="seleccionarIcono('📱')">📱</button>
-                    <button type="button" class="icon-btn" onclick="seleccionarIcono('🎯')">🎯</button>
-                    <button type="button" class="icon-btn" onclick="seleccionarIcono('🚀')">🚀</button>
+
+            <div class="nsub-field">
+                <label class="nsub-label">Ícono</label>
+                <div class="nsub-emoji-grid" id="mod-emoji-grid">
+                    @foreach(['📋','🌿','🛡️','🏗️','👨‍💼','🏢','📈','💰','📁','📄','📊','🔧','⚙️','🔑','📌','📎','🗂️','💼','🧾','📦','🚧','🌐','📡','🔬','💡','🏆','✅','⚠️','🔍','📝','🏛️','📐','🧩','🎯','🔐','📮','🧪','📉','🗃️','🌱','🌍','⚖️','👥','📚','⛏️','📱','🚀','🎓','🦺','♻️'] as $em)
+                    <div class="nsub-emoji-opt{{ $em === '📋' ? ' selected' : '' }}"
+                         data-emoji="{{ $em }}"
+                         onclick="elegirEmojiMod(this)">{{ $em }}</div>
+                    @endforeach
                 </div>
                 <input type="hidden" name="icono" id="modulo-icono" value="📋">
-                <div style="font-size:.8rem;color:var(--text-muted);text-align:center">Icono seleccionado: <span id="icono-preview" style="font-size:1.2rem">📋</span></div>
             </div>
+
             <div class="modal-actions">
                 <button type="button" class="btn-cancel" onclick="cerrarModalCrearModulo()">Cancelar</button>
-                <button type="submit" class="btn-submit">Crear módulo</button>
+                <button type="submit" class="btn-submit" id="mod-btn-crear">➕ Crear módulo</button>
             </div>
         </form>
     </div>
@@ -285,39 +292,42 @@ function showToast(msg, tipo = 'ok') {
 
 // ── Modal crear módulo ─────────────────────────────────────
 function abrirModalCrearModulo() {
-    document.getElementById('form-crear-modulo').reset();
+    document.getElementById('modulo-nombre').value       = '';
     document.getElementById('modulo-color-picker').value = '#0D2B5E';
-    document.getElementById('modulo-color').value = '#0D2B5E';
-    document.getElementById('modulo-icono').value = '📋';
-    document.getElementById('icono-preview').textContent = '📋';
-    document.querySelectorAll('#modal-crear-modulo .icon-btn').forEach((btn, i) => {
-        btn.classList.toggle('selected', i === 0);
+    document.getElementById('modulo-color').value        = '#0D2B5E';
+    document.getElementById('modulo-icono').value        = '📋';
+    document.querySelectorAll('#mod-emoji-grid .nsub-emoji-opt').forEach(function(el) {
+        el.classList.toggle('selected', el.dataset.emoji === '📋');
     });
+    var btn = document.getElementById('mod-btn-crear');
+    btn.disabled    = false;
+    btn.textContent = '➕ Crear módulo';
     document.getElementById('modal-crear-modulo').classList.add('visible');
-    setTimeout(() => document.getElementById('modulo-nombre').focus(), 100);
+    setTimeout(function() { document.getElementById('modulo-nombre').focus(); }, 100);
 }
 
 function cerrarModalCrearModulo() {
     document.getElementById('modal-crear-modulo').classList.remove('visible');
 }
 
-function seleccionarIcono(icono) {
-    document.getElementById('modulo-icono').value = icono;
-    document.getElementById('icono-preview').textContent = icono;
-    document.querySelectorAll('#modal-crear-modulo .icon-btn').forEach(btn => {
-        btn.classList.toggle('selected', btn.textContent.trim() === icono);
-    });
+function elegirColorPresetMod(hex) {
+    document.getElementById('modulo-color-picker').value = hex;
+    document.getElementById('modulo-color').value        = hex;
 }
 
-// Sincronizar color pickers
-document.getElementById('modulo-color').addEventListener('input', function () {
-    if (this.value.match(/^#[0-9A-Fa-f]{6}$/)) {
-        document.getElementById('modulo-color-picker').value = this.value;
+function sincronizarColorMod(val) {
+    if (/^#[0-9a-fA-F]{6}$/.test(val)) {
+        document.getElementById('modulo-color-picker').value = val;
     }
-});
-document.getElementById('modulo-color-picker').addEventListener('input', function () {
-    document.getElementById('modulo-color').value = this.value;
-});
+}
+
+function elegirEmojiMod(el) {
+    document.querySelectorAll('#mod-emoji-grid .nsub-emoji-opt').forEach(function(o) {
+        o.classList.remove('selected');
+    });
+    el.classList.add('selected');
+    document.getElementById('modulo-icono').value = el.dataset.emoji;
+}
 
 // ── Submit: crear módulo ───────────────────────────────────
 document.getElementById('form-crear-modulo').addEventListener('submit', async function (e) {
@@ -330,7 +340,7 @@ document.getElementById('form-crear-modulo').addEventListener('submit', async fu
 
     if (!nombre) { showToast('El nombre del módulo es obligatorio.', 'err'); return; }
 
-    btn.disabled = true;
+    btn.disabled    = true;
     btn.textContent = 'Creando...';
 
     try {
@@ -347,15 +357,13 @@ document.getElementById('form-crear-modulo').addEventListener('submit', async fu
         } catch {
             console.error('Respuesta no-JSON del servidor:', text);
             showToast('El servidor devolvió una respuesta inesperada. Revisa la consola.', 'err');
-            btn.disabled = false;
-            btn.textContent = 'Crear módulo';
             return;
         }
 
         if (res.ok && data.ok) {
             cerrarModalCrearModulo();
             showToast(`Módulo "${data.modulo.descripcion}" creado correctamente.`, 'ok');
-            insertarTarjetaModulo(data.modulo); // separado del catch principal
+            insertarTarjetaModulo(data.modulo);
         } else {
             showToast(data.error || data.message || 'No se pudo crear el módulo.', 'err');
         }
@@ -363,8 +371,8 @@ document.getElementById('form-crear-modulo').addEventListener('submit', async fu
         console.error('Error en fetch crearModulo:', err);
         showToast('Error inesperado: ' + (err.message || 'inténtalo de nuevo.'), 'err');
     } finally {
-        btn.disabled = false;
-        btn.textContent = 'Crear módulo';
+        btn.disabled    = false;
+        btn.textContent = '➕ Crear módulo';
     }
 });
 
@@ -484,6 +492,7 @@ document.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
         cerrarModalCrearModulo();
         cerrarModalEliminarModulo();
+        cerrarBienvenida();
     }
 });
 document.querySelectorAll('.modal-overlay').forEach(o => {
@@ -494,6 +503,131 @@ document.querySelectorAll('.modal-overlay').forEach(o => {
         }
     });
 });
+
+// ── Bienvenida ─────────────────────────────────────────────
+function cerrarBienvenida() {
+    const m = document.getElementById('modal-bienvenida');
+    if (!m) return;
+    m.style.opacity = '0';
+    setTimeout(() => m.style.display = 'none', 280);
+}
+@if(session('bienvenida'))
+window.addEventListener('DOMContentLoaded', () => {
+    const m = document.getElementById('modal-bienvenida');
+    if (!m) return;
+    m.style.display = 'flex';
+    requestAnimationFrame(() => m.style.opacity = '1');
+    // Cierre automático a los 6 segundos
+    setTimeout(cerrarBienvenida, 6000);
+});
+@endif
 </script>
+
+{{-- ── Modal bienvenida ──────────────────────────────── --}}
+@if(session('bienvenida'))
+<style>
+#modal-bienvenida {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.45);
+    z-index: 600;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity .28s ease;
+}
+.bienvenida-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 0;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: 0 28px 70px rgba(0,0,0,.25);
+    overflow: hidden;
+    transform: translateY(0);
+    animation: bienvenida-in .35s cubic-bezier(.22,1,.36,1);
+}
+@keyframes bienvenida-in {
+    from { transform: translateY(24px); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
+}
+.bienvenida-header {
+    background: var(--navy);
+    padding: 28px 28px 22px;
+    text-align: center;
+}
+.bienvenida-body {
+    padding: 24px 28px 28px;
+    text-align: center;
+}
+.bienvenida-avatar {
+    width: 62px; height: 62px;
+    border-radius: 50%;
+    background: rgba(255,255,255,.18);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.8rem;
+    margin: 0 auto 12px;
+    border: 2px solid rgba(255,255,255,.3);
+}
+.bienvenida-saludo {
+    font-size: .78rem; color: rgba(255,255,255,.7);
+    font-weight: 600; letter-spacing: .06em;
+    text-transform: uppercase; margin-bottom: 4px;
+}
+.bienvenida-nombre {
+    font-size: 1.35rem; font-weight: 800;
+    color: #fff; line-height: 1.2;
+}
+.bienvenida-msg {
+    font-size: .88rem; color: var(--text-secondary);
+    line-height: 1.6; margin-bottom: 20px;
+}
+.bienvenida-fecha {
+    display: inline-block;
+    background: var(--surface-2);
+    border-radius: 6px;
+    padding: 6px 14px;
+    font-size: .75rem;
+    color: var(--text-muted);
+    font-weight: 500;
+    margin-bottom: 22px;
+}
+.bienvenida-btn {
+    width: 100%;
+    padding: 11px;
+    background: var(--navy);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: .88rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background .15s;
+}
+.bienvenida-btn:hover { background: #0a2147; }
+</style>
+<div id="modal-bienvenida" onclick="if(event.target===this)cerrarBienvenida()">
+    <div class="bienvenida-card">
+        <div class="bienvenida-header">
+            <div class="bienvenida-avatar">👋</div>
+            <div class="bienvenida-saludo">Bienvenido/a de vuelta</div>
+            <div class="bienvenida-nombre">{{ session('bienvenida') }}</div>
+        </div>
+        <div class="bienvenida-body">
+            <p class="bienvenida-msg">
+                Nos alegra tenerte aquí. Tienes acceso al sistema
+                <strong>SGC F&amp;C Chile SpA</strong>.<br>
+                ¿Listo para comenzar?
+            </p>
+            <div class="bienvenida-fecha">
+                📅 {{ now()->locale('es')->isoFormat('dddd D [de] MMMM, YYYY') }}
+            </div>
+            <button class="bienvenida-btn" onclick="cerrarBienvenida()">
+                Comenzar →
+            </button>
+        </div>
+    </div>
+</div>
+@endif
 
 @endpush

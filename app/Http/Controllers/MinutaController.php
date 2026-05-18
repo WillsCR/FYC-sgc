@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\MinutaNotificacion;
 use App\Services\PermisoService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Carbon\Carbon;
 
 class MinutaController extends Controller
@@ -204,6 +207,13 @@ class MinutaController extends Controller
         // Guardar compromisos
         $this->guardarCompromisos($idMinuta, $request, $usuario->id);
 
+        // Enviar notificación por correo (solo si el usuario eligió destinatarios)
+        $notifEmails  = array_filter((array) $request->input('notif_emails', []));
+        $notifNombres = (array) $request->input('notif_nombres', []);
+        if (! empty($notifEmails)) {
+            $this->enviarNotificacionMinuta($idMinuta, 'creada', $notifEmails, $notifNombres);
+        }
+
         return redirect()->route('minutas.index')
             ->with('ok', 'Minuta creada correctamente.');
     }
@@ -350,8 +360,60 @@ class MinutaController extends Controller
         $this->guardarConvocados($id, $request, $usuario->id);
         $this->guardarCompromisos($id, $request, $usuario->id);
 
+        // Enviar notificación por correo (solo si el usuario eligió destinatarios)
+        $notifEmails  = array_filter((array) $request->input('notif_emails', []));
+        $notifNombres = (array) $request->input('notif_nombres', []);
+        if (! empty($notifEmails)) {
+            $this->enviarNotificacionMinuta($id, 'actualizada', $notifEmails, $notifNombres);
+        }
+
         return redirect()->route('minutas.show', $id)
             ->with('ok', 'Minuta actualizada correctamente.');
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // DESCARGAR PDF
+    // ─────────────────────────────────────────────────────────────────────────
+    public function descargar(int $id)
+    {
+        $usuario = PermisoService::usuarioActual();
+        $esAdmin = $usuario->esAdmin();
+
+        $minuta = DB::table('sgc_minutas')->where('id', $id)->first();
+        if (! $minuta) abort(404);
+
+        if (! $esAdmin) {
+            $areasPermitidas = $this->areasConPermiso($usuario->id, 'ver_minutas');
+            if (! in_array((int) $minuta->id_area, $areasPermitidas, true)) abort(403);
+        }
+
+        $convocados  = DB::table('sgc_minutas_convocados')->where('id_minuta', $id)->get();
+        $compromisos = DB::table('sgc_minutas_compromisos')
+            ->where('id_minuta', $id)->orderBy('item')->get();
+
+        $datos = [
+            'id'               => $minuta->id,
+            'area_nombre'      => self::AREAS[$minuta->id_area] ?? 'Área ' . $minuta->id_area,
+            'empresa'          => $minuta->empresa,
+            'tipo_reunion'     => $minuta->tipo_reunion,
+            'lugar'            => $minuta->lugar,
+            'hora_inicio'      => $minuta->hora_inicio,
+            'hora_fin'         => $minuta->hora_fin,
+            'fecha_raw'        => $minuta->fecha,
+            'fecha_formateada' => Carbon::parse($minuta->fecha)->locale('es')->isoFormat('D [de] MMMM [de] YYYY'),
+            'proxima_reunion'  => ($minuta->proxima_reunion && $minuta->proxima_reunion !== '0000-00-00')
+                ? Carbon::parse($minuta->proxima_reunion)->format('d/m/Y')
+                : null,
+            'compromisos'      => $compromisos,
+            'convocados_lista' => $convocados,
+        ];
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('emails.minuta_pdf', [
+            'datos'  => $datos,
+            'accion' => 'descarga',
+        ])->setPaper('letter', 'portrait');
+
+        return $pdf->download('minuta_' . $id . '.pdf');
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -403,6 +465,74 @@ class MinutaController extends Controller
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Notificación por correo
+    // ─────────────────────────────────────────────────────────────────────────
+    /**
+     * $destinos  → array de emails a enviar (ya validados desde el modal)
+     * $nombres   → array de nombres asociados a cada email (mismo índice)
+     */
+    private function enviarNotificacionMinuta(
+        int $idMinuta,
+        string $accion,
+        array $destinos = [],
+        array $nombres  = []
+    ): void {
+        if (empty($destinos)) return;
+
+        try {
+            $minuta = DB::table('sgc_minutas')->where('id', $idMinuta)->first();
+            if (! $minuta) return;
+
+            $convocados  = DB::table('sgc_minutas_convocados')->where('id_minuta', $idMinuta)->get();
+            $compromisos = DB::table('sgc_minutas_compromisos')
+                ->where('id_minuta', $idMinuta)->orderBy('item')->get();
+
+            $datos = [
+                'id'               => $minuta->id,
+                'area_nombre'      => self::AREAS[$minuta->id_area] ?? 'Área ' . $minuta->id_area,
+                'empresa'          => $minuta->empresa,
+                'tipo_reunion'     => $minuta->tipo_reunion,
+                'lugar'            => $minuta->lugar,
+                'hora_inicio'      => $minuta->hora_inicio,
+                'hora_fin'         => $minuta->hora_fin,
+                'fecha_raw'        => $minuta->fecha,
+                'fecha_formateada' => Carbon::parse($minuta->fecha)->locale('es')->isoFormat('D [de] MMMM [de] YYYY'),
+                'proxima_reunion'  => ($minuta->proxima_reunion && $minuta->proxima_reunion !== '0000-00-00')
+                    ? Carbon::parse($minuta->proxima_reunion)->format('d/m/Y')
+                    : null,
+                'compromisos'      => $compromisos,
+                'convocados_lista' => $convocados,
+            ];
+
+            $enviados = [];
+            $fallidos = [];
+
+            foreach ($destinos as $i => $email) {
+                $email = trim($email);
+                if (! filter_var($email, FILTER_VALIDATE_EMAIL)) continue;
+                try {
+                    Mail::to($email)->send(new MinutaNotificacion($datos, $accion));
+                    $enviados[] = $nombres[$i] ?? $email;
+                } catch (\Throwable $ex) {
+                    $fallidos[] = $nombres[$i] ?? $email;
+                    Log::error("Error enviando notificación minuta #{$idMinuta} a {$email}: " . $ex->getMessage());
+                }
+            }
+
+            // Flash para mostrar el resultado en la vista
+            if (! empty($enviados)) {
+                session()->flash('notif_enviados', $enviados);
+            }
+            if (! empty($fallidos)) {
+                session()->flash('notif_fallidos', $fallidos);
+            }
+
+        } catch (\Throwable $e) {
+            Log::error('Error general en notificación minuta #' . $idMinuta . ': ' . $e->getMessage());
         }
     }
 

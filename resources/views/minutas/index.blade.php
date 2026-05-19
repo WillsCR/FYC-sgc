@@ -136,6 +136,8 @@
 /* Alerts */
 .alert-ok  { background:#DCFCE7; border-left:3px solid #16A34A; color:#166534; padding:10px 14px; border-radius:var(--radius-sm); font-size:.82rem; margin-bottom:14px; }
 .alert-err { background:#FCEBEB; border-left:3px solid #DC2626; color:#991B1B; padding:10px 14px; border-radius:var(--radius-sm); font-size:.82rem; margin-bottom:14px; }
+.alert-notif-ok  { display:flex;align-items:flex-start;gap:10px;background:#EFF6FF;border-left:3px solid #1D4ED8;color:#1e3a8a;padding:12px 16px;border-radius:var(--radius-sm);font-size:.82rem;margin-bottom:14px;line-height:1.5; }
+.alert-notif-err { display:flex;align-items:flex-start;gap:10px;background:#FEF2F2;border-left:3px solid #DC2626;color:#991B1B;padding:12px 16px;border-radius:var(--radius-sm);font-size:.82rem;margin-bottom:6px;line-height:1.5; }
 
 /* Paginación */
 .paginacion-wrap {
@@ -198,6 +200,27 @@
 
     @if(session('ok'))
         <div class="alert-ok">✅ {{ session('ok') }}</div>
+    @endif
+
+    @if(session('notif_enviados'))
+    <div class="alert-notif-ok">
+        <span style="font-size:1.1rem;flex-shrink:0">📧</span>
+        <div>
+            <strong>Notificación enviada correctamente</strong> a
+            {{ count(session('notif_enviados')) }} participante(s):
+            <span style="opacity:.75">{{ implode(', ', session('notif_enviados')) }}</span>
+        </div>
+    </div>
+    @endif
+    @if(session('notif_fallidos'))
+    <div class="alert-notif-err">
+        <span style="font-size:1.1rem;flex-shrink:0">⚠️</span>
+        <div>
+            <strong>No se pudo enviar</strong> a {{ count(session('notif_fallidos')) }} destinatario(s):
+            <span style="opacity:.75">{{ implode(', ', session('notif_fallidos')) }}</span>
+            — Verifica la configuración SMTP en <code>.env</code>.
+        </div>
+    </div>
     @endif
 
     {{-- Filtros --}}

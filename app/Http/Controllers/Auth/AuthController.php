@@ -65,7 +65,8 @@ class AuthController extends Controller
             'es_superadmin'  => $usuario->esSuperAdmin(),
         ]);
 
-        return redirect()->route('panel');
+        return redirect()->route('panel')
+            ->with('bienvenida', $usuario->nombre);
     }
 
     public function logout(Request $request)

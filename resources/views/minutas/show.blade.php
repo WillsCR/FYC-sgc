@@ -101,13 +101,17 @@
 .btn-edit   { color: var(--navy); border-color: var(--navy); background: transparent; }
 .btn-back   { color: var(--text-secondary); border-color: var(--border); background: transparent; }
 .btn-del    { color: #DC2626; border-color: #DC2626; background: transparent; }
+.btn-pdf    { color: #15803D; border-color: #15803D; background: transparent; }
 .btn-edit:hover { background: var(--navy);   color: #fff; }
 .btn-back:hover { background: var(--surface-2); }
 .btn-del:hover  { background: #DC2626; color: #fff; }
+.btn-pdf:hover  { background: #15803D; color: #fff; }
 
 /* Alerts */
 .alert-ok { background:#DCFCE7; border-left:3px solid #16A34A; color:#166534;
             padding:10px 14px; border-radius:var(--radius-sm); font-size:.82rem; margin-bottom:14px; }
+.alert-notif-ok  { display:flex;align-items:flex-start;gap:10px;background:#EFF6FF;border-left:3px solid #1D4ED8;color:#1e3a8a;padding:12px 16px;border-radius:var(--radius-sm);font-size:.82rem;margin-bottom:14px;line-height:1.5; }
+.alert-notif-err { display:flex;align-items:flex-start;gap:10px;background:#FEF2F2;border-left:3px solid #DC2626;color:#991B1B;padding:12px 16px;border-radius:var(--radius-sm);font-size:.82rem;margin-bottom:6px;line-height:1.5; }
 
 /* Área badge */
 .area-badge {
@@ -147,6 +151,9 @@
             <a href="{{ route('minutas.index') }}" class="btn-accion btn-back">
                 ← Volver
             </a>
+            <a href="{{ route('minutas.pdf', $minuta->id) }}" class="btn-accion btn-pdf" target="_blank">
+                ⬇️ Descargar PDF
+            </a>
             @if($puedeEditar)
             <a href="{{ route('minutas.edit', $minuta->id) }}" class="btn-accion btn-edit">
                 ✏️ Editar
@@ -164,6 +171,27 @@
 
     @if(session('ok'))
         <div class="alert-ok">✅ {{ session('ok') }}</div>
+    @endif
+
+    @if(session('notif_enviados'))
+    <div class="alert-notif-ok">
+        <span style="font-size:1.1rem;flex-shrink:0">📧</span>
+        <div>
+            <strong>Notificación enviada correctamente</strong> a
+            {{ count(session('notif_enviados')) }} participante(s):
+            <span style="opacity:.75">{{ implode(', ', session('notif_enviados')) }}</span>
+        </div>
+    </div>
+    @endif
+    @if(session('notif_fallidos'))
+    <div class="alert-notif-err">
+        <span style="font-size:1.1rem;flex-shrink:0">⚠️</span>
+        <div>
+            <strong>No se pudo enviar</strong> a {{ count(session('notif_fallidos')) }} destinatario(s):
+            <span style="opacity:.75">{{ implode(', ', session('notif_fallidos')) }}</span>
+            — Verifica la configuración SMTP en <code>.env</code>.
+        </div>
+    </div>
     @endif
 
     {{-- Datos generales --}}

@@ -418,11 +418,39 @@
         {{-- Acciones --}}
         <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
             <a href="{{ route('minutas.show', $minuta->id) }}" class="btn-cancelar">Cancelar</a>
-            <button type="submit" class="btn-guardar">💾 Guardar cambios</button>
+            <button type="button" class="btn-guardar" id="btn-previa-notif">💾 Guardar cambios</button>
         </div>
 
     </form>
 </div>
+
+{{-- ── Modal selección de destinatarios ─────────────────────────────── --}}
+<div id="modal-notif" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;align-items:center;justify-content:center">
+<div style="background:#fff;border-radius:8px;max-width:560px;width:95%;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 24px 64px rgba(0,0,0,.22)">
+
+    <div style="background:var(--navy);color:#fff;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+        <div>
+            <div style="font-size:.95rem;font-weight:700">📧 Notificar a participantes</div>
+            <div style="font-size:.72rem;opacity:.75;margin-top:2px">Selecciona a quiénes enviar la notificación de esta minuta</div>
+        </div>
+        <button type="button" onclick="cerrarModalNotif()" style="background:rgba(255,255,255,.15);border:none;color:#fff;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center">&times;</button>
+    </div>
+
+    <div id="notif-lista" style="overflow-y:auto;flex:1;padding:16px 20px;"></div>
+
+    <div style="padding:14px 20px;border-top:1px solid #e8edf2;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:10px;flex-wrap:wrap">
+        <button type="button" onclick="guardarSinNotificar()"
+            style="background:transparent;border:none;color:var(--text-secondary);font-size:.8rem;cursor:pointer;text-decoration:underline;padding:4px">
+            Guardar sin notificar
+        </button>
+        <button type="button" id="btn-enviar-notif" onclick="confirmarNotif()"
+            style="padding:9px 20px;background:var(--navy);color:#fff;border:none;border-radius:6px;font-size:.84rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px">
+            📧 <span id="btn-enviar-label">Enviar y guardar</span>
+        </button>
+    </div>
+</div>
+</div>
+
 @endsection
 
 @push('scripts')
@@ -535,5 +563,143 @@ function cambiarTipo(select) {
         `;
     }
 }
+
+// ── Modal de notificación ────────────────────────────────────────────────────
+const _formAction = "{{ route('minutas.update', $minuta->id) }}";
+
+document.getElementById('btn-previa-notif').addEventListener('click', function () {
+    const form = document.querySelector(`form[action="${_formAction}"]`);
+    if (!form.checkValidity()) { form.reportValidity(); return; }
+    abrirModalNotif();
+});
+
+function abrirModalNotif() {
+    const filas = document.querySelectorAll('#body-convocados tr');
+    const destinatarios = [];
+
+    filas.forEach(tr => {
+        const tipoSel = tr.querySelector('select.tipo-conv');
+        const tipo    = tipoSel ? tipoSel.value : 'interno';
+
+        if (tipo === 'interno') {
+            const sel = tr.querySelector('select[name="conv_id_usuario[]"]');
+            const id  = sel ? parseInt(sel.value) : 0;
+            if (id) {
+                const u = usuariosData.find(x => x.id === id);
+                if (u) destinatarios.push({ nombre: u.nombre, email: u.email || '', tipo: 'interno' });
+            }
+        } else {
+            const nomInput = tr.querySelector('td.nombre-cell input[type="text"]');
+            const nombre   = nomInput ? nomInput.value.trim() : '';
+            if (nombre) destinatarios.push({ nombre, email: '', tipo: 'externo' });
+        }
+    });
+
+    const lista = document.getElementById('notif-lista');
+
+    if (destinatarios.length === 0) {
+        lista.innerHTML = `<p style="color:#888;font-size:.85rem;text-align:center;padding:20px 0">No hay participantes registrados.</p>`;
+    } else {
+        let html = `<div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:10px">Participantes (${destinatarios.length})</div>`;
+        destinatarios.forEach((d, i) => {
+            const tieneEmail = d.email && d.email.trim() !== '';
+            const badge = d.tipo === 'externo'
+                ? `<span style="font-size:.65rem;background:#F3E8FF;color:#7C3AED;padding:1px 7px;border-radius:10px;font-weight:700">Externo</span>`
+                : `<span style="font-size:.65rem;background:#EFF6FF;color:#1D4ED8;padding:1px 7px;border-radius:10px;font-weight:700">Interno</span>`;
+
+            html += `
+            <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #f0f4f8">
+                <input type="checkbox" id="notif-chk-${i}" data-idx="${i}"
+                       ${tieneEmail ? 'checked' : ''}
+                       onchange="actualizarContador()"
+                       style="width:16px;height:16px;cursor:pointer;flex-shrink:0;accent-color:var(--navy)">
+                <div style="flex:1;min-width:0">
+                    <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+                        <span style="font-size:.82rem;font-weight:600;color:var(--navy)">${d.nombre}</span>
+                        ${badge}
+                    </div>
+                    <input type="text" id="notif-email-${i}" value="${d.email}"
+                           placeholder="${d.tipo === 'externo' ? 'Ingresar correo del participante externo...' : 'Sin email registrado — puedes ingresarlo aquí'}"
+                           oninput="actualizarContador()"
+                           style="width:100%;padding:5px 8px;border:1px solid ${tieneEmail ? '#cbd5e1' : '#f59e0b'};border-radius:4px;font-size:.78rem;font-family:inherit;outline:none;background:${tieneEmail ? '#fff' : '#fffbeb'}"
+                           onfocus="this.style.borderColor='var(--blue-accent)'"
+                           onblur="this.style.borderColor='${tieneEmail ? '#cbd5e1' : '#f59e0b'}'">
+                </div>
+            </div>`;
+        });
+        lista.innerHTML = html;
+    }
+
+    window._notifDestinatarios = destinatarios;
+    actualizarContador();
+    document.getElementById('modal-notif').style.display = 'flex';
+}
+
+function actualizarContador() {
+    const dest = window._notifDestinatarios || [];
+    let validos = 0;
+    dest.forEach((_, i) => {
+        const chk   = document.getElementById(`notif-chk-${i}`);
+        const email = (document.getElementById(`notif-email-${i}`)?.value || '').trim();
+        if (chk?.checked && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) validos++;
+    });
+    const lbl = document.getElementById('btn-enviar-label');
+    if (lbl) lbl.textContent = validos > 0 ? `Enviar y guardar (${validos})` : 'Enviar y guardar';
+    const btn = document.getElementById('btn-enviar-notif');
+    if (btn) btn.style.opacity = validos > 0 ? '1' : '.55';
+}
+
+function cerrarModalNotif() {
+    document.getElementById('modal-notif').style.display = 'none';
+}
+
+function guardarSinNotificar() {
+    cerrarModalNotif();
+    mostrarCargando('Guardando cambios...');
+    document.querySelector(`form[action="${_formAction}"]`).submit();
+}
+
+function confirmarNotif() {
+    const dest = window._notifDestinatarios || [];
+    const form = document.querySelector(`form[action="${_formAction}"]`);
+
+    form.querySelectorAll('input[name="notif_emails[]"], input[name="notif_nombres[]"]').forEach(e => e.remove());
+
+    let totalValidos = 0;
+    dest.forEach((d, i) => {
+        const chk   = document.getElementById(`notif-chk-${i}`);
+        const email = (document.getElementById(`notif-email-${i}`)?.value || '').trim();
+        if (chk?.checked && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            const inpE = document.createElement('input'); inpE.type='hidden'; inpE.name='notif_emails[]'; inpE.value=email; form.appendChild(inpE);
+            const inpN = document.createElement('input'); inpN.type='hidden'; inpN.name='notif_nombres[]'; inpN.value=d.nombre; form.appendChild(inpN);
+            totalValidos++;
+        }
+    });
+
+    cerrarModalNotif();
+    mostrarCargando(totalValidos > 0
+        ? `Guardando y enviando ${totalValidos} notificación${totalValidos > 1 ? 'es' : ''}...`
+        : 'Guardando cambios...'
+    );
+    form.submit();
+}
+
+document.getElementById('modal-notif').addEventListener('click', function(e) {
+    if (e.target === this) cerrarModalNotif();
+});
+
+// ── Overlay de carga ─────────────────────────────────────────
+function mostrarCargando(msg) {
+    document.getElementById('cargando-msg').textContent = msg;
+    document.getElementById('overlay-cargando').style.display = 'flex';
+}
 </script>
+
+{{-- Overlay de carga --}}
+<div id="overlay-cargando" style="display:none;position:fixed;inset:0;background:rgba(10,21,47,.72);z-index:9999;flex-direction:column;align-items:center;justify-content:center;gap:20px">
+    <div style="width:52px;height:52px;border:4px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;animation:spin .75s linear infinite"></div>
+    <div id="cargando-msg" style="color:#fff;font-size:.95rem;font-weight:600;letter-spacing:.02em;text-align:center;max-width:260px;line-height:1.4"></div>
+    <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
+</div>
+
 @endpush

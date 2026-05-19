@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Helpers\EstiloModulo;
 use App\Models\Carpeta;
 use App\Models\CarpetasPermisos;
+use App\Models\Video;
 use App\Services\PermisoService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
@@ -18,10 +19,11 @@ class PanelController extends Controller
             return redirect()->route('login');
         }
 
-        $bloques = $this->bloquesVisibles($usuario);
-        $stats   = $this->estadisticasResumen();
+        $bloques         = $this->bloquesVisibles($usuario);
+        $stats           = $this->estadisticasResumen();
+        $videoBienvenida = Video::where('es_bienvenida', true)->first();
 
-        return view('panel.index', compact('usuario', 'bloques', 'stats'));
+        return view('panel.index', compact('usuario', 'bloques', 'stats', 'videoBienvenida'));
     }
 
     /**

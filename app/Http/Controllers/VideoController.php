@@ -186,6 +186,34 @@ class VideoController extends Controller
         };
     }
 
+    /**
+     * Marca o desmarca un video como video de bienvenida (toggle).
+     * Solo puede haber uno activo a la vez.
+     */
+    public function setBienvenida(int $id)
+    {
+        $usuario = PermisoService::usuarioActual();
+        if (! $usuario->esAdmin()) {
+            return response()->json(['error' => 'Solo los administradores pueden configurar el video de bienvenida.'], 403);
+        }
+
+        $video = Video::findOrFail($id);
+
+        if ($video->es_bienvenida) {
+            // Si ya era el activo, lo desactiva (toggle off)
+            $video->es_bienvenida = false;
+            $video->save();
+            return response()->json(['ok' => true, 'activo' => false, 'mensaje' => 'Video de bienvenida desactivado.']);
+        }
+
+        // Desactiva cualquier otro y activa este
+        Video::where('es_bienvenida', true)->update(['es_bienvenida' => false]);
+        $video->es_bienvenida = true;
+        $video->save();
+
+        return response()->json(['ok' => true, 'activo' => true, 'mensaje' => "«{$video->titulo}» será el video de bienvenida."]);
+    }
+
     public function eliminar(int $id)
     {
         $usuario = PermisoService::usuarioActual();

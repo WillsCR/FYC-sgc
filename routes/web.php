@@ -83,7 +83,8 @@ Route::middleware(['auth.sgc'])->group(function () {
     // Sprint 6 — Videos
     Route::get('/videos',                [VideoController::class, 'index'])    ->name('videos.index');
     Route::post('/videos',               [VideoController::class, 'store'])    ->name('videos.store');
-    Route::get('/videos/{id}/stream',    [VideoController::class, 'stream'])   ->name('videos.stream');
-    Route::get('/videos/{id}/descargar', [VideoController::class, 'descargar'])->name('videos.descargar');
-    Route::delete('/videos/{id}',        [VideoController::class, 'eliminar']) ->name('videos.eliminar');
+    Route::get('/videos/{id}/stream',    [VideoController::class, 'stream'])         ->name('videos.stream');
+    Route::get('/videos/{id}/descargar', [VideoController::class, 'descargar'])       ->name('videos.descargar');
+    Route::put('/videos/{id}/bienvenida',[VideoController::class, 'setBienvenida'])   ->name('videos.bienvenida');
+    Route::delete('/videos/{id}',        [VideoController::class, 'eliminar'])        ->name('videos.eliminar');
 });

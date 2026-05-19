@@ -27,6 +27,10 @@
 .btn-dl:hover    { background:#d2e3fc; }
 .btn-del         { background:#fce8e6; color:#c62828; margin-left:auto; }
 .btn-del:hover   { background:#f5c6c2; }
+.btn-bienvenida         { background:#f0fdf4; color:#15803D; border:1.5px solid #bbf7d0; }
+.btn-bienvenida:hover   { background:#dcfce7; }
+.btn-bienvenida.activo  { background:#15803D; color:#fff; border-color:#15803D; }
+.btn-bienvenida.activo:hover { background:#166534; }
 
 /* ── Upload button ──────────────────────────────────────── */
 .btn-upload      { background:var(--blue-dark,#0D2B5E); color:#fff; padding:8px 18px; border-radius:8px; font-size:.88rem; font-weight:600; border:none; cursor:pointer; display:inline-flex; align-items:center; gap:7px; }
@@ -104,6 +108,11 @@
                     Descargar
                 </a>
                 @if($esAdmin)
+                <button class="btn-sm btn-bienvenida {{ $video->es_bienvenida ? 'activo' : '' }}"
+                        id="btn-bienvenida-{{ $video->id }}"
+                        onclick="toggleBienvenida({{ $video->id }})">
+                    {{ $video->es_bienvenida ? '★ Bienvenida activa' : '☆ Usar en bienvenida' }}
+                </button>
                 <button class="btn-sm btn-del" onclick="pedirEliminar({{ $video->id }}, '{{ addslashes($video->titulo) }}')">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
                     Eliminar
@@ -373,6 +382,44 @@ document.getElementById('btnConfirmarEliminar')?.addEventListener('click', async
         btn.disabled = false;
     }
 });
+
+// ── Toggle video de bienvenida ─────────────────────────────
+async function toggleBienvenida(id) {
+    const btn = document.getElementById(`btn-bienvenida-${id}`);
+    if (!btn) return;
+    btn.disabled = true;
+
+    try {
+        const base = "{{ url('/videos') }}";
+        const res  = await fetch(`${base}/${id}/bienvenida`, {
+            method: 'PUT',
+            headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' },
+        });
+        const data = await res.json();
+
+        if (res.ok && data.ok) {
+            // Si se activó este, desactivar todos los demás primero
+            if (data.activo) {
+                document.querySelectorAll('.btn-bienvenida').forEach(b => {
+                    b.classList.remove('activo');
+                    b.textContent = '☆ Usar en bienvenida';
+                });
+                btn.classList.add('activo');
+                btn.textContent = '★ Bienvenida activa';
+            } else {
+                btn.classList.remove('activo');
+                btn.textContent = '☆ Usar en bienvenida';
+            }
+            showToast(data.mensaje, 'ok');
+        } else {
+            showToast(data.error || 'Error al actualizar.', 'err');
+        }
+    } catch {
+        showToast('Error de red.', 'err');
+    } finally {
+        btn.disabled = false;
+    }
+}
 
 // ── Cerrar modales con Escape ──────────────────────────────
 document.addEventListener('keydown', e => {

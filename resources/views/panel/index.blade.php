@@ -505,9 +505,21 @@ document.querySelectorAll('.modal-overlay').forEach(o => {
 });
 
 // ── Bienvenida ─────────────────────────────────────────────
+function activarSonido() {
+    const vid = document.getElementById('video-bienvenida');
+    const btn = document.getElementById('btn-activar-sonido');
+    if (!vid) return;
+    vid.muted = false;
+    vid.volume = 1;
+    if (btn) btn.classList.add('oculto');
+}
+
 function cerrarBienvenida() {
     const m = document.getElementById('modal-bienvenida');
     if (!m) return;
+    // Pausar el video si está reproduciendo
+    const v = m.querySelector('video');
+    if (v) { v.pause(); }
     m.style.opacity = '0';
     setTimeout(() => m.style.display = 'none', 280);
 }
@@ -517,8 +529,22 @@ window.addEventListener('DOMContentLoaded', () => {
     if (!m) return;
     m.style.display = 'flex';
     requestAnimationFrame(() => m.style.opacity = '1');
-    // Cierre automático a los 6 segundos
+
+    @if($videoBienvenida)
+    // Intentar reproducir automáticamente
+    const vid = document.getElementById('video-bienvenida');
+    if (vid) {
+        vid.play().then(() => {
+            // Autoplay ok (muted) — mostrar botón para activar sonido
+            document.getElementById('btn-activar-sonido')?.classList.remove('oculto');
+        }).catch(() => {
+            // Si falla autoplay, el usuario reproducirá manualmente
+        });
+    }
+    @else
+    // Sin video: cierre automático a los 6 segundos
     setTimeout(cerrarBienvenida, 6000);
+    @endif
 });
 @endif
 </script>
@@ -529,95 +555,112 @@ window.addEventListener('DOMContentLoaded', () => {
 #modal-bienvenida {
     display: none;
     position: fixed; inset: 0;
-    background: rgba(0,0,0,.45);
+    background: rgba(0,0,0,.55);
     z-index: 600;
     align-items: center;
     justify-content: center;
+    padding: 16px;
     opacity: 0;
     transition: opacity .28s ease;
 }
 .bienvenida-card {
     background: #fff;
     border-radius: 12px;
-    padding: 0;
     width: 100%;
-    max-width: 420px;
-    box-shadow: 0 28px 70px rgba(0,0,0,.25);
-    overflow: hidden;
-    transform: translateY(0);
+    max-width: {{ $videoBienvenida ? '600px' : '420px' }};
+    max-height: 92vh;
+    overflow-y: auto;
+    box-shadow: 0 28px 70px rgba(0,0,0,.3);
     animation: bienvenida-in .35s cubic-bezier(.22,1,.36,1);
+    position: relative;
 }
 @keyframes bienvenida-in {
     from { transform: translateY(24px); opacity: 0; }
     to   { transform: translateY(0);    opacity: 1; }
 }
+.bienvenida-close {
+    position: absolute; top: 10px; right: 12px;
+    background: rgba(255,255,255,.2); border: none; color: #fff;
+    width: 30px; height: 30px; border-radius: 50%;
+    font-size: 1.1rem; cursor: pointer; z-index: 2;
+    display: flex; align-items: center; justify-content: center;
+    transition: background .15s;
+}
+.bienvenida-close:hover { background: rgba(255,255,255,.35); }
 .bienvenida-header {
     background: var(--navy);
-    padding: 28px 28px 22px;
+    padding: 24px 28px 20px;
     text-align: center;
+    position: relative;
 }
+.bienvenida-video-wrap {
+    background: #000;
+    line-height: 0;
+    position: relative;
+}
+.bienvenida-video-wrap video {
+    width: 100%; max-height: 300px; object-fit: contain; display: block;
+}
+.btn-sonido {
+    position: absolute; bottom: 44px; right: 10px;
+    background: rgba(0,0,0,.65); color: #fff;
+    border: 1px solid rgba(255,255,255,.4);
+    border-radius: 20px; padding: 5px 12px;
+    font-size: .75rem; font-weight: 600; cursor: pointer;
+    display: flex; align-items: center; gap: 5px;
+    transition: background .15s;
+}
+.btn-sonido:hover { background: rgba(0,0,0,.85); }
+.btn-sonido.oculto { display: none; }
 .bienvenida-body {
-    padding: 24px 28px 28px;
+    padding: 20px 28px 24px;
     text-align: center;
 }
 .bienvenida-avatar {
-    width: 62px; height: 62px;
-    border-radius: 50%;
+    width: 54px; height: 54px; border-radius: 50%;
     background: rgba(255,255,255,.18);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 1.8rem;
-    margin: 0 auto 12px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 1.6rem; margin-bottom: 10px;
     border: 2px solid rgba(255,255,255,.3);
 }
-.bienvenida-saludo {
-    font-size: .78rem; color: rgba(255,255,255,.7);
-    font-weight: 600; letter-spacing: .06em;
-    text-transform: uppercase; margin-bottom: 4px;
-}
-.bienvenida-nombre {
-    font-size: 1.35rem; font-weight: 800;
-    color: #fff; line-height: 1.2;
-}
-.bienvenida-msg {
-    font-size: .88rem; color: var(--text-secondary);
-    line-height: 1.6; margin-bottom: 20px;
-}
-.bienvenida-fecha {
-    display: inline-block;
-    background: var(--surface-2);
-    border-radius: 6px;
-    padding: 6px 14px;
-    font-size: .75rem;
-    color: var(--text-muted);
-    font-weight: 500;
-    margin-bottom: 22px;
-}
-.bienvenida-btn {
-    width: 100%;
-    padding: 11px;
-    background: var(--navy);
-    color: #fff;
-    border: none;
-    border-radius: 8px;
-    font-size: .88rem;
-    font-weight: 700;
-    cursor: pointer;
-    transition: background .15s;
-}
+.bienvenida-saludo { font-size: .72rem; color: rgba(255,255,255,.7); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 3px; }
+.bienvenida-nombre { font-size: 1.25rem; font-weight: 800; color: #fff; }
+.bienvenida-msg    { font-size: .86rem; color: var(--text-secondary); line-height: 1.6; margin-bottom: 16px; }
+.bienvenida-fecha  { display: inline-block; background: var(--surface-2); border-radius: 6px; padding: 5px 12px; font-size: .73rem; color: var(--text-muted); font-weight: 500; margin-bottom: 18px; }
+.bienvenida-btn    { width: 100%; padding: 11px; background: var(--navy); color: #fff; border: none; border-radius: 8px; font-size: .88rem; font-weight: 700; cursor: pointer; transition: background .15s; }
 .bienvenida-btn:hover { background: #0a2147; }
 </style>
 <div id="modal-bienvenida" onclick="if(event.target===this)cerrarBienvenida()">
     <div class="bienvenida-card">
+        {{-- Header --}}
         <div class="bienvenida-header">
+            <button class="bienvenida-close" onclick="cerrarBienvenida()" title="Cerrar">✕</button>
             <div class="bienvenida-avatar">👋</div>
             <div class="bienvenida-saludo">Bienvenido/a de vuelta</div>
             <div class="bienvenida-nombre">{{ session('bienvenida') }}</div>
         </div>
+
+        {{-- Video de bienvenida (si hay uno activo) --}}
+        @if($videoBienvenida)
+        <div class="bienvenida-video-wrap">
+            <video id="video-bienvenida" controls autoplay muted preload="auto"
+                   src="{{ route('videos.stream', $videoBienvenida->id) }}"
+                   type="{{ $videoBienvenida->tipo_mime }}">
+                Tu navegador no soporta la reproducción de video.
+            </video>
+            <button id="btn-activar-sonido" class="btn-sonido oculto"
+                    onclick="activarSonido()">
+                🔇 Toca para activar sonido
+            </button>
+        </div>
+        @endif
+
+        {{-- Cuerpo --}}
         <div class="bienvenida-body">
             <p class="bienvenida-msg">
                 Nos alegra tenerte aquí. Tienes acceso al sistema
-                <strong>SGC F&amp;C Chile SpA</strong>.<br>
-                ¿Listo para comenzar?
+                <strong>SGC F&amp;C Chile SpA</strong>.
+                @if(!$videoBienvenida) <br>¿Listo para comenzar? @endif
             </p>
             <div class="bienvenida-fecha">
                 📅 {{ now()->locale('es')->isoFormat('dddd D [de] MMMM, YYYY') }}

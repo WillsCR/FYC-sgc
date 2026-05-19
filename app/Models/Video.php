@@ -17,6 +17,7 @@ class Video extends Model
         'tamanio',
         'creado_por',
         'creada_el',
+        'es_bienvenida',
     ];
 
     protected $casts = [

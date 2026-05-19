@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Area;
 use App\Services\PermisoService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -9,19 +10,17 @@ use Carbon\Carbon;
 
 class PlanificacionController extends Controller
 {
-    private const AREAS = [
-        0  => 'Sin área',
-        1  => 'Recursos Humanos',
-        2  => 'Seguridad y Salud en el Trabajo',
-        3  => 'Abastecimiento y Finanzas',
-        4  => 'Contrato Pozos',
-        5  => 'Medio Ambiente',
-        6  => 'Control SGI',
-        7  => 'SGI Gestión',
-        8  => 'Patios e Infraestructura',
-        9  => 'Gerencia de Operaciones',
-        10 => 'Gerencia General',
-    ];
+    private ?array $areasCache = null;
+
+    /** Mapa id => descripcion cargado desde sgc_areas. Incluye 0 => 'Sin área'. */
+    private function areasMap(): array
+    {
+        if ($this->areasCache === null) {
+            $this->areasCache = [0 => 'Sin área']
+                + Area::orderBy('id')->pluck('descripcion', 'id')->toArray();
+        }
+        return $this->areasCache;
+    }
 
     private const ESTADOS = [
         0 => 'Sin estado',
@@ -103,8 +102,9 @@ class PlanificacionController extends Controller
         $hoy      = Carbon::today();
         $vencidas = 0;
 
-        $planificaciones->getCollection()->transform(function ($p) use ($hoy, &$vencidas) {
-            $p->area_nombre    = self::AREAS[$p->area]         ?? 'Área ' . $p->area;
+        $areasMap = $this->areasMap();
+        $planificaciones->getCollection()->transform(function ($p) use ($hoy, &$vencidas, $areasMap) {
+            $p->area_nombre    = $areasMap[$p->area]           ?? 'Área ' . $p->area;
             $p->estado_nombre  = self::ESTADOS[$p->id_estado]  ?? '—';
             $p->semaforo       = $this->calcularSemaforo($p, $hoy);
             $p->dias_restantes = $p->termino
@@ -120,17 +120,17 @@ class PlanificacionController extends Controller
 
         // ── Permisos de edición para la vista ───────────────────────────
         $areasConEdicion = $esAdmin
-            ? array_keys(self::AREAS)
+            ? array_keys($this->areasMap())
             : $this->areasConPermiso($usuario->id, 'editar_planificacion');
 
         // ── Áreas disponibles para el filtro ────────────────────────────
         // Admin ve todas; trabajador solo las que tiene ver_planificacion = 1
         if ($esAdmin) {
-            $areasParaFiltro = self::AREAS;
+            $areasParaFiltro = $this->areasMap();
             unset($areasParaFiltro[0]);
         } else {
             $areasParaFiltro = array_filter(
-                self::AREAS,
+                $this->areasMap(),
                 fn($id) => in_array($id, $areasPermitidas, true),
                 ARRAY_FILTER_USE_KEY
             );
@@ -143,7 +143,7 @@ class PlanificacionController extends Controller
             'vencidas'   => $vencidas,
         ];
 
-        $areas   = self::AREAS;
+        $areas   = $this->areasMap();
         $estados = self::ESTADOS;
 
         return view('planificacion.index', compact(
@@ -161,7 +161,7 @@ class PlanificacionController extends Controller
         $usuario = PermisoService::usuarioActual();
         if (! $usuario->esAdmin()) abort(403);
 
-        $areas = self::AREAS;
+        $areas = $this->areasMap();
         unset($areas[0]);
 
         $responsables = DB::table('sgc_usuarios')
@@ -222,7 +222,7 @@ class PlanificacionController extends Controller
             if (! in_array((int) $plan->area, $areasConEdicion, true)) abort(403);
         }
 
-        $areas = self::AREAS;
+        $areas = $this->areasMap();
         unset($areas[0]);
         $estados = self::ESTADOS;
         unset($estados[0]);

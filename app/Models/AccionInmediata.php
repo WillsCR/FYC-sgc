@@ -6,26 +6,14 @@ use Illuminate\Database\Eloquent\Model;
 
 class AccionInmediata extends Model
 {
-    protected $table = 'ges_acciones_inmediatas';
+    protected $table      = 'sgc_nc_acciones_inmediatas';
     protected $primaryKey = 'id';
-    public $timestamps = false;
+    public $timestamps    = false;
 
-    protected $fillable = [
-        'id_nc', 'accion', 'responsable', 'fecha_implementacion', 'estado', 'fecha_cierre'
-    ];
-
-    protected $casts = [
-        'fecha_implementacion' => 'date',
-        'fecha_cierre' => 'date'
-    ];
+    protected $fillable = ['id_nc', 'descripcion'];
 
     public function noConformidad()
     {
         return $this->belongsTo(NoConformidad::class, 'id_nc');
-    }
-
-    public function responsables()
-    {
-        return $this->hasMany(AccionInmediataResp::class, 'id_accion');
     }
 }

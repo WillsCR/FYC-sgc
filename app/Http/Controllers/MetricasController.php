@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Area;
 use App\Services\PermisoService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\DB;
@@ -302,11 +303,9 @@ class MetricasController extends Controller
 
     private function graficoCumplimientoPorArea(): array
     {
-        $nombresAreas = [
-            1=>'RRHH', 2=>'Seguridad SST', 3=>'Abastecimiento',
-            4=>'Contrato Pozos', 5=>'Medio Ambiente', 6=>'Control SGI',
-            7=>'SGI Gestión', 8=>'Patios e Infra.', 9=>'Gerencia Oper.', 10=>'Gerencia Gral.',
-        ];
+        // Carga dinámica desde BD — incluye cualquier área nueva creada
+        $nombresAreas = Area::orderBy('id')->pluck('descripcion', 'id')->toArray();
+
         try {
             $datos = DB::table('sgc_planificaciones')
                 ->select('area', DB::raw('COUNT(*) as total'),
@@ -317,7 +316,12 @@ class MetricasController extends Controller
 
             $labels = $cumplimiento = $totales = $cerradasPorArea = $pendientesPorArea = [];
             foreach ($datos as $row) {
-                $labels[]            = $nombresAreas[$row->area];
+                // Abreviar nombres largos para que quepan en el gráfico (máx. 15 chars)
+                $nombre   = $nombresAreas[$row->area] ?? 'Área ' . $row->area;
+                $labels[] = mb_strlen($nombre) > 15
+                    ? mb_substr($nombre, 0, 14) . '.'
+                    : $nombre;
+
                 $pct                 = $row->total > 0 ? round(($row->cerradas / $row->total) * 100, 1) : 0;
                 $cumplimiento[]      = $pct;
                 $totales[]           = $row->total;

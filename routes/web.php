@@ -10,6 +10,8 @@ use App\Http\Controllers\PlanificacionController;
 use App\Http\Controllers\MinutaController;
 use App\Http\Controllers\PublicacionController;
 use App\Http\Controllers\VideoController;
+use App\Http\Controllers\AreaController;
+use App\Http\Controllers\NoConformidadController;
 use Illuminate\Support\Facades\Route;
 
 // ─── Rutas públicas ──────────────────────────────────────────────────────────
@@ -45,6 +47,12 @@ Route::middleware(['auth.sgc'])->group(function () {
     Route::get('/archivos/{id}/descargar',   [ArchivoController::class, 'descargar'])->name('archivos.descargar');
     Route::delete('/archivos/{id}',          [ArchivoController::class, 'eliminar'])->name('archivos.eliminar');
 
+    // Gestión de áreas
+    Route::get('/areas',            [AreaController::class, 'index'])  ->name('areas.index');
+    Route::post('/areas',           [AreaController::class, 'store'])  ->name('areas.store');
+    Route::put('/areas/{id}',       [AreaController::class, 'update']) ->name('areas.update');
+    Route::delete('/areas/{id}',    [AreaController::class, 'destroy'])->name('areas.destroy');
+
     // Sprint 4 — Gestión de usuarios
     Route::get('/usuarios',              [UsuarioController::class, 'index'])->name('usuarios.index');
     Route::get('/usuarios/nuevo',        [UsuarioController::class, 'create'])->name('usuarios.create');
@@ -79,6 +87,16 @@ Route::middleware(['auth.sgc'])->group(function () {
     Route::get('/minutas/{id}/pdf',      [MinutaController::class, 'descargar'])->name('minutas.pdf');
     Route::put('/minutas/{id}',          [MinutaController::class, 'update'])   ->name('minutas.update');
     Route::delete('/minutas/{id}',       [MinutaController::class, 'destroy'])  ->name('minutas.destroy');
+
+    // No Conformidades
+    Route::get('/no-conformidades',            [NoConformidadController::class, 'index'])      ->name('nc.index');
+    Route::post('/no-conformidades/importar',  [NoConformidadController::class, 'importar'])   ->name('nc.importar');
+    Route::post('/no-conformidades',           [NoConformidadController::class, 'store'])      ->name('nc.store');
+    Route::get('/no-conformidades/{id}/datos', [NoConformidadController::class, 'datos'])      ->name('nc.datos');
+    Route::put('/no-conformidades/{id}',       [NoConformidadController::class, 'update'])     ->name('nc.update');
+    Route::delete('/no-conformidades/{id}',    [NoConformidadController::class, 'destroy'])    ->name('nc.destroy');
+    Route::delete('/nc/doc/{id}',              [NoConformidadController::class, 'eliminarDoc'])->name('nc.doc.eliminar');
+    Route::get('/nc/doc/{id}/ver',             [NoConformidadController::class, 'verDoc'])     ->name('nc.doc.ver');
 
     // Sprint 6 — Videos
     Route::get('/videos',                [VideoController::class, 'index'])    ->name('videos.index');

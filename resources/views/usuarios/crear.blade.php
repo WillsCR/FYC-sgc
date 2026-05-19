@@ -159,18 +159,7 @@
             ? route('usuarios.update', $usuario->id)
             : route('usuarios.store');
         $metodo = isset($usuario) ? 'PUT' : 'POST';
-        $areas = [
-            1 => 'Recursos Humanos',
-            2 => 'Seguridad y Salud en el Trabajo',
-            3 => 'Abastecimiento y Finanzas',
-            4 => 'Contrato Pozos',
-            5 => 'Medio Ambiente',
-            6 => 'Control SGI',
-            7 => 'SGI Gestión',
-            8 => 'Patios e Infraestructura',
-            9 => 'Gerencia de Operaciones',
-            10 => 'Gerencia General',
-        ];
+        // $areas viene del controlador (AreaController → BD), no hardcodear aquí
     @endphp
 
     <form method="POST" action="{{ $accion }}">

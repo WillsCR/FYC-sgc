@@ -62,8 +62,10 @@
     <a href="{{ route('sig.index') }}"     class="subnav-item {{ request()->routeIs('sig*')      ? 'active' : '' }}">Información SIG</a>
     <a href="{{ route('ambiente.index') }}" class="subnav-item {{ request()->routeIs('ambiente*') ? 'active' : '' }}">Medio Ambiente</a>
     <a href="{{ route('videos.index') }}"  class="subnav-item {{ request()->routeIs('videos*')   ? 'active' : '' }}">Videos</a>
+    <a href="{{ route('nc.index') }}"      class="subnav-item {{ request()->routeIs('nc*')        ? 'active' : '' }}">No Conformidades</a>
     @if(session('es_admin'))
-        <a href="{{ route('usuarios.index') }}"   class="subnav-item {{ request()->routeIs('usuarios*') ? 'active' : '' }}">Usuarios</a>
+        <a href="{{ route('usuarios.index') }}" class="subnav-item {{ request()->routeIs('usuarios*') ? 'active' : '' }}">Usuarios</a>
+        <a href="{{ route('areas.index') }}"    class="subnav-item {{ request()->routeIs('areas*')    ? 'active' : '' }}">Áreas</a>
     @endif
 </div>
 

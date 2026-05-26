@@ -9,45 +9,45 @@ namespace App\Helpers;
  */
 class EstiloModulo
 {
-    /** Estilos por nombre de submódulo */
+    /** Estilos por nombre de submódulo (icono = clase Font Awesome sin prefijo) */
     private static array $estilosSubmodulo = [
         // SIG
-        'No Conformidades'                                    => ['color' => '#DC2626', 'emoji' => '⚠️'],
-        'Instrumentos de Medición Certificación de Calidad'   => ['color' => '#D97706', 'emoji' => '📏'],
-        'Certificados de Calidad'                             => ['color' => '#0F6E56', 'emoji' => '✅'],
-        'Certificados de EPP'                                 => ['color' => '#B45309', 'emoji' => '🦺'],
-        'Formatos SIG'                                        => ['color' => '#C05621', 'emoji' => '📝'],
-        'Documentos del SIG'                                  => ['color' => '#1D4ED8', 'emoji' => '📁'],
-        'Capacitaciones'                                      => ['color' => '#0369A1', 'emoji' => '🎓'],
-        'Informes'                                            => ['color' => '#7C3AED', 'emoji' => '📊'],
-        'Auditorías'                                          => ['color' => '#059669', 'emoji' => '🔍'],
+        'No Conformidades'                                    => ['color' => '#DC2626', 'emoji' => 'fa-triangle-exclamation'],
+        'Instrumentos de Medición Certificación de Calidad'   => ['color' => '#D97706', 'emoji' => 'fa-ruler'],
+        'Certificados de Calidad'                             => ['color' => '#0F6E56', 'emoji' => 'fa-certificate'],
+        'Certificados de EPP'                                 => ['color' => '#B45309', 'emoji' => 'fa-vest'],
+        'Formatos SIG'                                        => ['color' => '#C05621', 'emoji' => 'fa-file-lines'],
+        'Documentos del SIG'                                  => ['color' => '#1D4ED8', 'emoji' => 'fa-folder-open'],
+        'Capacitaciones'                                      => ['color' => '#0369A1', 'emoji' => 'fa-graduation-cap'],
+        'Informes'                                            => ['color' => '#7C3AED', 'emoji' => 'fa-chart-bar'],
+        'Auditorías'                                          => ['color' => '#059669', 'emoji' => 'fa-magnifying-glass'],
         // Medio Ambiente
-        'Sustancias y Residuos Peligrosos'                    => ['color' => '#DC2626', 'emoji' => '♻️'],
-        'Control de Recursos'                                 => ['color' => '#D97706', 'emoji' => '🌱'],
-        'Huellas de Carbono'                                  => ['color' => '#0F6E56', 'emoji' => '🌍'],
-        'Control Operativo'                                   => ['color' => '#B45309', 'emoji' => '⚙️'],
+        'Sustancias y Residuos Peligrosos'                    => ['color' => '#DC2626', 'emoji' => 'fa-recycle'],
+        'Control de Recursos'                                 => ['color' => '#D97706', 'emoji' => 'fa-leaf'],
+        'Huellas de Carbono'                                  => ['color' => '#0F6E56', 'emoji' => 'fa-earth-americas'],
+        'Control Operativo'                                   => ['color' => '#B45309', 'emoji' => 'fa-gears'],
         // Seguridad
-        'Protocolo Minsal'                                    => ['color' => '#C05621', 'emoji' => '🏥'],
-        'DS 44'                                               => ['color' => '#1D4ED8', 'emoji' => '⚖️'],
-        'CPHS'                                                => ['color' => '#0369A1', 'emoji' => '👥'],
+        'Protocolo Minsal'                                    => ['color' => '#C05621', 'emoji' => 'fa-hospital'],
+        'DS 44'                                               => ['color' => '#1D4ED8', 'emoji' => 'fa-scale-balanced'],
+        'CPHS'                                                => ['color' => '#0369A1', 'emoji' => 'fa-users'],
         // RRHH / Abastecimiento
-        'Control Plan e Infraestructura'                      => ['color' => '#7C3AED', 'emoji' => '🏗️'],
-        'Cursos'                                              => ['color' => '#059669', 'emoji' => '📚'],
-        'Contrato pozos'                                      => ['color' => '#6366F1', 'emoji' => '⛏️'],
-        'Formatos'                                            => ['color' => '#C05621', 'emoji' => '📝'],
-        'Documentos'                                          => ['color' => '#1D4ED8', 'emoji' => '📁'],
+        'Control Plan e Infraestructura'                      => ['color' => '#7C3AED', 'emoji' => 'fa-building'],
+        'Cursos'                                              => ['color' => '#059669', 'emoji' => 'fa-book-open'],
+        'Contrato pozos'                                      => ['color' => '#6366F1', 'emoji' => 'fa-hammer'],
+        'Formatos'                                            => ['color' => '#C05621', 'emoji' => 'fa-file-lines'],
+        'Documentos'                                          => ['color' => '#1D4ED8', 'emoji' => 'fa-folder-open'],
     ];
 
     /** Estilos por clave de módulo raíz */
     private static array $estilosModulo = [
-        'sig'            => ['color' => '#0D2B5E', 'emoji' => '📋', 'badge' => 'SIG'],
-        'ambiente'       => ['color' => '#15803D', 'emoji' => '🌿', 'badge' => 'MA'],
-        'seguridad'      => ['color' => '#991B1B', 'emoji' => '🛡️', 'badge' => 'SST'],
-        'abastecimiento' => ['color' => '#B45309', 'emoji' => '🏗️', 'badge' => 'ABI'],
-        'rrhh'           => ['color' => '#7C3AED', 'emoji' => '👨‍💼', 'badge' => 'RRHH'],
-        'gerencia'       => ['color' => '#0C4A6E', 'emoji' => '🏢', 'badge' => 'GER'],
-        'proyectos'      => ['color' => '#1D4ED8', 'emoji' => '📈', 'badge' => 'PRY'],
-        'finanzas'       => ['color' => '#065F46', 'emoji' => '💰', 'badge' => 'FIN'],
+        'sig'            => ['color' => '#0D2B5E', 'emoji' => 'fa-clipboard-check',  'badge' => 'SIG'],
+        'ambiente'       => ['color' => '#15803D', 'emoji' => 'fa-seedling',          'badge' => 'MA'],
+        'seguridad'      => ['color' => '#991B1B', 'emoji' => 'fa-shield-halved',     'badge' => 'SST'],
+        'abastecimiento' => ['color' => '#B45309', 'emoji' => 'fa-truck',             'badge' => 'ABI'],
+        'rrhh'           => ['color' => '#7C3AED', 'emoji' => 'fa-user-tie',          'badge' => 'RRHH'],
+        'gerencia'       => ['color' => '#0C4A6E', 'emoji' => 'fa-building',          'badge' => 'GER'],
+        'proyectos'      => ['color' => '#1D4ED8', 'emoji' => 'fa-chart-line',        'badge' => 'PRY'],
+        'finanzas'       => ['color' => '#065F46', 'emoji' => 'fa-coins',             'badge' => 'FIN'],
     ];
 
     /** Mapeo carpeta_id → clave de módulo */

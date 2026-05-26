@@ -14,19 +14,62 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Shared\Date as XlDate;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx as XlsxWriter;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Border;
+use PhpOffice\PhpSpreadsheet\Style\Color;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Style\Font;
 
 class NoConformidadController extends Controller
 {
-    private const TIPOS_ACCION = [1 => 'Correctiva', 2 => 'Oportunidad de Mejora'];
-    private const STATUS       = [0 => 'Pendiente',   1 => 'Resuelta'];
-    private const EFICAZ       = [0 => '-',           1 => 'Sí', 2 => 'No'];
+    private const TIPOS_ACCION  = [1 => 'Correctiva', 2 => 'Oportunidad de Mejora'];
+    private const STATUS        = [0 => 'Pendiente',   1 => 'Resuelta'];
+    private const EFICAZ        = [0 => '-',           1 => 'Sí', 2 => 'No'];
+    private const NC_CARPETA_ID = 9;
+
+    /**
+     * Permiso único: `carga` sobre carpeta 9 es el único flag que controla
+     * TODO el acceso a No Conformidades (lectura, escritura, exportar, importar).
+     * Admins (perfil 1 y 2) siempre tienen acceso completo.
+     */
+    private function tieneAccesoNC(): bool
+    {
+        $usuario = PermisoService::usuarioActual();
+        return $usuario->esAdmin() || PermisoService::can('carga', 'carpeta', self::NC_CARPETA_ID);
+    }
+
+    /** Aborta 403 HTML si no tiene acceso. */
+    private function checkVer(): void
+    {
+        if (! $this->tieneAccesoNC()) {
+            abort(403, 'No tienes permiso para acceder al módulo de No Conformidades.');
+        }
+    }
+
+    /** Aborta 403 JSON si no tiene acceso (para endpoints AJAX). */
+    private function checkGestionar(): void
+    {
+        if (! $this->tieneAccesoNC()) {
+            abort(response()->json(['error' => 'Sin permiso para gestionar No Conformidades.'], 403));
+        }
+    }
+
+    /** Alias semántico: en NC el permiso de gestión y de visualización son idénticos. */
+    private function puedeGestionar(): bool
+    {
+        return $this->tieneAccesoNC();
+    }
 
     // ── INDEX ─────────────────────────────────────────────────────────────────
 
     public function index()
     {
+        $this->checkVer();
         $usuario = PermisoService::usuarioActual();
-        $esAdmin = $usuario->esAdmin();
+        $esAdmin       = $this->puedeGestionar(); // puede crear/editar/eliminar/exportar
+        $puedeImportar = $usuario->esAdmin();   // solo admins reales pueden importar
 
         $areasMap = Area::orderBy('id')->pluck('descripcion', 'id')->toArray();
 
@@ -45,17 +88,15 @@ class NoConformidadController extends Controller
 
         $areas = $areasMap;
 
-        return view('no_conformidades.index', compact('ncs', 'areas', 'usuario', 'esAdmin'));
+        return view('no_conformidades.index', compact('ncs', 'areas', 'usuario', 'esAdmin', 'puedeImportar'));
     }
 
     // ── STORE ─────────────────────────────────────────────────────────────────
 
     public function store(Request $request)
     {
+        $this->checkGestionar();
         $usuario = PermisoService::usuarioActual();
-        if (! $usuario->esAdmin()) {
-            return response()->json(['error' => 'Sin permiso.'], 403);
-        }
 
         $request->validate([
             'fecha_deteccion' => ['required', 'date'],
@@ -113,6 +154,7 @@ class NoConformidadController extends Controller
 
     public function datos(int $id)
     {
+        $this->checkVer();
         $nc = NoConformidad::with(['accionesInmediatas', 'accionesCorrectivas', 'documentos'])->findOrFail($id);
 
         return response()->json([
@@ -155,10 +197,8 @@ class NoConformidadController extends Controller
 
     public function update(Request $request, int $id)
     {
+        $this->checkGestionar();
         $usuario = PermisoService::usuarioActual();
-        if (! $usuario->esAdmin()) {
-            return response()->json(['error' => 'Sin permiso.'], 403);
-        }
 
         $nc = NoConformidad::findOrFail($id);
 
@@ -211,10 +251,8 @@ class NoConformidadController extends Controller
 
     public function destroy(int $id)
     {
+        $this->checkGestionar();
         $usuario = PermisoService::usuarioActual();
-        if (! $usuario->esAdmin()) {
-            return response()->json(['error' => 'Sin permiso.'], 403);
-        }
 
         $nc = NoConformidad::with('documentos')->findOrFail($id);
 
@@ -234,10 +272,7 @@ class NoConformidadController extends Controller
 
     public function eliminarDoc(int $id)
     {
-        $usuario = PermisoService::usuarioActual();
-        if (! $usuario->esAdmin()) {
-            return response()->json(['error' => 'Sin permiso.'], 403);
-        }
+        $this->checkGestionar();
 
         $doc = NoConformidadDoc::findOrFail($id);
         Storage::disk('local')->delete('nc_docs/' . $doc->archivo);
@@ -248,6 +283,7 @@ class NoConformidadController extends Controller
 
     public function verDoc(int $id, Request $request)
     {
+        $this->checkVer();
         $doc  = NoConformidadDoc::findOrFail($id);
         $path = Storage::disk('local')->path('nc_docs/' . $doc->archivo);
 
@@ -263,13 +299,231 @@ class NoConformidadController extends Controller
         ]);
     }
 
+    // ── EXPORTAR EXCEL ───────────────────────────────────────────────────────
+
+    public function exportar()
+    {
+        $this->checkVer();
+        $areasMap = Area::orderBy('id')->pluck('descripcion', 'id')->toArray();
+
+        $ncs = NoConformidad::with(['accionesInmediatas', 'accionesCorrectivas'])
+            ->orderBy('num_nc')
+            ->get()
+            ->map(function ($nc) use ($areasMap) {
+                $nc->area_nombre = $areasMap[$nc->id_area] ?? '—';
+                return $nc;
+            });
+
+        // ── Colores de grupo ─────────────────────────────────────────────────
+        $cId    = '1E3A6E'; // Azul — identificación
+        $cInm   = '1A5C3A'; // Verde — medidas inmediatas
+        $cCorr  = '7B4810'; // Naranja — acciones correctivas
+        $cVerif = '4B1A7B'; // Morado — verificación
+        $cSub   = 'F1F5F9'; // Fondo sub-encabezado
+        $white  = 'FFFFFF';
+        $black  = '000000';
+
+        // ── Definición de columnas ───────────────────────────────────────────
+        // [encabezado fila1, encabezado fila2, ancho, grupo, callback($nc)]
+        $cols = [
+            ['N° NC',             '',                      7,   $cId,    fn($nc) => $nc->num_nc],
+            ['Fecha de Detección','',                      14,  $cId,    fn($nc) => $nc->fecha_deteccion?->format('d-m-Y') ?? ''],
+            ['Origen',            '',                      22,  $cId,    fn($nc) => $nc->origen],
+            ['Área',              '',                      22,  $cId,    fn($nc) => $nc->area_nombre],
+            ['Tipo de Acción',    'Correctiva',            13,  $cId,    fn($nc) => $nc->tipo_accion == 1 ? 'X' : ''],
+            ['',                  'Oportunidad de Mejora', 13,  $cId,    fn($nc) => $nc->tipo_accion == 2 ? 'X' : ''],
+            ['Detectada Por',     'Nombre',                22,  $cId,    fn($nc) => $nc->detectada_por],
+            ['',                  'Cargo',                 20,  $cId,    fn($nc) => $nc->cargo],
+            ['Descripción del Hallazgo', '',               45,  $cId,    fn($nc) => $nc->descripcion],
+            // ── Medidas inmediatas ────────────────────────────────────────
+            ['Medidas Inmediatas','Descripción de la Acción Inmediata', 50, $cInm,
+                fn($nc) => $nc->accionesInmediatas->map(fn($a,$i) => ($i+1).'.- '.$a->descripcion)->implode("\n")],
+            ['',                  'Responsable — Nombre',  24,  $cInm,   fn($nc) => $nc->resp_inmediata_nombre],
+            ['',                  'Responsable — Cargo',   22,  $cInm,   fn($nc) => $nc->resp_inmediata_cargo],
+            ['',                  'Status Corrección',     18,  $cInm,   fn($nc) => $nc->status_correccion ? 'Resuelta' : 'Pendiente'],
+            // ── Acciones correctivas ──────────────────────────────────────
+            ['Acciones Correctivas','Descripción de la Acción Correctiva', 50, $cCorr,
+                fn($nc) => $nc->accionesCorrectivas->map(fn($a,$i) => ($i+1).'.- '.$a->descripcion)->implode("\n")],
+            ['',                  'Responsable — Nombre',  24,  $cCorr,  fn($nc) => $nc->resp_correctiva_nombre],
+            ['',                  'Responsable — Cargo',   22,  $cCorr,  fn($nc) => $nc->resp_correctiva_cargo],
+            ['',                  'Fecha Implementación',  18,  $cCorr,  fn($nc) => $nc->fecha_implem_acc_corr?->format('d-m-Y') ?? ''],
+            ['',                  'Fecha Seguimiento',     18,  $cCorr,  fn($nc) => $nc->fecha_seguim_acc_corr?->format('d-m-Y') ?? ''],
+            ['',                  'Status Acc. Correctiva',18,  $cCorr,  fn($nc) => $nc->status_acc_corr ? 'Resuelta' : 'Pendiente'],
+            ['',                  'Status Seguimiento',    18,  $cCorr,  fn($nc) => $nc->status_seguim_acc_corr ? 'Resuelta' : 'Pendiente'],
+            // ── Verificación ──────────────────────────────────────────────
+            ['Verificación de la Eficacia','¿Acción Eficaz?', 14, $cVerif,
+                fn($nc) => match((int)$nc->accion_eficaz){1=>'Sí',2=>'No',default=>'—'}],
+            ['',                  'Fecha Cierre',          14,  $cVerif, fn($nc) => $nc->fecha_cierre?->format('d-m-Y') ?? ''],
+            ['',                  'Registros',             22,  $cVerif, fn($nc) => $nc->registros ?? ''],
+            ['',                  'Observaciones',         30,  $cVerif, fn($nc) => $nc->observaciones ?? ''],
+        ];
+
+        $totalCols = count($cols);
+
+        // ── Crear spreadsheet ────────────────────────────────────────────────
+        $spreadsheet = new Spreadsheet();
+        $sheet       = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Matriz NC');
+
+        $thinBorder = [
+            'borders' => [
+                'allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => 'FF' . 'B0BEC5']],
+            ],
+        ];
+
+        // ── Fila 1: encabezados de grupo (merged por sección) ────────────────
+        $groupRanges = [];   // [startCol, endCol, label, color]
+        $prevGroup   = null;
+        $groupStart  = 1;
+
+        foreach ($cols as $ci => $col) {
+            $colNum  = $ci + 1;
+            $grpLabel = $col[0];
+            $grpColor = $col[3];
+
+            if ($grpLabel !== '' && $grpLabel !== $prevGroup) {
+                if ($prevGroup !== null) {
+                    $groupRanges[] = [$groupStart, $colNum - 1, $prevGroup, $prevColor];
+                }
+                $groupStart = $colNum;
+                $prevGroup  = $grpLabel;
+                $prevColor  = $grpColor;
+            }
+        }
+        $groupRanges[] = [$groupStart, $totalCols, $prevGroup, $prevColor];
+
+        foreach ($groupRanges as [$start, $end, $label, $color]) {
+            $startCell = $this->xlCol($start) . '1';
+            $endCell   = $this->xlCol($end)   . '1';
+            $sheet->setCellValue($startCell, strtoupper($label));
+            if ($start !== $end) {
+                $sheet->mergeCells("{$startCell}:{$endCell}");
+            }
+            $sheet->getStyle("{$startCell}:{$endCell}")->applyFromArray([
+                'font'      => ['bold' => true, 'color' => ['argb' => 'FF'.$white], 'size' => 9],
+                'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF'.$color]],
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER,
+                                'vertical'   => Alignment::VERTICAL_CENTER,
+                                'wrapText'   => true],
+                'borders'   => ['allBorders' => ['borderStyle' => Border::BORDER_THIN,
+                                                 'color'       => ['argb' => 'FF'.'FFFFFF']]],
+            ]);
+            $sheet->getRowDimension(1)->setRowHeight(22);
+        }
+
+        // ── Fila 2: sub-encabezados ──────────────────────────────────────────
+        foreach ($cols as $ci => $col) {
+            $colNum   = $ci + 1;
+            $colLetter = $this->xlCol($colNum);
+            $subLabel  = $col[1] !== '' ? $col[1] : strtoupper($col[0]);
+            $grpColor  = $col[3];
+
+            $sheet->setCellValue("{$colLetter}2", $subLabel);
+
+            // Sub-encabezado con color más claro derivado del grupo
+            $subFill = match($grpColor) {
+                $cInm   => 'D4EDDA',
+                $cCorr  => 'FFF3CD',
+                $cVerif => 'E8D5FF',
+                default => 'DBEAFE',
+            };
+            $subText = match($grpColor) {
+                $cInm   => '155724',
+                $cCorr  => '856404',
+                $cVerif => '4B1A7B',
+                default => '1E3A6E',
+            };
+
+            $sheet->getStyle("{$colLetter}2")->applyFromArray([
+                'font'      => ['bold' => true, 'color' => ['argb' => 'FF'.$subText], 'size' => 8],
+                'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF'.$subFill]],
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER,
+                                'vertical'   => Alignment::VERTICAL_CENTER,
+                                'wrapText'   => true],
+                'borders'   => ['allBorders' => ['borderStyle' => Border::BORDER_THIN,
+                                                 'color'       => ['argb' => 'FFB0BEC5']]],
+            ]);
+            $sheet->getColumnDimension($colLetter)->setWidth($col[2]);
+        }
+        $sheet->getRowDimension(2)->setRowHeight(32);
+
+        // ── Filas de datos ───────────────────────────────────────────────────
+        foreach ($ncs as $ri => $nc) {
+            $row       = $ri + 3;
+            $rowBg     = $ri % 2 === 0 ? 'FFFFFF' : 'F8FAFC';
+            $maxLines  = 1;
+
+            foreach ($cols as $ci => $col) {
+                $colLetter = $this->xlCol($ci + 1);
+                $value     = ($col[4])($nc);
+                $grpColor  = $col[3];
+
+                // Fondo de celda por grupo (alternado)
+                $cellBg = match($grpColor) {
+                    $cInm   => $ri % 2 === 0 ? 'F0FDF4' : 'E8F5E9',
+                    $cCorr  => $ri % 2 === 0 ? 'FFFDF0' : 'FFF8E1',
+                    $cVerif => $ri % 2 === 0 ? 'FAF5FF' : 'F3E8FF',
+                    default => $rowBg,
+                };
+
+                $sheet->setCellValue("{$colLetter}{$row}", $value);
+                $sheet->getStyle("{$colLetter}{$row}")->applyFromArray([
+                    'font'      => ['size' => 8, 'color' => ['argb' => 'FF1F2937']],
+                    'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF'.$cellBg]],
+                    'alignment' => ['vertical' => Alignment::VERTICAL_TOP, 'wrapText' => true,
+                                    'horizontal' => in_array($ci, [0,4,5,11,12])
+                                        ? Alignment::HORIZONTAL_CENTER
+                                        : Alignment::HORIZONTAL_LEFT],
+                    'borders'   => ['allBorders' => ['borderStyle' => Border::BORDER_THIN,
+                                                     'color'       => ['argb' => 'FFE5E7EB']]],
+                ]);
+
+                // Calcular altura estimada por saltos de línea
+                $lines = substr_count((string)$value, "\n") + 1;
+                if ($lines > $maxLines) $maxLines = $lines;
+            }
+
+            // Altura de fila adaptativa (mínimo 18px, ~14px por línea)
+            $sheet->getRowDimension($row)->setRowHeight(max(18, $maxLines * 14 + 4));
+        }
+
+        // Freeze panes en fila 3 para que los encabezados queden fijos
+        $sheet->freezePane('A3');
+
+        // ── Descargar ────────────────────────────────────────────────────────
+        $filename = 'Matriz_NC_' . now()->format('Y-m-d') . '.xlsx';
+        $writer   = new XlsxWriter($spreadsheet);
+
+        return response()->streamDownload(
+            fn() => $writer->save('php://output'),
+            $filename,
+            [
+                'Content-Type'        => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'Cache-Control'       => 'max-age=0',
+                'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            ]
+        );
+    }
+
+    /** Convierte número de columna (1-based) a letra(s) Excel: 1→A, 27→AA */
+    private function xlCol(int $n): string
+    {
+        $col = '';
+        while ($n > 0) {
+            $n--;
+            $col = chr(65 + ($n % 26)) . $col;
+            $n   = intdiv($n, 26);
+        }
+        return $col;
+    }
+
     // ── IMPORTAR EXCEL ────────────────────────────────────────────────────────
 
     public function importar(Request $request)
     {
         $usuario = PermisoService::usuarioActual();
         if (! $usuario->esAdmin()) {
-            return response()->json(['error' => 'Sin permiso.'], 403);
+            return response()->json(['error' => 'Solo los administradores pueden importar No Conformidades.'], 403);
         }
 
         $request->validate([

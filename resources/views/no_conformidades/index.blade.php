@@ -65,6 +65,24 @@
 }
 
 /* ── Buttons ────────────────────────────────────────────────────────────────── */
+.btn-export {
+    background: #fff;
+    color: #15803d;
+    border: 1.5px solid #bbf7d0;
+    border-radius: var(--nc-radius);
+    padding: 8px 16px;
+    font-size: .875rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    text-decoration: none;
+    transition: background .15s, border-color .15s;
+}
+.btn-export:hover { background: #f0fdf4; border-color: #86efac; }
+
 .btn-import {
     background: #fff;
     color: #15803d;
@@ -242,6 +260,29 @@
 }
 .acc-list li .acc-txt { color: #374151; }
 .cell-dash { color: #cbd5e1; font-size: .9rem; }
+
+/* ── Evidencias inline (estilo legacy) ──────────────────────────────────────── */
+.evidencias-section {
+    margin-top: 8px;
+    padding-top: 7px;
+    border-top: 1px dashed #cbd5e1;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+.evidencia-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: .78rem;
+    color: #1d4ed8;
+    text-decoration: none;
+    font-weight: 500;
+    line-height: 1.4;
+}
+.evidencia-link:hover { text-decoration: underline; color: #1e3a8a; }
+.evidencia-label { color: #374151; font-size: .78rem; }
+.evidencia-link svg { flex-shrink: 0; }
 
 /* Badges */
 .badge {
@@ -624,16 +665,22 @@
             <h1>📋 Control de No Conformidades</h1>
             <p>Registro y seguimiento de hallazgos, acciones inmediatas y correctivas.</p>
         </div>
-        @if($esAdmin)
-        <button class="btn-import" onclick="abrirModalImportar()" title="Importar NCs desde Excel">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-            Importar Excel
-        </button>
-        <button class="btn-primary" onclick="abrirModalCrear()">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Nueva NC
-        </button>
-        @endif
+        <div style="display:flex; align-items:center; gap:8px">
+            <a href="{{ route('nc.exportar') }}" class="btn-export" title="Descargar toda la información en Excel">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Exportar Excel
+            </a>
+            @if($puedeImportar)
+            <button class="btn-import" onclick="abrirModalImportar()" title="Importar NCs desde Excel">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                Importar Excel
+            </button>
+            <button class="btn-primary" onclick="abrirModalCrear()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Nueva NC
+            </button>
+            @endif
+        </div>
     </div>
 
     {{-- ── Alertas ─────────────────────────────────────────────────────────────── --}}
@@ -671,7 +718,6 @@
                     <th class="th-inm-group"  colspan="4">Medidas Inmediatas</th>
                     <th class="th-corr-group" colspan="7">Acciones Correctivas</th>
                     <th class="th-verif-group" colspan="4">Verificación de la Eficacia</th>
-                    <th class="th-id-group" rowspan="2">Archivos</th>
                     @if($esAdmin)
                     <th class="th-id-group" rowspan="2">Acciones</th>
                     @endif
@@ -705,13 +751,8 @@
             <tbody id="nc-tbody">
             @forelse($ncs as $nc)
                 @php
-                    $docsJson  = $nc->documentos->map(fn($d) => [
-                        'tipo'   => $d->tipo,
-                        'nombre' => $d->nombre_original,
-                        'url'    => route('nc.doc.ver', $d->id),
-                        'dl'     => route('nc.doc.ver', $d->id) . '?download=1',
-                    ])->values()->toJson(JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT);
-                    $totalDocs = $nc->documentos->count();
+                    $docsInm  = $nc->documentos->where('tipo', 1)->values();
+                    $docsCorr = $nc->documentos->where('tipo', 2)->values();
                 @endphp
                 <tr class="nc-row"
                     data-tipo="{{ $nc->tipo_nombre }}"
@@ -746,6 +787,27 @@
                         @else
                             <span class="cell-dash">—</span>
                         @endif
+                        {{-- Evidencias inmediatas inline --}}
+                        @if($docsInm->isNotEmpty())
+                        <div class="evidencias-section">
+                            @if($docsInm->count() === 1)
+                                <span class="evidencia-label">Evidencia:&nbsp;</span><a href="{{ route('nc.doc.ver', $docsInm[0]->id) }}" target="_blank" class="evidencia-link">
+                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                    Descargar evidencia
+                                </a>
+                            @else
+                                @foreach($docsInm as $idx => $doc)
+                                <div style="display:flex;align-items:center;gap:4px">
+                                    <span class="evidencia-label">Evidencia {{ $idx+1 }}:&nbsp;</span>
+                                    <a href="{{ route('nc.doc.ver', $doc->id) }}" target="_blank" class="evidencia-link">
+                                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                        Descargar evidencia
+                                    </a>
+                                </div>
+                                @endforeach
+                            @endif
+                        </div>
+                        @endif
                     </td>
                     <td class="td-inm col-nom">{{ $nc->resp_inmediata_nombre ?: '—' }}</td>
                     <td class="td-inm col-cargo">{{ $nc->resp_inmediata_cargo ?: '—' }}</td>
@@ -768,6 +830,27 @@
                             </ul>
                         @else
                             <span class="cell-dash">—</span>
+                        @endif
+                        {{-- Evidencias correctivas inline --}}
+                        @if($docsCorr->isNotEmpty())
+                        <div class="evidencias-section">
+                            @if($docsCorr->count() === 1)
+                                <span class="evidencia-label">Evidencia:&nbsp;</span><a href="{{ route('nc.doc.ver', $docsCorr[0]->id) }}" target="_blank" class="evidencia-link">
+                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                    Descargar evidencia
+                                </a>
+                            @else
+                                @foreach($docsCorr as $idx => $doc)
+                                <div style="display:flex;align-items:center;gap:4px">
+                                    <span class="evidencia-label">Evidencia {{ $idx+1 }}:&nbsp;</span>
+                                    <a href="{{ route('nc.doc.ver', $doc->id) }}" target="_blank" class="evidencia-link">
+                                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                        Descargar evidencia
+                                    </a>
+                                </div>
+                                @endforeach
+                            @endif
+                        </div>
                         @endif
                     </td>
                     <td class="td-corr col-nom">{{ $nc->resp_correctiva_nombre ?: '—' }}</td>
@@ -799,19 +882,6 @@
                     <td class="td-verif col-reg">{{ $nc->registros ?: '—' }}</td>
                     <td class="td-verif col-obs">{{ $nc->observaciones ?: '—' }}</td>
 
-                    {{-- Archivos --}}
-                    <td class="col-docs center">
-                        @if($totalDocs > 0)
-                        <button class="btn-docs-badge"
-                                onclick="verDocs(this, {{ $nc->num_nc }})"
-                                data-docs="{{ htmlspecialchars($docsJson, ENT_QUOTES, 'UTF-8') }}">
-                            📎 {{ $totalDocs }}
-                        </button>
-                        @else
-                        <span class="cell-dash">—</span>
-                        @endif
-                    </td>
-
                     {{-- Acciones admin --}}
                     @if($esAdmin)
                     <td class="col-act center">
@@ -822,7 +892,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="{{ $esAdmin ? 26 : 25 }}" class="nc-empty">
+                    <td colspan="{{ $esAdmin ? 25 : 24 }}" class="nc-empty">
                         <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
                         <p>No hay No Conformidades registradas.</p>
                     </td>
@@ -1042,7 +1112,7 @@
 {{-- ═══════════════════════════════════════════════════════════════════════════ --}}
 {{--  MODAL IMPORTAR EXCEL                                                        --}}
 {{-- ═══════════════════════════════════════════════════════════════════════════ --}}
-@if($esAdmin)
+@if($puedeImportar)
 <div class="docs-viewer-overlay" id="modal-importar" onclick="if(event.target===this)cerrarImportar()">
     <div class="docs-viewer-box" style="max-width:520px">
         <div class="docs-viewer-header">

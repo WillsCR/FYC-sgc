@@ -58,6 +58,14 @@ class CarpetaController extends Controller
 
         $carpetaActual = Carpeta::findOrFail($id);
 
+        // ── Módulo gestionado: ruta empieza con "@" → redirigir a esa ruta nombrada ──
+        if (str_starts_with((string) $carpetaActual->ruta, '@')) {
+            $routeName = ltrim($carpetaActual->ruta, '@');
+            if (\Illuminate\Support\Facades\Route::has($routeName)) {
+                return redirect()->route($routeName);
+            }
+        }
+
         $raices = Carpeta::where('id_padre', 0)
             ->orderBy('descripcion')
             ->get()

@@ -8,24 +8,20 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous">
     @stack('styles')
 </head>
 <body>
 
 {{-- ── Navbar principal ─────────────────────────────────── --}}
 <nav class="navbar">
-    <a href="{{ route('panel') }}" class="navbar-logo">
-        <div class="navbar-logo-icon">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                <rect x="3"  y="3" width="4" height="18" fill="#0D2B5E"/>
-                <rect x="10" y="3" width="4" height="18" fill="#0D2B5E"/>
-                <rect x="17" y="3" width="4" height="18" fill="#0D2B5E"/>
-            </svg>
-        </div>
-        <div>
-            <div class="navbar-logo-text">F&C Chile SPA</div>
-            <div class="navbar-logo-sub">Ingeniería &amp; Construcción</div>
-        </div>
+    <a href="{{ route('panel') }}" class="navbar-logo"
+       style="background:#ffffff;border-radius:6px;padding:4px 10px;line-height:0;
+              box-shadow:0 1px 4px rgba(0,0,0,.25);transition:opacity .15s"
+       onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+        <img src="{{ asset('img/logo_fyc.png') }}"
+             alt="F&C Chile SPA — Ingeniería &amp; Construcción"
+             style="height:34px;width:auto;display:block;">
     </a>
 
     <div class="navbar-title">Control y Gestión Transversal</div>
@@ -62,7 +58,6 @@
     <a href="{{ route('sig.index') }}"     class="subnav-item {{ request()->routeIs('sig*')      ? 'active' : '' }}">Información SIG</a>
     <a href="{{ route('ambiente.index') }}" class="subnav-item {{ request()->routeIs('ambiente*') ? 'active' : '' }}">Medio Ambiente</a>
     <a href="{{ route('videos.index') }}"  class="subnav-item {{ request()->routeIs('videos*')   ? 'active' : '' }}">Videos</a>
-    <a href="{{ route('nc.index') }}"      class="subnav-item {{ request()->routeIs('nc*')        ? 'active' : '' }}">No Conformidades</a>
     @if(session('es_admin'))
         <a href="{{ route('usuarios.index') }}" class="subnav-item {{ request()->routeIs('usuarios*') ? 'active' : '' }}">Usuarios</a>
         <a href="{{ route('areas.index') }}"    class="subnav-item {{ request()->routeIs('areas*')    ? 'active' : '' }}">Áreas</a>

@@ -91,6 +91,7 @@ Route::middleware(['auth.sgc'])->group(function () {
     // No Conformidades
     Route::get('/no-conformidades',            [NoConformidadController::class, 'index'])      ->name('nc.index');
     Route::post('/no-conformidades/importar',  [NoConformidadController::class, 'importar'])   ->name('nc.importar');
+    Route::get('/no-conformidades/exportar',   [NoConformidadController::class, 'exportar'])   ->name('nc.exportar');
     Route::post('/no-conformidades',           [NoConformidadController::class, 'store'])      ->name('nc.store');
     Route::get('/no-conformidades/{id}/datos', [NoConformidadController::class, 'datos'])      ->name('nc.datos');
     Route::put('/no-conformidades/{id}',       [NoConformidadController::class, 'update'])     ->name('nc.update');

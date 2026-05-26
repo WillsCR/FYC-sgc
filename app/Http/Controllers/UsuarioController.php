@@ -292,7 +292,37 @@ class UsuarioController extends Controller
 
     private function guardarPermisosCarpetas(int $usuarioId, string $correo, string $clave, array $carpetas): void
     {
+        // Carpetas con permiso unificado: un solo flag controla TODO el acceso.
+        // Añade aquí cualquier otro módulo que quieras tratar igual.
+        $carpetasPermUnico = [
+            9, // No Conformidades — un solo toggle "Acceso" → todos los flags a 1
+        ];
+
         foreach ($carpetas as $carpetaId => $perms) {
+            $carpetaId = (int) $carpetaId;
+
+            // ── Carpeta con permiso único (ej. No Conformidades) ──────────────
+            if (in_array($carpetaId, $carpetasPermUnico, true)) {
+                // El formulario envía solo carpetas[9][carga]; si está marcado = acceso completo
+                if (empty($perms['carga'])) continue;
+
+                CarpetasPermisos::updateOrCreate(
+                    ['id_carpeta' => $carpetaId, 'id_usuario' => $usuarioId],
+                    [
+                        'correo'       => '',
+                        'clave'        => '',
+                        'carga'        => 1,
+                        'descarga'     => 1,
+                        'crear'        => 1,
+                        'ocultar_raiz' => 0,
+                        'eliminar'     => 1,
+                        'editar'       => 1,
+                    ]
+                );
+                continue;
+            }
+
+            // ── Carpetas con permisos granulares (comportamiento normal) ──────
             $tieneAlguno = collect(['carga','descarga','crear','eliminar','editar'])
                 ->some(fn($p) => ! empty($perms[$p]));
             if (! $tieneAlguno) continue;

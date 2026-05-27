@@ -26,4 +26,6 @@ class ProgramaVerificacion extends Model
     {
         return $this->belongsTo(EquipoInterno::class, 'id_equipo');
     }
+
+    
 }

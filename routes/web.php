@@ -68,6 +68,8 @@ Route::middleware(['auth.sgc'])->group(function () {
     Route::get('/planificacion/{id}/editar',       [PlanificacionController::class, 'edit'])->name('planificacion.edit');
     Route::put('/planificacion/{id}',              [PlanificacionController::class, 'update'])->name('planificacion.update');
     Route::post('/planificacion/{id}/cerrar',      [PlanificacionController::class, 'cerrar'])->name('planificacion.cerrar');
+    Route::delete('/planificacion/{id}',           [PlanificacionController::class, 'destroy'])->name('planificacion.destroy');
+    Route::get('/planificacion/{id}/descargar',    [PlanificacionController::class, 'descargar'])->name('planificacion.descargar');
 
     // Sprint 5 — Información SIG y Medio Ambiente
     Route::get('/sig',                              [PublicacionController::class, 'sig'])        ->name('sig.index');

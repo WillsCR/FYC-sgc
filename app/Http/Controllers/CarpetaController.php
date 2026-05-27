@@ -254,6 +254,13 @@ class CarpetaController extends Controller
             return response()->json(['error' => 'No se pueden eliminar los módulos raíz del sistema.'], 403);
         }
 
+        // Nunca borrar submódulos gestionados (ruta "@xxx" → tienen módulo propio en la app)
+        if (str_starts_with((string) $carpeta->ruta, '@')) {
+            return response()->json([
+                'error' => "El submódulo \"{$carpeta->descripcion}\" está gestionado por la aplicación y no puede eliminarse desde aquí.",
+            ], 403);
+        }
+
         $nombre = $carpeta->descripcion;
 
         // Verificar que el submódulo esté completamente vacío antes de permitir la eliminación.

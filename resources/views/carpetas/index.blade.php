@@ -526,7 +526,7 @@ tr.seleccionada td { background: #EFF6FF !important; }
                             @endif
                             <span class="submodulo-nombre">{{ $sub->descripcion }}</span>
                         </a>
-                        @if(isset($permisos) && $permisos['eliminar'])
+                        @if(isset($permisos) && $permisos['eliminar'] && !str_starts_with((string)$sub->ruta, '@'))
                         <button class="subcarpeta-del" title="Eliminar submódulo"
                                 onclick="pedirEliminarSubmodulo({{ $sub->id }}, '{{ addslashes($sub->descripcion) }}', this.closest('.submodulo-wrap'))">
                             🗑

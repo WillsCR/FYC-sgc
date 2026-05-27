@@ -21,7 +21,8 @@
 .vid-info        { padding:14px 16px; flex:1; display:flex; flex-direction:column; gap:6px; }
 .vid-name        { font-weight:600; font-size:.95rem; color:#1a1a2e; line-height:1.3; }
 .vid-meta        { font-size:.78rem; color:#888; }
-.vid-actions     { padding:10px 16px 14px; display:flex; gap:8px; flex-wrap:wrap; }
+.vid-actions     { padding:10px 16px 14px; display:flex; flex-direction:column; gap:7px; }
+.vid-actions-row { display:flex; gap:7px; }
 .btn-sm          { padding:5px 12px; border-radius:6px; font-size:.8rem; font-weight:500; cursor:pointer; border:none; display:inline-flex; align-items:center; gap:5px; text-decoration:none; }
 .btn-dl          { background:#e8f0fe; color:#1a73e8; }
 .btn-dl:hover    { background:#d2e3fc; }
@@ -99,24 +100,28 @@
             </div>
             <div class="vid-info">
                 <div class="vid-name">{{ $video->titulo }}</div>
-                <div class="vid-meta">{{ $video->nombre_original }} · {{ $video->tamanioFormateado() }}</div>
-                <div class="vid-meta">{{ $video->creada_el->format('d/m/Y H:i') }}</div>
             </div>
             <div class="vid-actions">
-                <a href="{{ route('videos.descargar', $video->id) }}" class="btn-sm btn-dl">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-                    Descargar
-                </a>
+                {{-- Fila 1: Descargar --}}
+                <div class="vid-actions-row">
+                    <a href="{{ route('videos.descargar', $video->id) }}" class="btn-sm btn-dl">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                        Descargar
+                    </a>
+                </div>
+                {{-- Fila 2: Bienvenida + Eliminar (solo admin) --}}
                 @if($esAdmin)
-                <button class="btn-sm btn-bienvenida {{ $video->es_bienvenida ? 'activo' : '' }}"
-                        id="btn-bienvenida-{{ $video->id }}"
-                        onclick="toggleBienvenida({{ $video->id }})">
-                    {{ $video->es_bienvenida ? '★ Bienvenida activa' : '☆ Usar en bienvenida' }}
-                </button>
-                <button class="btn-sm btn-del" onclick="pedirEliminar({{ $video->id }}, '{{ addslashes($video->titulo) }}')">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
-                    Eliminar
-                </button>
+                <div class="vid-actions-row">
+                    <button class="btn-sm btn-bienvenida {{ $video->es_bienvenida ? 'activo' : '' }}"
+                            id="btn-bienvenida-{{ $video->id }}"
+                            onclick="toggleBienvenida({{ $video->id }})">
+                        {{ $video->es_bienvenida ? '★ Bienvenida activa' : '☆ Usar en bienvenida' }}
+                    </button>
+                    <button class="btn-sm btn-del" onclick="pedirEliminar({{ $video->id }}, '{{ addslashes($video->titulo) }}')">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+                        Eliminar
+                    </button>
+                </div>
                 @endif
             </div>
         </div>
@@ -309,18 +314,20 @@ function insertarCard(v) {
         </div>
         <div class="vid-info">
             <div class="vid-name">${escHtml(v.titulo)}</div>
-            <div class="vid-meta">${escHtml(v.nombre_original)} · ${escHtml(v.tamanio)}</div>
-            <div class="vid-meta">${escHtml(v.creada_el)}</div>
         </div>
         <div class="vid-actions">
-            <a href="${descargarUrl}" class="btn-sm btn-dl">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-                Descargar
-            </a>
-            <button class="btn-sm btn-del" onclick="pedirEliminar(${v.id}, '${escJs(v.titulo)}')">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
-                Eliminar
-            </button>
+            <div class="vid-actions-row">
+                <a href="${descargarUrl}" class="btn-sm btn-dl">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                    Descargar
+                </a>
+            </div>
+            <div class="vid-actions-row">
+                <button class="btn-sm btn-del" onclick="pedirEliminar(${v.id}, '${escJs(v.titulo)}')">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+                    Eliminar
+                </button>
+            </div>
         </div>`;
 
     document.getElementById('vidGrid').prepend(card);

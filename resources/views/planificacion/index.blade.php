@@ -159,11 +159,63 @@
     padding: 4px 10px; border-radius: var(--radius-sm);
     font-size: .7rem; font-weight: 600; cursor: pointer;
     border: 1px solid; text-decoration: none; transition: all .12s;
+    line-height: 1;
 }
-.btn-edit   { color: var(--navy);   border-color: var(--navy);   background: transparent; }
-.btn-cerrar { color: #16A34A;       border-color: #16A34A;       background: transparent; }
-.btn-edit:hover   { background: var(--navy);   color: #fff; }
-.btn-cerrar:hover { background: #16A34A;       color: #fff; }
+.btn-ver      { color: #0369A1; border-color: #0369A1; background: transparent; }
+.btn-edit     { color: var(--navy); border-color: var(--navy); background: transparent; }
+.btn-download { color: #15803D; border-color: #15803D; background: transparent; }
+.btn-cerrar   { color: #16A34A; border-color: #16A34A; background: transparent; }
+.btn-del      { color: #DC2626; border-color: #DC2626; background: transparent; }
+.btn-ver:hover      { background: #0369A1; color: #fff; }
+.btn-edit:hover     { background: var(--navy); color: #fff; }
+.btn-download:hover { background: #15803D; color: #fff; }
+.btn-cerrar:hover   { background: #16A34A; color: #fff; }
+.btn-del:hover      { background: #DC2626; color: #fff; }
+
+/* Modal de detalle */
+.modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,.5);
+    z-index: 500; display: flex; align-items: center;
+    justify-content: center; padding: 20px;
+}
+.modal-box {
+    background: #fff; border-radius: 10px;
+    width: 100%; max-width: 620px;
+    max-height: 88vh; overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0,0,0,.3);
+    animation: fadeIn .18s ease;
+}
+.modal-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 15px 20px; border-bottom: 1px solid var(--border);
+    background: var(--navy); border-radius: 10px 10px 0 0;
+    position: sticky; top: 0; z-index: 1;
+}
+.modal-head h3 { font-size: .95rem; font-weight: 700; color: #fff; margin: 0; }
+.modal-close {
+    background: none; border: none; color: rgba(255,255,255,.7);
+    font-size: 1.3rem; cursor: pointer; line-height: 1; padding: 2px 6px;
+    border-radius: 4px; transition: all .12s;
+}
+.modal-close:hover { color: #fff; background: rgba(255,255,255,.15); }
+.modal-body { padding: 20px; }
+.modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.modal-field label {
+    display: block; font-size: .67rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .07em;
+    color: var(--text-muted); margin-bottom: 5px;
+}
+.modal-field .field-val {
+    font-size: .85rem; color: var(--text-primary); line-height: 1.6;
+    background: var(--body-bg); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 8px 11px;
+    min-height: 36px; word-break: break-word;
+}
+.modal-foot {
+    display: flex; gap: 8px; justify-content: flex-end; align-items: center;
+    padding: 14px 20px; border-top: 1px solid var(--border);
+    background: var(--surface-2); border-radius: 0 0 10px 10px;
+}
 
 .btn-nuevo {
     display: inline-flex; align-items: center; gap: 7px;
@@ -369,7 +421,7 @@
                     <th>Inicio</th>
                     <th>Término</th>
                     <th>Estado</th>
-                    <th style="width:130px">Acciones</th>
+                    <th style="width:180px">Acciones</th>
                 </tr>
             </thead>
             <tbody>
@@ -385,7 +437,18 @@
                         default                       => $p->dias_restantes . 'd restantes',
                     };
                 @endphp
-                <tr class="{{ $filaClass }}">
+                <tr class="{{ $filaClass }}"
+                    data-id="{{ $p->id }}"
+                    data-actividades="{{ e($p->actividades) }}"
+                    data-observaciones="{{ e($p->observaciones ?? '') }}"
+                    data-area="{{ e($p->area_nombre) }}"
+                    data-responsable="{{ e($p->responsable) }}"
+                    data-correo="{{ e($p->correo ?? '') }}"
+                    data-inicio="{{ $p->inicio ? \Carbon\Carbon::parse($p->inicio)->format('d/m/Y') : '' }}"
+                    data-termino="{{ $p->termino ? \Carbon\Carbon::parse($p->termino)->format('d/m/Y') : '' }}"
+                    data-estado-nombre="{{ e($p->estado_nombre) }}"
+                    data-semaforo="{{ $p->semaforo }}"
+                    data-dias-texto="{{ $diasTexto }}">
                     <td style="text-align:center">
                         <div class="semaforo s-{{ $p->semaforo }}">
                             <div class="semaforo-dot"></div>
@@ -428,17 +491,38 @@
                         </span>
                     </td>
                     <td>
-                        <div style="display:flex;gap:5px;align-items:center">
+                        <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap">
+                            {{-- Ver detalle --}}
+                            <button type="button" class="btn-accion btn-ver"
+                                    onclick="verPlan(this)" title="Ver detalle">👁️</button>
+
+                            {{-- Editar --}}
                             @if(in_array((int)$p->area, $areasConEdicion, true))
                             <a href="{{ route('planificacion.edit', $p->id) }}"
-                               class="btn-accion btn-edit">✏️</a>
+                               class="btn-accion btn-edit" title="Editar">✏️</a>
                             @endif
+
+                            {{-- Descargar --}}
+                            <a href="{{ route('planificacion.descargar', $p->id) }}"
+                               class="btn-accion btn-download" title="Descargar PDF">⬇️</a>
+
+                            {{-- Cerrar --}}
                             @if($esAdmin && (int)$p->id_estado !== 2)
                             <form method="POST" action="{{ route('planificacion.cerrar', $p->id) }}"
                                   onsubmit="return confirm('¿Cerrar esta planificación?')">
                                 @csrf
                                 <button type="submit" class="btn-accion btn-cerrar"
                                         title="Cerrar planificación">✓</button>
+                            </form>
+                            @endif
+
+                            {{-- Eliminar --}}
+                            @if($esAdmin)
+                            <form method="POST" action="{{ route('planificacion.destroy', $p->id) }}"
+                                  onsubmit="return confirm('¿Eliminar esta planificación? Esta acción no se puede deshacer.')">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="btn-accion btn-del" title="Eliminar">🗑️</button>
                             </form>
                             @endif
                         </div>
@@ -521,6 +605,75 @@
     </div>
 
 </div>
+
+{{-- ── Modal: Ver detalle ──────────────────────────────────────────────── --}}
+<div id="modal-ver" class="modal-overlay hidden" onclick="if(event.target===this)cerrarModal()">
+    <div class="modal-box">
+        <div class="modal-head">
+            <h3>📋 Detalle de Planificación</h3>
+            <button class="modal-close" onclick="cerrarModal()" title="Cerrar">✕</button>
+        </div>
+        <div class="modal-body">
+            <div class="modal-grid">
+                {{-- Actividad (ancho completo) --}}
+                <div class="modal-field" style="grid-column:1/-1">
+                    <label>Actividad</label>
+                    <div class="field-val" id="mv-actividades" style="white-space:pre-wrap"></div>
+                </div>
+                {{-- Área --}}
+                <div class="modal-field">
+                    <label>Área</label>
+                    <div class="field-val" id="mv-area"></div>
+                </div>
+                {{-- Responsable --}}
+                <div class="modal-field">
+                    <label>Responsable</label>
+                    <div class="field-val" id="mv-responsable"></div>
+                </div>
+                {{-- Correo --}}
+                <div class="modal-field">
+                    <label>Correo</label>
+                    <div class="field-val" id="mv-correo"></div>
+                </div>
+                {{-- Estado --}}
+                <div class="modal-field">
+                    <label>Estado</label>
+                    <div class="field-val" id="mv-estado"></div>
+                </div>
+                {{-- Inicio --}}
+                <div class="modal-field">
+                    <label>Fecha de Inicio</label>
+                    <div class="field-val" id="mv-inicio"></div>
+                </div>
+                {{-- Término --}}
+                <div class="modal-field">
+                    <label>Fecha de Término</label>
+                    <div class="field-val" id="mv-termino">
+                        <span id="mv-termino-fecha"></span>
+                        <span id="mv-termino-dias" style="font-size:.72rem;font-weight:700;margin-left:8px"></span>
+                    </div>
+                </div>
+                {{-- Observaciones (solo si hay) --}}
+                <div class="modal-field" style="grid-column:1/-1" id="mv-obs-wrap">
+                    <label>Observaciones</label>
+                    <div class="field-val" id="mv-observaciones" style="white-space:pre-wrap"></div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-foot">
+            <a id="mv-link-descargar" href="#"
+               class="btn-accion btn-download">⬇️ Descargar PDF</a>
+            <a id="mv-link-editar" href="#"
+               class="btn-accion btn-edit" style="display:none">✏️ Editar</a>
+            <button type="button" onclick="cerrarModal()"
+                    class="btn-accion"
+                    style="color:var(--text-secondary);border-color:var(--border);background:transparent">
+                Cerrar
+            </button>
+        </div>
+    </div>
+</div>
+
 @endsection
 
 @push('scripts')
@@ -529,12 +682,74 @@ function expandirTexto(el) {
     el.classList.toggle('expandido');
 }
 
-// Cambiar cantidad por página manteniendo todos los parámetros actuales
 function cambiarPorPagina(valor) {
     var url = new URL(window.location.href);
     url.searchParams.set('por_pagina', valor);
     url.searchParams.set('page', 1);
     window.location.href = url.toString();
 }
+
+// ── Modal de detalle ──────────────────────────────────────────────────
+var urlDescargar = '{{ route("planificacion.descargar", "__ID__") }}';
+var urlEditar    = '{{ route("planificacion.edit", "__ID__") }}';
+
+function verPlan(btn) {
+    var tr = btn.closest('tr');
+
+    document.getElementById('mv-actividades').textContent  = tr.dataset.actividades || '—';
+    document.getElementById('mv-area').textContent         = tr.dataset.area || '—';
+    document.getElementById('mv-responsable').textContent  = tr.dataset.responsable || '—';
+    document.getElementById('mv-correo').textContent       = tr.dataset.correo || '—';
+    document.getElementById('mv-inicio').textContent       = tr.dataset.inicio || '—';
+    document.getElementById('mv-estado').textContent       = tr.dataset.estadoNombre || '—';
+
+    // Fecha término + días restantes
+    document.getElementById('mv-termino-fecha').textContent = tr.dataset.termino || '—';
+    var diasSpan = document.getElementById('mv-termino-dias');
+    var diasTexto = tr.dataset.diasTexto || '';
+    if (diasTexto && diasTexto !== '—') {
+        diasSpan.textContent = '(' + diasTexto + ')';
+        var sem = tr.dataset.semaforo;
+        diasSpan.style.color = sem === 'rojo' ? '#DC2626' : sem === 'amarillo' ? '#D97706' : '#16A34A';
+    } else {
+        diasSpan.textContent = '';
+    }
+
+    // Observaciones
+    var obs = tr.dataset.observaciones;
+    var obsWrap = document.getElementById('mv-obs-wrap');
+    if (obs && obs.trim()) {
+        document.getElementById('mv-observaciones').textContent = obs;
+        obsWrap.style.display = '';
+    } else {
+        obsWrap.style.display = 'none';
+    }
+
+    // Botón descargar
+    var id = tr.dataset.id;
+    document.getElementById('mv-link-descargar').href = urlDescargar.replace('__ID__', id);
+
+    // Botón editar — solo si existe un enlace de edición en la fila
+    var editEnlace = tr.querySelector('a.btn-edit');
+    var mvEdit = document.getElementById('mv-link-editar');
+    if (editEnlace) {
+        mvEdit.href = editEnlace.href;
+        mvEdit.style.display = '';
+    } else {
+        mvEdit.style.display = 'none';
+    }
+
+    document.getElementById('modal-ver').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+}
+
+function cerrarModal() {
+    document.getElementById('modal-ver').classList.add('hidden');
+    document.body.style.overflow = '';
+}
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') cerrarModal();
+});
 </script>
 @endpush

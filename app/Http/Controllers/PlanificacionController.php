@@ -292,6 +292,55 @@ class PlanificacionController extends Controller
     }
 
     // ─────────────────────────────────────────────────────────────────────────
+    // DESTROY
+    // ─────────────────────────────────────────────────────────────────────────
+    public function destroy(int $id)
+    {
+        $usuario = PermisoService::usuarioActual();
+        if (! $usuario->esAdmin()) abort(403);
+
+        $plan = DB::table('sgc_planificaciones')->where('id', $id)->first();
+        if (! $plan) abort(404);
+
+        DB::table('sgc_planificaciones')->where('id', $id)->delete();
+
+        return redirect()->route('planificacion.index')
+            ->with('ok', 'Planificación eliminada correctamente.');
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // DESCARGAR (vista imprimible)
+    // ─────────────────────────────────────────────────────────────────────────
+    public function descargar(int $id)
+    {
+        $usuario = PermisoService::usuarioActual();
+        $esAdmin = $usuario->esAdmin();
+
+        $plan = DB::table('sgc_planificaciones')->where('id', $id)->first();
+        if (! $plan) abort(404);
+
+        if (! $esAdmin) {
+            $areasPermitidas = $this->areasConPermiso($usuario->id, 'ver_planificacion');
+            if (! in_array((int) $plan->area, $areasPermitidas, true)) abort(403);
+        }
+
+        $areasMap = $this->areasMap();
+        $plan->area_nombre   = $areasMap[$plan->area] ?? 'Área ' . $plan->area;
+        $plan->estado_nombre = self::ESTADOS[$plan->id_estado] ?? '—';
+
+        $hoy = Carbon::today();
+        $plan->semaforo       = $this->calcularSemaforo($plan, $hoy);
+        $plan->dias_restantes = $plan->termino
+            ? $hoy->diffInDays(Carbon::parse($plan->termino), false)
+            : null;
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('planificacion.planificacion_pdf', compact('plan'))
+            ->setPaper('letter', 'portrait');
+
+        return $pdf->download('planificacion_' . $id . '.pdf');
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
     // Semáforo
     // ─────────────────────────────────────────────────────────────────────────
     private function calcularSemaforo(object $p, Carbon $hoy): string

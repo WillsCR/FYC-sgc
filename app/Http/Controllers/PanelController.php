@@ -262,14 +262,14 @@ class PanelController extends Controller
     {
         // Metadata de los módulos originales del sistema (clave por ID de carpeta)
         $meta_conocida = [
-            1 => ['clave' => 'sig',            'titulo' => 'Control Sistema Integrado de Gestión',      'badge' => 'SIG',  'permiso' => 'bloque_sig',            'color' => '#0D2B5E', 'emoji' => 'fa-clipboard-check'],
-            2 => ['clave' => 'ambiente',        'titulo' => 'Control Medio Ambiente',                    'badge' => 'MA',   'permiso' => 'bloque_ambiente',        'color' => '#15803D', 'emoji' => 'fa-seedling'],
-            3 => ['clave' => 'seguridad',       'titulo' => 'Control Seguridad y Salud en el Trabajo',  'badge' => 'SST',  'permiso' => 'bloque_seguridad',       'color' => '#991B1B', 'emoji' => 'fa-shield-halved'],
-            4 => ['clave' => 'abastecimiento',  'titulo' => 'Control Abastecimiento e Infraestructura', 'badge' => 'ABI',  'permiso' => 'bloque_abastecimiento',  'color' => '#B45309', 'emoji' => 'fa-truck'],
-            5 => ['clave' => 'rrhh',            'titulo' => 'Control Recursos Humanos',                  'badge' => 'RRHH', 'permiso' => 'bloque_rrhh',            'color' => '#7C3AED', 'emoji' => 'fa-user-tie'],
-            6 => ['clave' => 'gerencia',        'titulo' => 'Control Gerencia',                          'badge' => 'GER',  'permiso' => 'bloque_gerencia',        'color' => '#0C4A6E', 'emoji' => 'fa-building'],
-            7 => ['clave' => 'proyectos',       'titulo' => 'Control Proyectos',                         'badge' => 'PRY',  'permiso' => 'bloque_proyectos',       'color' => '#1D4ED8', 'emoji' => 'fa-chart-line'],
-            8 => ['clave' => 'finanzas',        'titulo' => 'Control Finanzas',                          'badge' => 'FIN',  'permiso' => 'bloque_finanzas',        'color' => '#065F46', 'emoji' => 'fa-coins'],
+            1 => ['clave' => 'sig',            'titulo' => 'Control Sistema Integrado de Gestión',      'badge' => 'SIG',  'permiso' => 'bloque_sig',            'color' => '#1B4F72', 'emoji' => 'fa-clipboard-check'],
+            2 => ['clave' => 'ambiente',        'titulo' => 'Control Medio Ambiente',                    'badge' => 'MA',   'permiso' => 'bloque_ambiente',        'color' => '#2E6E8E', 'emoji' => 'fa-seedling'],
+            3 => ['clave' => 'seguridad',       'titulo' => 'Control Seguridad y Salud en el Trabajo',  'badge' => 'SST',  'permiso' => 'bloque_seguridad',       'color' => '#3D86A4', 'emoji' => 'fa-shield-halved'],
+            4 => ['clave' => 'abastecimiento',  'titulo' => 'Control Abastecimiento e Infraestructura', 'badge' => 'ABI',  'permiso' => 'bloque_abastecimiento',  'color' => '#5499B4', 'emoji' => 'fa-truck'],
+            5 => ['clave' => 'rrhh',            'titulo' => 'Control Recursos Humanos',                  'badge' => 'RRHH', 'permiso' => 'bloque_rrhh',            'color' => '#1B4F72', 'emoji' => 'fa-user-tie'],
+            6 => ['clave' => 'gerencia',        'titulo' => 'Control Gerencia',                          'badge' => 'GER',  'permiso' => 'bloque_gerencia',        'color' => '#2E6E8E', 'emoji' => 'fa-building'],
+            7 => ['clave' => 'proyectos',       'titulo' => 'Control Proyectos',                         'badge' => 'PRY',  'permiso' => 'bloque_proyectos',       'color' => '#3D86A4', 'emoji' => 'fa-chart-line'],
+            8 => ['clave' => 'finanzas',        'titulo' => 'Control Finanzas',                          'badge' => 'FIN',  'permiso' => 'bloque_finanzas',        'color' => '#5499B4', 'emoji' => 'fa-coins'],
         ];
 
         // Cargar TODOS los módulos raíz de la BD

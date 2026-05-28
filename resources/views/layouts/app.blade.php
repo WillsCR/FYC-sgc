@@ -82,8 +82,8 @@
     
     <a href="{{ route('planificacion.index') }}" class="subnav-item {{ request()->routeIs('planificacion*') ? 'active' : '' }}">Planificación</a>
     <a href="{{ route('minutas.index') }}" class="subnav-item {{ request()->routeIs('minutas')? 'active' : ''}}">Minutas</a>
-    <a href="{{ route('sig.index') }}"     class="subnav-item {{ request()->routeIs('sig*')      ? 'active' : '' }}">Información SIG</a>
-    <a href="{{ route('ambiente.index') }}" class="subnav-item {{ request()->routeIs('ambiente*') ? 'active' : '' }}">Medio Ambiente</a>
+    <a href="{{ route('sig.index') }}"     class="subnav-item {{ request()->routeIs('sig*') ? 'active' : '' }}">Información SIG</a>
+<a href="{{ route('ambiente.index') }}" class="subnav-item {{ request()->routeIs('ambiente*') ? 'active' : '' }}">Medio Ambiente</a>
     <a href="{{ route('videos.index') }}"  class="subnav-item {{ request()->routeIs('videos*')   ? 'active' : '' }}">Videos</a>
     @if(session('es_admin'))
         <a href="{{ route('usuarios.index') }}" class="subnav-item {{ request()->routeIs('usuarios*') ? 'active' : '' }}">Usuarios</a>

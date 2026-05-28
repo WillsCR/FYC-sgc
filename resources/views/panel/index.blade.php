@@ -675,7 +675,7 @@ window.addEventListener('DOMContentLoaded', () => {
         <div class="bienvenida-body">
             <p class="bienvenida-msg">
                 Nos alegra tenerte aquí. Tienes acceso al sistema
-                <strong>SGC F&amp;C Chile SpA</strong>.
+                <strong>SIG F&amp;C Chile SpA</strong>.
                 @if(!$videoBienvenida) <br>¿Listo para comenzar? @endif
             </p>
             <div class="bienvenida-fecha">

@@ -4,11 +4,18 @@ namespace App\Http\Controllers;
 
 use App\Models\ArchivoEquipo;
 use App\Services\ArchivoEquipoService;
+use App\Services\PermisoService;
 use Illuminate\Http\Request;
 
 class ArchivoEquipoController extends Controller
 {
     public function __construct(private ArchivoEquipoService $service) {}
+
+    /** ID del usuario actual usando el sistema de auth propio de la app */
+    private function userId(): int
+    {
+        return PermisoService::usuarioActual()?->id ?? (int) session('usuario_id', 1);
+    }
 
     /**
      * Subir certificado (calidad o calibración)
@@ -16,21 +23,21 @@ class ArchivoEquipoController extends Controller
     public function subirCertificado(Request $request)
     {
         $request->validate([
-            'archivo' => 'required|file|max:10240',
-            'id_programa' => 'required|integer',
-            'tipo' => 'required|in:1,2', // 1=calidad, 2=calibracion
-            'vigencia_hasta' => 'nullable|date',
-            'descripcion' => 'nullable|string|max:255',
+            'archivo'       => 'required|file|max:10240',
+            'id_programa'   => 'required|integer',
+            'tipo'          => 'required|in:1,2', // 1=calidad, 2=calibracion
+            'vigencia_hasta'=> 'nullable|date',
+            'descripcion'   => 'nullable|string|max:255',
         ]);
 
         $tipo_documento = $request->tipo == 1 ? 'cert_calidad' : 'cert_calibracion';
 
         $resultado = $this->service->subirArchivo(
             $request->file('archivo'),
-            auth()->id(),
+            $this->userId(),
             $tipo_documento,
             null,
-            $request->id_programa,
+            (int) $request->id_programa,
             null,
             $request->descripcion ?? '',
             $request->vigencia_hasta
@@ -39,15 +46,15 @@ class ArchivoEquipoController extends Controller
         if ($resultado['success']) {
             return response()->json([
                 'success' => true,
-                'mensaje' => '✅ Archivo subido correctamente',
-                'id' => $resultado['id'],
-                'hash' => $resultado['hash']
+                'mensaje' => 'Archivo subido correctamente',
+                'id'      => $resultado['id'],
+                'hash'    => $resultado['hash'],
             ]);
         }
 
         return response()->json([
             'success' => false,
-            'mensaje' => '❌ ' . $resultado['mensaje']
+            'mensaje' => $resultado['mensaje'],
         ], 400);
     }
 
@@ -57,14 +64,14 @@ class ArchivoEquipoController extends Controller
     public function subirImagen(Request $request)
     {
         $request->validate([
-            'archivo' => 'required|file|max:10240',
-            'id_equipo' => 'required|integer',
+            'archivo'     => 'required|file|max:10240',
+            'id_equipo'   => 'required|integer',
             'descripcion' => 'nullable|string|max:255',
         ]);
 
         $resultado = $this->service->subirArchivo(
             $request->file('archivo'),
-            auth()->id(),
+            $this->userId(),
             'imagen_general',
             $request->id_equipo,
             null,
@@ -75,23 +82,42 @@ class ArchivoEquipoController extends Controller
         if ($resultado['success']) {
             return response()->json([
                 'success' => true,
-                'mensaje' => '✅ Imagen subida correctamente',
-                'id' => $resultado['id']
+                'mensaje' => 'Imagen subida correctamente',
+                'id'      => $resultado['id'],
             ]);
         }
 
         return response()->json([
             'success' => false,
-            'mensaje' => '❌ ' . $resultado['mensaje']
+            'mensaje' => $resultado['mensaje'],
         ], 400);
     }
 
     /**
-     * Descargar archivo
+     * Descargar archivo (fuerza descarga)
      */
     public function descargar(ArchivoEquipo $archivo)
     {
-        return $this->service->descargarArchivo($archivo->id, auth()->id());
+        return $this->service->descargarArchivo($archivo->id, $this->userId());
+    }
+
+    /**
+     * Ver archivo inline en el navegador (sin forzar descarga)
+     */
+    public function ver(ArchivoEquipo $archivo)
+    {
+        if ($archivo->estado !== 'activo') abort(404);
+
+        // Usar Storage::disk para resolver la ruta real (Laravel 11 usa /private como raíz)
+        if (! \Storage::disk('local')->exists($archivo->ruta_almacenamiento)) abort(404);
+
+        $ruta = \Storage::disk('local')->path($archivo->ruta_almacenamiento);
+        $mime = $archivo->archivo_mime ?: mime_content_type($ruta);
+
+        return response()->file($ruta, [
+            'Content-Type'        => $mime,
+            'Content-Disposition' => 'inline; filename="' . $archivo->archivo_nombre . '"',
+        ]);
     }
 
     /**

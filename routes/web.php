@@ -11,6 +11,8 @@ use App\Http\Controllers\MinutaController;
 use App\Http\Controllers\PublicacionController;
 use App\Http\Controllers\VideoController;
 use App\Http\Controllers\ArchivoEquipoController;
+use App\Http\Controllers\AreaController;
+use App\Http\Controllers\NoConformidadController;
 use Illuminate\Support\Facades\Route;
 
 // ─── Rutas públicas ──────────────────────────────────────────────────────────
@@ -112,13 +114,15 @@ Route::middleware(['auth.sgc'])->group(function () {
     Route::post('/archivos-equipos/subir-certificado',     [ArchivoEquipoController::class, 'subirCertificado'])->name('archivos-equipos.subir-certificado');
     Route::post('/archivos-equipos/subir-imagen',          [ArchivoEquipoController::class, 'subirImagen'])->name('archivos-equipos.subir-imagen');
     Route::get('/archivos-equipos/{archivo}/descargar',    [ArchivoEquipoController::class, 'descargar'])->name('archivos-equipos.descargar');
+    Route::get('/archivos-equipos/{archivo}/ver',          [ArchivoEquipoController::class, 'ver'])->name('archivos-equipos.ver');
     Route::get('/archivos-equipos/programa/{id}',          [ArchivoEquipoController::class, 'archivosPrograma'])->name('archivos-equipos.programa');
     Route::get('/archivos-equipos/equipo/{id}',            [ArchivoEquipoController::class, 'archivosEquipo'])->name('archivos-equipos.equipo');
     Route::get('/archivos-equipos/{id}/historial',         [ArchivoEquipoController::class, 'historial'])->name('archivos-equipos.historial');
     Route::get('/archivos-equipos',                        [ArchivoEquipoController::class, 'index'])->name('archivos-equipos.index');
         // ─── Control de Instrumentos ─────────────────────────────────────────────────
     Route::prefix('control-instrumentos')->name('control-instrumentos.')->group(function () {
-        Route::get('/', [App\Http\Controllers\ControlInstrumentosController::class, 'index'])->name('index');
+        Route::get('/',     [App\Http\Controllers\ControlInstrumentosController::class, 'index'])->name('index');
+        Route::post('/',    [App\Http\Controllers\ControlInstrumentosController::class, 'store'])->name('store');
         Route::post('/importar', [App\Http\Controllers\ControlInstrumentosController::class, 'importar'])->name('importar');
         Route::get('/{programaVerificacion}/edit', [App\Http\Controllers\ControlInstrumentosController::class, 'edit'])->name('edit');
         Route::put('/{programaVerificacion}', [App\Http\Controllers\ControlInstrumentosController::class, 'update'])->name('update');

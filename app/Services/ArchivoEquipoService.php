@@ -73,7 +73,7 @@ class ArchivoEquipoService
             // Guardar en storage
             $nombre_guardado = $archivo_hash . '.' . $extension;
             $directorio = $this->directorios[$tipo_documento] ?? 'otros';
-            $path = Storage::disk('local')->putAs(
+            $path = Storage::disk('local')->putFileAs(
                 'nc_docs/' . $directorio,
                 $file,
                 $nombre_guardado
@@ -167,7 +167,11 @@ class ArchivoEquipoService
                 ]);
             }
 
-            return Storage::download($archivo->ruta_almacenamiento, $archivo->archivo_nombre);
+            // Storage::disk resuelve la ruta real incluyendo /private en Laravel 11
+            if (! Storage::disk('local')->exists($archivo->ruta_almacenamiento)) {
+                abort(404, 'Archivo no encontrado en disco');
+            }
+            return Storage::disk('local')->download($archivo->ruta_almacenamiento, $archivo->archivo_nombre);
         } catch (\Exception $e) {
             Log::error('Error al descargar archivo: ' . $e->getMessage());
             abort(404, 'Archivo no encontrado');

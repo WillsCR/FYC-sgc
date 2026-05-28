@@ -1,129 +1,216 @@
-<div class="row">
-    {{-- Certificado de Calidad --}}
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header bg-success text-white">
-                <h6 class="mb-0">Certificado de Calidad</h6>
-            </div>
-            <div class="card-body">
-                @if($programa->archivosCalidad->count() > 0)
-                    <div class="list-group mb-3">
-                        @foreach($programa->archivosCalidad as $archivo)
-                            <a href="{{ route('archivos-equipos.descargar', $archivo->id) }}" class="list-group-item list-group-item-action" target="_blank">
-                                <div class="d-flex w-100 justify-content-between">
-                                    <h6 class="mb-1">
-                                        <i class="fa-solid fa-file-pdf text-danger"></i> {{ $archivo->archivo_nombre }}
-                                    </h6>
-                                    <small>{{ $archivo->mb }} MB</small>
-                                </div>
-                                <small class="text-muted">Subido: {{ $archivo->fecha_subida->format('d/m/Y H:i') }}</small>
-                            </a>
-                        @endforeach
-                    </div>
-                    <button type="button" class="btn btn-warning btn-block btn-sm" onclick="reemplazarArchivo({{ $programa->id }}, 'calidad')">
-                        <i class="fa-solid fa-refresh"></i> Reemplazar
-                    </button>
-                @else
-                    <p class="text-muted"><i class="fa-solid fa-circle-info"></i> No hay certificado de calidad cargado</p>
-                    <button type="button" class="btn btn-success btn-block btn-sm" onclick="subirArchivo({{ $programa->id }}, 'calidad')">
-                        <i class="fa-solid fa-upload"></i> Subir Certificado
-                    </button>
-                @endif
-            </div>
-        </div>
-    </div>
+<style>
+.cert-preview-wrap {
+    margin-top: 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    background: #000;
+    position: relative;
+}
+.cert-preview-wrap iframe,
+.cert-preview-wrap img {
+    display: block;
+    width: 100%;
+}
+.cert-preview-wrap iframe { height: 420px; border: none; }
+.cert-preview-wrap img { max-height: 420px; object-fit: contain; background: #f8f8f8; }
+.cert-preview-close {
+    position: absolute; top: 6px; right: 6px;
+    background: rgba(0,0,0,.55); color: #fff; border: none;
+    border-radius: 50%; width: 26px; height: 26px;
+    font-size: .85rem; cursor: pointer; display: flex;
+    align-items: center; justify-content: center; z-index: 2;
+}
+.cert-preview-close:hover { background: rgba(0,0,0,.8); }
+</style>
 
-    {{-- Certificado de Calibración --}}
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header bg-warning text-dark">
-                <h6 class="mb-0">Certificado de Calibración</h6>
+<div class="modal-content-pad">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+
+        {{-- Certificado de Calidad --}}
+        <div class="cert-section">
+            <div class="cert-section-header calidad">
+                <i class="fa-solid fa-certificate"></i> Certificado de Calidad
             </div>
-            <div class="card-body">
-                @if($programa->archivosCalibra->count() > 0)
-                    <div class="list-group mb-3">
-                        @foreach($programa->archivosCalibra as $archivo)
-                            <a href="{{ route('archivos-equipos.descargar', $archivo->id) }}" class="list-group-item list-group-item-action" target="_blank">
-                                <div class="d-flex w-100 justify-content-between">
-                                    <h6 class="mb-1">
-                                        <i class="fa-solid fa-file-pdf text-danger"></i> {{ $archivo->archivo_nombre }}
-                                    </h6>
-                                    <small>{{ $archivo->mb }} MB</small>
-                                </div>
-                                <small class="text-muted">Subido: {{ $archivo->fecha_subida->format('d/m/Y H:i') }}</small>
+            <div class="cert-section-body">
+                @forelse($programa->archivosCalidad as $archivo)
+                    <div class="archivo-item">
+                        <div>
+                            <div class="archivo-nombre">
+                                <i class="fa-solid fa-file-pdf" style="color:#DC2626"></i>
+                                {{ $archivo->archivo_nombre }}
+                            </div>
+                            <div class="archivo-meta">
+                                {{ round($archivo->archivo_tamanio / 1048576, 2) }} MB
+                                · {{ $archivo->fecha_subida->format('d/m/Y') }}
+                            </div>
+                        </div>
+                        <div style="display:flex;gap:4px">
+                            <button type="button"
+                                    onclick="previsualizarArchivo('calidad-preview', '{{ route('archivos-equipos.ver', $archivo->id) }}', '{{ $archivo->archivo_extension }}')"
+                                    class="btn-accion btn-primary-ci" style="padding:3px 8px" title="Ver">
+                                <i class="fa-solid fa-eye"></i>
+                            </button>
+                            <a href="{{ route('archivos-equipos.descargar', $archivo->id) }}"
+                               class="btn-accion btn-files" style="padding:3px 8px" target="_blank" title="Descargar">
+                                <i class="fa-solid fa-download"></i>
                             </a>
-                        @endforeach
+                        </div>
                     </div>
-                    <button type="button" class="btn btn-warning btn-block btn-sm" onclick="reemplazarArchivo({{ $programa->id }}, 'calibracion')">
-                        <i class="fa-solid fa-refresh"></i> Reemplazar
-                    </button>
-                @else
-                    <p class="text-muted"><i class="fa-solid fa-circle-info"></i> No hay certificado de calibración cargado</p>
-                    <button type="button" class="btn btn-success btn-block btn-sm" onclick="subirArchivo({{ $programa->id }}, 'calibracion')">
-                        <i class="fa-solid fa-upload"></i> Subir Certificado
-                    </button>
-                @endif
+                    {{-- Visor inline --}}
+                    <div id="calidad-preview" class="cert-preview-wrap" style="display:none">
+                        <button class="cert-preview-close" onclick="cerrarPreview('calidad-preview')" title="Cerrar">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                        <div id="calidad-preview-content"></div>
+                    </div>
+                @empty
+                    <p style="color:var(--text-muted);font-size:.8rem;margin-bottom:10px">
+                        <i class="fa-solid fa-circle-info"></i> Sin certificado cargado
+                    </p>
+                @endforelse
+
+                <button type="button"
+                        onclick="subirCertificado({{ $programa->id }}, 'calidad')"
+                        class="btn-accion btn-success-ci"
+                        style="width:100%;justify-content:center;margin-top:4px">
+                    <i class="fa-solid fa-upload"></i>
+                    {{ $programa->archivosCalidad->count() > 0 ? 'Reemplazar' : 'Subir certificado' }}
+                </button>
             </div>
         </div>
+
+        {{-- Certificado de Calibración --}}
+        <div class="cert-section">
+            <div class="cert-section-header calibracion">
+                <i class="fa-solid fa-flask"></i> Certificado de Calibración
+            </div>
+            <div class="cert-section-body">
+                @forelse($programa->archivosCalibra as $archivo)
+                    <div class="archivo-item">
+                        <div>
+                            <div class="archivo-nombre">
+                                <i class="fa-solid fa-file-pdf" style="color:#DC2626"></i>
+                                {{ $archivo->archivo_nombre }}
+                            </div>
+                            <div class="archivo-meta">
+                                {{ round($archivo->archivo_tamanio / 1048576, 2) }} MB
+                                · {{ $archivo->fecha_subida->format('d/m/Y') }}
+                            </div>
+                        </div>
+                        <div style="display:flex;gap:4px">
+                            <button type="button"
+                                    onclick="previsualizarArchivo('calibra-preview', '{{ route('archivos-equipos.ver', $archivo->id) }}', '{{ $archivo->archivo_extension }}')"
+                                    class="btn-accion btn-primary-ci" style="padding:3px 8px" title="Ver">
+                                <i class="fa-solid fa-eye"></i>
+                            </button>
+                            <a href="{{ route('archivos-equipos.descargar', $archivo->id) }}"
+                               class="btn-accion btn-files" style="padding:3px 8px" target="_blank" title="Descargar">
+                                <i class="fa-solid fa-download"></i>
+                            </a>
+                        </div>
+                    </div>
+                    {{-- Visor inline --}}
+                    <div id="calibra-preview" class="cert-preview-wrap" style="display:none">
+                        <button class="cert-preview-close" onclick="cerrarPreview('calibra-preview')" title="Cerrar">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                        <div id="calibra-preview-content"></div>
+                    </div>
+                @empty
+                    <p style="color:var(--text-muted);font-size:.8rem;margin-bottom:10px">
+                        <i class="fa-solid fa-circle-info"></i> Sin certificado cargado
+                    </p>
+                @endforelse
+
+                <button type="button"
+                        onclick="subirCertificado({{ $programa->id }}, 'calibracion')"
+                        class="btn-accion btn-success-ci"
+                        style="width:100%;justify-content:center;margin-top:4px">
+                    <i class="fa-solid fa-upload"></i>
+                    {{ $programa->archivosCalibra->count() > 0 ? 'Reemplazar' : 'Subir certificado' }}
+                </button>
+            </div>
+        </div>
+
     </div>
 </div>
 
-{{-- Input hidden para subir archivos --}}
-<input type="file" id="archivoTemp" style="display: none;" accept=".pdf,.jpg,.jpeg,.png">
+<input type="file" id="ci-archivo-tmp" style="display:none" accept=".pdf,.jpg,.jpeg,.png">
 
 <script>
-    function subirArchivo(programaId, tipo) {
-        const input = document.getElementById('archivoTemp');
-        input.dataset.programaId = programaId;
-        input.dataset.tipo = tipo;
-        input.click();
-    }
+(function() {
+    let _ciProgramaId = null;
+    let _ciTipo = null;
 
-    function reemplazarArchivo(programaId, tipo) {
-        const input = document.getElementById('archivoTemp');
-        input.dataset.programaId = programaId;
-        input.dataset.tipo = tipo;
-        input.click();
-    }
+    // ── Previsualizar ────────────────────────────────────────
+    window.previsualizarArchivo = function(containerId, url, ext) {
+        const wrap    = document.getElementById(containerId);
+        const content = document.getElementById(containerId + '-content');
+        const imgs    = ['jpg','jpeg','png','gif','webp','bmp'];
 
-    document.getElementById('archivoTemp').addEventListener('change', function(e) {
-        const file = e.target.files[0];
+        content.innerHTML = '';
+
+        if (imgs.includes(ext.toLowerCase())) {
+            const img = document.createElement('img');
+            img.src = url;
+            img.alt = 'Previsualización';
+            content.appendChild(img);
+        } else {
+            // PDF u otro: iframe
+            const iframe = document.createElement('iframe');
+            iframe.src = url;
+            iframe.title = 'Previsualización';
+            content.appendChild(iframe);
+        }
+
+        wrap.style.display = 'block';
+        wrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    };
+
+    window.cerrarPreview = function(containerId) {
+        const wrap = document.getElementById(containerId);
+        wrap.style.display = 'none';
+        document.getElementById(containerId + '-content').innerHTML = '';
+    };
+
+    // ── Subir certificado ────────────────────────────────────
+    window.subirCertificado = function(programaId, tipo) {
+        _ciProgramaId = programaId;
+        _ciTipo = tipo;
+        const input = document.getElementById('ci-archivo-tmp');
+        input.value = '';
+        input.click();
+    };
+
+    document.getElementById('ci-archivo-tmp').addEventListener('change', async function() {
+        const file = this.files[0];
         if (!file) return;
 
-        const programaId = this.dataset.programaId;
-        const tipo = this.dataset.tipo;
-        const tipoDocumento = tipo === 'calidad' ? 'cert_calidad' : 'cert_calibracion';
+        const fd = new FormData();
+        fd.append('archivo',     file);
+        fd.append('id_programa', _ciProgramaId);
+        fd.append('tipo',        _ciTipo === 'calidad' ? '1' : '2');
+        fd.append('_token',      window.CSRF_TOKEN || '{{ csrf_token() }}');
 
-        const formData = new FormData();
-        formData.append('archivo', file);
-        formData.append('id_programa', programaId);
-        formData.append('tipo_documento', tipoDocumento);
+        const cuerpo = document.getElementById('modal-archivos-body');
+        cuerpo.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;padding:30px;color:var(--text-muted)"><i class="fa-solid fa-spinner fa-spin"></i>&nbsp;Subiendo archivo...</div>';
 
-        $.ajax({
-            type: 'POST',
-            url: '{{ route("archivos-equipos.subir-certificado") }}',
-            data: formData,
-            contentType: false,
-            processData: false,
-            beforeSend: function() {
-                Swal.fire({
-                    title: 'Cargando...',
-                    allowOutsideClick: false,
-                    didOpen: () => Swal.showLoading()
-                });
-            },
-            success: function(response) {
-                Swal.fire('Éxito', 'Archivo cargado correctamente', 'success').then(() => {
-                    location.reload();
-                });
-            },
-            error: function(xhr) {
-                const error = xhr.responseJSON?.error || 'Error al cargar el archivo';
-                Swal.fire('Error', error, 'error');
+        try {
+            const res  = await fetch('/archivos-equipos/subir-certificado', { method: 'POST', body: fd });
+            const data = await res.json();
+
+            if (data.success) {
+                if (typeof notif === 'function') notif('success', 'Archivo subido correctamente');
+                if (typeof verArchivos === 'function') verArchivos(_ciProgramaId);
+            } else {
+                if (typeof notif === 'function') notif('error', data.mensaje || 'Error al subir');
+                if (typeof verArchivos === 'function') verArchivos(_ciProgramaId);
             }
-        });
-
-        // Limpiar input
-        this.value = '';
+        } catch (err) {
+            if (typeof notif === 'function') notif('error', 'Error de conexión');
+            console.error(err);
+        }
     });
+})();
 </script>

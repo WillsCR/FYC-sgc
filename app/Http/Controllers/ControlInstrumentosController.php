@@ -7,293 +7,398 @@ use App\Models\ArchivoEquipo;
 use App\Models\Area;
 use App\Models\Usuario;
 use App\Services\ArchivoEquipoService;
+use App\Services\PermisoService;
 use App\Helpers\ControlInstrumentosHelper;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use Illuminate\Support\Str;
 
 class ControlInstrumentosController extends Controller
 {
-    private $archivoService;
+    private const CI_CARPETA_ID = 98;
 
-    public function __construct(ArchivoEquipoService $archivoService)
-    {
-        $this->archivoService = $archivoService;
-    }
+    public function __construct(private ArchivoEquipoService $archivoService) {}
 
     /**
-     * Mostrar listado de programas
+     * Permiso único: `carga` sobre carpeta 98 controla TODO el acceso a CI.
+     * Admins siempre tienen acceso completo.
      */
+    private function tieneAccesoCI(): bool
+    {
+        $usuario = PermisoService::usuarioActual();
+        return $usuario && ($usuario->esAdmin() || PermisoService::can('carga', 'carpeta', self::CI_CARPETA_ID));
+    }
+
+    private function checkAcceso(): void
+    {
+        if (! $this->tieneAccesoCI()) {
+            abort(403, 'No tienes permiso para acceder al módulo de Control de Instrumentos.');
+        }
+    }
+
+    // ── Listado principal ────────────────────────────────────────────────────
+
     public function index(Request $request)
     {
-        $query = ProgramaVerificacion::with(['area', 'responsables.usuario', 'archivos']);
+        $this->checkAcceso();
+        $usuario = PermisoService::usuarioActual();
 
-        if ($request->search) {
-            $search = $request->search;
+        // Filtros
+        $search   = $request->input('search', '');
+        $proyecto = $request->input('proyecto', '');
+        $estado   = $request->input('estado', '');
+
+        $query = ProgramaVerificacion::with(['area', 'archivosCalidad', 'archivosCalibra']);
+
+        if ($search) {
             $query->where(function ($q) use ($search) {
-                $q->where('descripcion', 'like', "%{$search}%")
-                  ->orWhere('marca', 'like', "%{$search}%")
-                  ->orWhere('modelo', 'like', "%{$search}%")
-                  ->orWhere('serie', 'like', "%{$search}%");
+                $q->where('descripcion',    'like', "%{$search}%")
+                  ->orWhere('marca',        'like', "%{$search}%")
+                  ->orWhere('modelo',       'like', "%{$search}%")
+                  ->orWhere('serie',        'like', "%{$search}%")
+                  ->orWhere('certificado_calibracion', 'like', "%{$search}%");
             });
         }
 
-        $programas = $query->orderBy('id', 'desc')->paginate(20);
-        $areas = Area::orderBy('descripcion')->get();
-        $usuarios = Usuario::orderBy('email')->get();
+        if ($proyecto) {
+            $query->where('id_contrato', $proyecto);
+        }
 
-        return view('control-instrumentos.index-nuevo', compact('programas', 'areas', 'usuarios'));
+        $hoy = Carbon::today();
+        if ($estado === 'vigente') {
+            $query->where('proxima', '>', $hoy->copy()->addDays(30));
+        } elseif ($estado === 'por_vencer') {
+            $query->whereBetween('proxima', [$hoy->toDateString(), $hoy->copy()->addDays(30)->toDateString()]);
+        } elseif ($estado === 'vencido') {
+            $query->where(function ($q) use ($hoy) {
+                $q->where('proxima', '<', $hoy->toDateString())->orWhereNull('proxima');
+            });
+        }
+
+        $programas = $query->orderBy('ultima', 'desc')->orderBy('descripcion')->paginate(25)->withQueryString();
+
+        // KPIs globales (sin filtros)
+        $hoy2 = Carbon::today();
+        $kpis = [
+            'total'      => ProgramaVerificacion::count(),
+            'vigentes'   => ProgramaVerificacion::where('proxima', '>', $hoy2->copy()->addDays(30))->count(),
+            'por_vencer' => ProgramaVerificacion::whereBetween('proxima', [
+                                $hoy2->toDateString(),
+                                $hoy2->copy()->addDays(30)->toDateString(),
+                            ])->count(),
+            'vencidos'   => ProgramaVerificacion::where(function ($q) use ($hoy2) {
+                                $q->where('proxima', '<', $hoy2->toDateString())->orWhereNull('proxima');
+                            })->count(),
+        ];
+
+        $areas          = Area::orderBy('descripcion')->get();
+        $usuarios       = Usuario::orderBy('nombre')->get();
+        $puedeGestionar = $this->tieneAccesoCI();   // crear / editar
+        $puedeImportar  = $usuario && $usuario->esAdmin();  // solo admins
+
+        return view('control-instrumentos.index-nuevo', compact(
+            'programas', 'areas', 'usuarios', 'usuario', 'kpis',
+            'search', 'proyecto', 'estado',
+            'puedeGestionar', 'puedeImportar'
+        ));
     }
 
-    /**
-     * Importar datos desde Excel
-     */
-    public function importar(Request $request)
+    // ── Crear ────────────────────────────────────────────────────────────────
+
+    public function store(Request $request)
     {
         $request->validate([
-            'archivo_excel' => 'required|file|mimes:xlsx,xls',
+            'descripcion' => 'required|string|max:150',
+            'id_contrato' => 'required|integer|exists:sgc_areas,id',
+            'calibracion' => 'required|in:1,2,3,4',
         ]);
 
-        try {
-            $file = $request->file('archivo_excel');
-            $spreadsheet = IOFactory::load($file->getPathname());
-            $worksheet = $spreadsheet->getActiveSheet();
+        if (! $this->tieneAccesoCI()) abort(403);
+        $usuario = PermisoService::usuarioActual();
 
-            $borrarExistentes = $request->has('borrar_existentes');
-            $importados = 0;
+        $programa = ProgramaVerificacion::create([
+            'id_contrato'             => $request->id_contrato,
+            'descripcion'             => $request->descripcion,
+            'marca'                   => $request->marca,
+            'modelo'                  => $request->modelo,
+            'serie'                   => $request->serie,
+            'interno'                 => $request->interno ?: null,
+            'cert_calidad'            => $request->has('cert_calidad')     ? 1 : 0,
+            'cert_calibracion'        => $request->has('cert_calibracion') ? 1 : 0,
+            'calibracion'             => $request->calibracion,
+            'verificacion'            => $request->verificacion ?: null,
+            'certificado_calibracion' => $request->num_cert_calibracion,
+            'ultima'                  => $request->fecha_ultima  ?: null,
+            'proxima'                 => $request->fecha_proxima ?: null,
+            'observaciones'           => $request->observaciones,
+            'responsable'             => $request->responsable ?: null,
+            'id_usuario'              => $usuario->id,
+        ]);
 
-            // Opcional: borrar existentes
-            if ($borrarExistentes) {
-                ProgramaVerificacion::truncate();
-                ArchivoEquipo::truncate();
-            }
-
-            // Procesar filas (comenzar desde fila 2 para saltar encabezado)
-            foreach ($worksheet->getRowIterator(2) as $row) {
-                $cellIterator = $row->getCellIterator();
-                $cellIterator->setIterateOnlyExistingCells(false);
-
-                $datos = [];
-                $col = 0;
-                foreach ($cellIterator as $cell) {
-                    $datos[$col] = $cell->getValue();
-                    $col++;
-                }
-
-                // Validar que no esté vacía
-                if (!isset($datos[0]) || empty($datos[0])) {
-                    continue;
-                }
-
-                // Mapear columnas según el Excel
-                $programa = $this->procesarFilaExcel($datos);
-                if ($programa) {
-                    $importados++;
-                }
-            }
-
-            return response()->json([
-                'success' => true,
-                'importados' => $importados,
-                'mensaje' => "Se importaron $importados registros correctamente"
-            ]);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al procesar el archivo: ' . $e->getMessage()
-            ], 400);
+        if ($request->hasFile('archivo_calidad')) {
+            $this->archivoService->subirArchivo(
+                $request->file('archivo_calidad'), $usuario->id,
+                'cert_calidad', null, $programa->id
+            );
         }
-    }
-
-    /**
-     * Procesar una fila del Excel
-     */
-    private function procesarFilaExcel($datos)
-    {
-        try {
-            // Mapear índices de columnas
-            $numero = $datos[0] ?? null;
-            $proyecto = $datos[1] ?? null;
-            $certificado = $datos[2] ?? null;
-            $descripcion = $datos[3] ?? null;
-            $marca = $datos[4] ?? null;
-            $modelo = $datos[5] ?? null;
-            $serie = $datos[6] ?? null;
-            $interno = $datos[7] ?? null;
-            $calibracion = $datos[8] ?? null;
-            $verificacion = $datos[9] ?? null;
-            $numCert = $datos[10] ?? null;
-            $ultima = $datos[11] ?? null;
-            $proxima = $datos[12] ?? null;
-            $responsable = $datos[13] ?? null;
-
-            if (!$descripcion || !$proyecto) {
-                return null;
-            }
-
-            // Obtener ID de área por nombre
-            $area = Area::where('descripcion', 'like', "%{$proyecto}%")->first();
-            $idArea = $area?->id ?? Area::first()?->id;
-
-            // Convertir frecuencias
-            $calibracionId = $this->obtenerFreqId($calibracion);
-            $verificacionId = $this->obtenerFreqId($verificacion, true);
-
-            // Determinar tipos de certificado
-            $certCalidad = Str::contains($certificado, ['Calidad', 'calidad']);
-            $certCalibra = Str::contains($certificado, ['Calibración', 'calibracion', 'Calibracion']);
-
-            // Convertir fechas
-            $fechaUltima = $this->convertirFecha($ultima);
-            $fechaProxima = $this->convertirFecha($proxima);
-
-            // Crear programa de verificación
-            $programa = ProgramaVerificacion::create([
-                'id_area' => $idArea,
-                'descripcion' => $descripcion,
-                'marca' => $marca,
-                'modelo' => $modelo,
-                'serie' => $serie,
-                'interno' => $interno,
-                'certificado_calidad' => $certCalidad ? 1 : 0,
-                'certificado_calibracion' => $certCalibra ? 1 : 0,
-                'calibracion' => $calibracionId,
-                'verificacion' => $verificacionId,
-                'numero_certificado' => $numCert,
-                'fecha_ultima' => $fechaUltima,
-                'fecha_proxima' => $fechaProxima,
-                'estado' => 'activo',
-            ]);
-
-            return $programa;
-
-        } catch (\Exception $e) {
-            \Log::error('Error procesando fila Excel: ' . $e->getMessage());
-            return null;
-        }
-    }
-
-    /**
-     * Obtener ID de frecuencia
-     */
-    private function obtenerFreqId($valor, $esVerificacion = false)
-    {
-        if ($esVerificacion) {
-            if (Str::contains($valor, ['Mensual', 'mensual'])) return 1;
-            return null;
+        if ($request->hasFile('archivo_calibracion')) {
+            $this->archivoService->subirArchivo(
+                $request->file('archivo_calibracion'), $usuario->id,
+                'cert_calibracion', null, $programa->id
+            );
         }
 
-        if (Str::contains($valor, ['Anual', 'anual'])) return 1;
-        if (Str::contains($valor, ['Mensual', 'mensual'])) return 2;
-        if (Str::contains($valor, ['No aplica', 'no aplica'])) return 3;
-        if (Str::contains($valor, ['Semestral', 'semestral'])) return 4;
-
-        return null;
+        return response()->json(['success' => true, 'message' => 'Programa creado correctamente', 'id' => $programa->id]);
     }
 
-    /**
-     * Convertir formato de fecha
-     */
-    private function convertirFecha($fecha)
-    {
-        if (!$fecha) return null;
+    // ── Editar (carga dinámica) ──────────────────────────────────────────────
 
-        try {
-            // Intenta varios formatos comunes
-            $formatos = ['d-m-Y', 'd/m/Y', 'Y-m-d', 'd-m-y'];
-
-            foreach ($formatos as $formato) {
-                $fecha_obj = \DateTime::createFromFormat($formato, $fecha);
-                if ($fecha_obj) {
-                    return $fecha_obj->format('Y-m-d');
-                }
-            }
-
-            // Si es un número de Excel
-            if (is_numeric($fecha)) {
-                return \Carbon\Carbon::instance(\PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($fecha))->format('Y-m-d');
-            }
-        } catch (\Exception $e) {
-            \Log::error('Error convertiendo fecha: ' . $e->getMessage());
-        }
-
-        return null;
-    }
-
-    /**
-     * Obtener formulario de edición
-     */
     public function edit(ProgramaVerificacion $programaVerificacion)
     {
-        $areas = Area::orderBy('descripcion')->get();
+        $areas   = Area::orderBy('descripcion')->get();
         $programa = $programaVerificacion;
 
         return view('control-instrumentos.partials.formulario-edicion', compact('programa', 'areas'));
     }
 
-    /**
-     * Actualizar programa
-     */
+    // ── Actualizar ───────────────────────────────────────────────────────────
+
     public function update(Request $request, ProgramaVerificacion $programaVerificacion)
     {
         $request->validate([
-            'descripcion' => 'required|string',
+            'descripcion' => 'required|string|max:150',
             'calibracion' => 'required|in:1,2,3,4',
         ]);
 
-        $programaVerificacion->update($request->all());
+        if (! $this->tieneAccesoCI()) abort(403);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Programa actualizado correctamente'
+        $programaVerificacion->update([
+            'id_contrato'             => $request->id_contrato,
+            'descripcion'             => $request->descripcion,
+            'marca'                   => $request->marca,
+            'modelo'                  => $request->modelo,
+            'serie'                   => $request->serie,
+            'interno'                 => $request->interno ?: null,
+            'cert_calidad'            => $request->has('cert_calidad')     ? 1 : 0,
+            'cert_calibracion'        => $request->has('cert_calibracion') ? 1 : 0,
+            'calibracion'             => $request->calibracion,
+            'verificacion'            => $request->verificacion ?: null,
+            'certificado_calibracion' => $request->certificado_calibracion,
+            'ultima'                  => $request->ultima  ?: null,
+            'proxima'                 => $request->proxima ?: null,
+            'observaciones'           => $request->observaciones,
+            'responsable'             => $request->responsable ?: null,
         ]);
+
+        return response()->json(['success' => true, 'message' => 'Programa actualizado correctamente']);
     }
 
-    /**
-     * Obtener archivos asociados
-     */
+    // ── Archivos (carga dinámica) ────────────────────────────────────────────
+
     public function archivos(ProgramaVerificacion $programaVerificacion)
     {
-        $programa = $programaVerificacion;
-        $areas = Area::all();
-
-        return view('control-instrumentos.partials.gestionar-archivos', compact('programa', 'areas'));
+        $programa = $programaVerificacion->load(['archivosCalidad', 'archivosCalibra']);
+        return view('control-instrumentos.partials.gestionar-archivos', compact('programa'));
     }
 
-    /**
-     * Actualizar permisos de usuarios
-     */
+    // ── Importar Excel ───────────────────────────────────────────────────────
+
+    public function importar(Request $request)
+    {
+        $request->validate(['archivo_excel' => 'required|file|mimes:xlsx,xls']);
+
+        try {
+            $spreadsheet = IOFactory::load($request->file('archivo_excel')->getPathname());
+
+            // Buscar la hoja "Seguimiento" (nombre exacto o parcial, sin distinción de mayúsculas)
+            $ws = null;
+            foreach ($spreadsheet->getSheetNames() as $nombre) {
+                if (stripos($nombre, 'seguimiento') !== false) {
+                    $ws = $spreadsheet->getSheetByName($nombre);
+                    break;
+                }
+            }
+            // Si no existe "Seguimiento", usar la hoja activa
+            if (! $ws) {
+                $ws = $spreadsheet->getActiveSheet();
+            }
+
+            // Detectar fila de inicio: buscar la primera fila (desde 8 hacia abajo)
+            // cuya columna E no esté vacía y no sea un encabezado de texto
+            $filaInicio = 11; // valor por defecto conocido
+            for ($r = 8; $r <= 15; $r++) {
+                $val = trim((string) $ws->getCell('E' . $r)->getValue());
+                // Saltar celdas vacías o que sean texto de encabezado
+                if ($val && ! preg_match('/descripci[oó]n|instrumento|equipo/i', $val)) {
+                    $filaInicio = $r;
+                    break;
+                }
+            }
+
+            if ($request->boolean('borrar_existentes')) {
+                ProgramaVerificacion::truncate();
+            }
+
+            $importados = 0;
+            $errores    = 0;
+
+            foreach ($ws->getRowIterator($filaInicio) as $row) {
+                $it = $row->getCellIterator('A', 'S');
+                $it->setIterateOnlyExistingCells(false);
+
+                $d = [];
+                foreach ($it as $col => $cell) {
+                    $d[$col] = $cell->getValue();
+                }
+
+                // Saltar filas sin descripción (columna E)
+                $descripcion = trim((string) ($d['E'] ?? ''));
+                if (empty($descripcion)) continue;
+
+                $res = $this->procesarFila($d);
+                $res ? $importados++ : $errores++;
+            }
+
+            $hojaUsada = $ws->getTitle();
+            return response()->json([
+                'success'    => true,
+                'importados' => $importados,
+                'errores'    => $errores,
+                'mensaje'    => "Se importaron {$importados} registros desde hoja \"{$hojaUsada}\"" . ($errores ? " ({$errores} con error)" : ''),
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()], 400);
+        }
+    }
+
+    private function procesarFila(array $d): ?ProgramaVerificacion
+    {
+        try {
+            // Mapeo exacto de columnas de la hoja "Seguimiento":
+            // B=N°  C=PROYECTO  D=TIPO CERT  E=DESCRIPCIÓN  F=MARCA  G=MODELO
+            // H=NÚMERO SERIE  I=NÚMERO INTERNO  J=CALIBRACIÓN  K=VERIFICACIÓN
+            // L=N° CERT CALIBRACIÓN  M=ÚLTIMA  N=PRÓXIMA  O=FECHA INGRESO
+            // P=OBSERVACIÓN  Q=DESCRIPCIÓN(otros certs)  R=REFERENCIAS  S=RESPONSABLE
+            $proyecto    = trim((string) ($d['C'] ?? ''));
+            $tipoCert    = strtolower(trim((string) ($d['D'] ?? '')));
+            $descripcion = trim((string) ($d['E'] ?? ''));
+            $marca       = trim((string) ($d['F'] ?? '')) ?: null;
+            $modelo      = trim((string) ($d['G'] ?? '')) ?: null;
+            $serie       = trim((string) ($d['H'] ?? '')) ?: null;
+            $interno     = trim((string) ($d['I'] ?? ''));
+            $calibFreq   = trim((string) ($d['J'] ?? ''));
+            $verifFreq   = trim((string) ($d['K'] ?? ''));
+            $numCert     = trim((string) ($d['L'] ?? '')) ?: null;
+            $ultimaRaw   = $d['M'] ?? null;
+            $proximaRaw  = $d['N'] ?? null;
+            $observ      = trim((string) ($d['P'] ?? '')) ?: null;   // P = OBSERVACIÓN
+            $responsable = trim((string) ($d['S'] ?? '')) ?: null;   // S = RESPONSABLE
+
+            if (! $descripcion) return null;
+
+            // Área / proyecto
+            $area       = Area::where('descripcion', 'like', "%{$proyecto}%")->first();
+            $idContrato = $area?->id ?? Area::first()?->id;
+
+            // Tipos de certificado — acepta variantes de texto del Excel
+            $certCalidad = Str::contains($tipoCert, ['calidad']);
+            $certCalibra = Str::contains($tipoCert, ['calibración', 'calibracion', 'calibrac']);
+
+            // Frecuencias (calibracion NOT NULL: usar 3=No aplica como fallback)
+            $calibracionId  = $this->freqId($calibFreq) ?? 3;
+            $verificacionId = $this->freqId($verifFreq, true);
+
+            // Fechas (pueden ser seriales de Excel o strings)
+            $ultima  = $this->parseDate($ultimaRaw);
+            $proxima = $this->parseDate($proximaRaw);
+
+            // Nº Interno: si tiene texto placeholder, guardar null
+            $internoVal = is_numeric($interno) ? (int) $interno : null;
+
+            return ProgramaVerificacion::create([
+                'id_contrato'             => $idContrato,
+                'descripcion'             => $descripcion,
+                'marca'                   => $marca,
+                'modelo'                  => $modelo,
+                'serie'                   => $serie,
+                'interno'                 => $internoVal,
+                'cert_calidad'            => $certCalidad ? 1 : 0,
+                'cert_calibracion'        => $certCalibra ? 1 : 0,
+                'calibracion'             => $calibracionId,
+                'verificacion'            => $verificacionId,
+                'certificado_calibracion' => $numCert,
+                'ultima'                  => $ultima,
+                'proxima'                 => $proxima,
+                'observaciones'           => $observ,
+                'responsable'             => $responsable,
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('CI Import row error: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    private function freqId(string $val, bool $esVerif = false): ?int
+    {
+        $v = strtolower($val);
+        if ($esVerif) {
+            return Str::contains($v, 'mensual') ? 1 : null;
+        }
+        if (Str::contains($v, 'anual'))    return 1;
+        if (Str::contains($v, 'mensual'))  return 2;
+        if (Str::contains($v, ['no aplica', 'no_aplica', 'na'])) return 3;
+        if (Str::contains($v, 'semestral')) return 4;
+        return null;
+    }
+
+    private function parseDate($raw): ?string
+    {
+        if (! $raw) return null;
+        try {
+            if (is_numeric($raw)) {
+                return Carbon::instance(
+                    \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject((float) $raw)
+                )->format('Y-m-d');
+            }
+            foreach (['d-m-Y', 'd/m/Y', 'Y-m-d', 'd-m-y', 'd/m/y'] as $fmt) {
+                $obj = \DateTime::createFromFormat($fmt, trim((string) $raw));
+                if ($obj) return $obj->format('Y-m-d');
+            }
+        } catch (\Exception $e) { }
+        return null;
+    }
+
+    // ── Permisos ─────────────────────────────────────────────────────────────
+
     public function actualizarPermisos(Request $request)
     {
-        $usuario = Usuario::findOrFail($request->usuario_id);
-        $tipo = $request->tipo;
-        $estado = $request->estado;
+        $usuario = PermisoService::usuarioActual();
+        if (! $usuario || ! $usuario->esAdmin()) abort(403);
 
-        $campoPermiso = match ($tipo) {
-            'ver' => 'ver_control_instrumentos',
-            'editar' => 'editar_control_instrumentos',
+        $target = Usuario::findOrFail($request->usuario_id);
+        $campo  = match ($request->tipo) {
+            'ver'      => 'ver_control_instrumentos',
+            'editar'   => 'editar_control_instrumentos',
             'eliminar' => 'eliminar_control_instrumentos',
-            default => null
+            default    => null,
         };
 
-        if ($campoPermiso) {
-            $usuario->update([$campoPermiso => $estado]);
-        }
+        if ($campo) $target->update([$campo => (int) $request->estado]);
 
         return response()->json(['success' => true]);
     }
 
-    /**
-     * Eliminar programa
-     */
+    // ── Eliminar ─────────────────────────────────────────────────────────────
+
     public function destroy(ProgramaVerificacion $programaVerificacion)
     {
+        if (! $this->tieneAccesoCI()) abort(403);
+
         $programaVerificacion->delete();
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Programa eliminado correctamente'
-        ]);
+        return response()->json(['success' => true, 'message' => 'Programa eliminado correctamente']);
     }
 }

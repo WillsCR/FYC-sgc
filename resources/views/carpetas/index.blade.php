@@ -54,11 +54,12 @@
 .subcarpeta-wrap { position: relative; }
 .subcarpeta-card {
     background: var(--surface); border: 1px solid var(--border);
-    border-radius: 6px; padding: 12px 12px 10px;
-    display: flex; flex-direction: column; align-items: center;
-    gap: 8px; cursor: pointer; text-decoration: none;
+    border-radius: 6px; padding: 14px 12px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; text-decoration: none;
     color: var(--text-primary); font-size: .8rem; font-weight: 500;
     transition: all .15s; text-align: center; width: 100%; box-sizing: border-box;
+    min-height: 50px;
 }
 .subcarpeta-card:hover {
     border-color: var(--blue-accent); background: var(--surface-2);
@@ -78,26 +79,33 @@
 /* ── Submódulos con estilo coloreado (nivel módulo raíz) ──── */
 .submodulos-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: 12px; margin-bottom: 28px;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 14px; margin-bottom: 28px;
 }
 .submodulo-wrap { position: relative; }
 .submodulo-card {
-    display: flex; align-items: center; gap: 10px;
-    padding: 14px 16px; border-radius: 8px;
-    text-decoration: none; color: #fff;
-    font-size: .85rem; font-weight: 600;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 10px;
+    padding: 22px 12px 18px;
+    border-radius: 10px;
+    text-decoration: none; color: #fff; text-align: center;
+    font-size: .78rem; font-weight: 600; line-height: 1.3;
     transition: transform .15s, box-shadow .15s, filter .15s;
-    box-shadow: 0 2px 6px rgba(0,0,0,.15);
-    width: 100%; box-sizing: border-box; min-height: 56px;
+    box-shadow: 0 3px 10px rgba(0,0,0,.18);
+    width: 100%; box-sizing: border-box;
+    height: 140px;
 }
 .submodulo-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 6px 18px rgba(0,0,0,.2);
+    transform: translateY(-4px);
+    box-shadow: 0 8px 22px rgba(0,0,0,.25);
     filter: brightness(1.08);
 }
-.submodulo-emoji { font-size: 1.2rem; line-height: 1; flex-shrink: 0; }
-.submodulo-nombre { flex: 1; line-height: 1.3; }
+.submodulo-icon {
+    font-size: 2rem; line-height: 1;
+    opacity: .95;
+}
+.submodulo-nombre { line-height: 1.3; }
 .submodulo-wrap .subcarpeta-del {
     top: 8px; right: 8px;
     background: rgba(0,0,0,.30); border: none; color: #fff;
@@ -341,19 +349,20 @@
 .nsub-color-preset:hover { transform: scale(1.2); border-color: #fff; }
 .nsub-emoji-grid {
     display: flex; flex-wrap: wrap; gap: 6px;
-    max-height: 150px; overflow-y: auto;
+    max-height: 160px; overflow-y: auto;
     padding: 8px; background: var(--surface-2);
     border: 1px solid var(--border); border-radius: 6px;
 }
 .nsub-emoji-opt {
-    width: 34px; height: 34px; font-size: 1.1rem;
+    width: 38px; height: 38px; font-size: 1rem;
     display: flex; align-items: center; justify-content: center;
     border-radius: 6px; cursor: pointer;
     border: 2px solid transparent; transition: all .12s;
-    user-select: none;
+    color: var(--text-secondary); user-select: none;
+    background: var(--surface);
 }
-.nsub-emoji-opt:hover { background: #fff; border-color: var(--border); }
-.nsub-emoji-opt.selected { background: #fff; border-color: var(--blue-accent); box-shadow: 0 0 0 2px rgba(29,111,217,.18); }
+.nsub-emoji-opt:hover { background: #fff; border-color: var(--border); color: var(--navy); }
+.nsub-emoji-opt.selected { background: var(--navy); border-color: var(--navy); color: #fff; box-shadow: 0 0 0 2px rgba(29,111,217,.18); }
 
 /* ── Checkboxes de selección ────────────────────────────── */
 .cb-check {
@@ -499,14 +508,25 @@ tr.seleccionada td { background: #EFF6FF !important; }
                 {{-- Módulo raíz: tarjetas grandes coloreadas --}}
                 <div class="submodulos-grid">
                     @foreach($subcarpetas as $sub)
+                    @php
+                        $subRuta = (string) $sub->ruta;
+                        $subHref = str_starts_with($subRuta, '@') && \Illuminate\Support\Facades\Route::has(ltrim($subRuta, '@'))
+                            ? route(ltrim($subRuta, '@'))
+                            : route('carpetas.show', $sub->id);
+                    @endphp
                     <div class="submodulo-wrap">
-                        <a href="{{ route('carpetas.show', $sub->id) }}"
+                        <a href="{{ $subHref }}"
                            class="submodulo-card"
                            style="background-color: {{ $sub->color_estilo }}">
-                            <span class="submodulo-emoji">{{ $sub->emoji_estilo }}</span>
+                            @php $icono = $sub->emoji_estilo; @endphp
+                            @if($icono && str_starts_with($icono, 'fa-'))
+                                <i class="fa-solid {{ $icono }} submodulo-icon"></i>
+                            @elseif($icono)
+                                <span class="submodulo-icon" style="font-size:1.8rem">{{ $icono }}</span>
+                            @endif
                             <span class="submodulo-nombre">{{ $sub->descripcion }}</span>
                         </a>
-                        @if(isset($permisos) && $permisos['eliminar'])
+                        @if(isset($permisos) && $permisos['eliminar'] && !str_starts_with((string)$sub->ruta, '@'))
                         <button class="subcarpeta-del" title="Eliminar submódulo"
                                 onclick="pedirEliminarSubmodulo({{ $sub->id }}, '{{ addslashes($sub->descripcion) }}', this.closest('.submodulo-wrap'))">
                             🗑
@@ -519,9 +539,15 @@ tr.seleccionada td { background: #EFF6FF !important; }
                 {{-- Carpeta normal: tarjetas pequeñas con ícono de carpeta --}}
                 <div class="subcarpetas-grid">
                     @foreach($subcarpetas as $sub)
+                    @php
+                        $subRuta = (string) $sub->ruta;
+                        $subHref = str_starts_with($subRuta, '@') && \Illuminate\Support\Facades\Route::has(ltrim($subRuta, '@'))
+                            ? route(ltrim($subRuta, '@'))
+                            : route('carpetas.show', $sub->id);
+                    @endphp
                     <div class="subcarpeta-wrap">
-                        <a href="{{ route('carpetas.show', $sub->id) }}" class="subcarpeta-card">
-                            📁 {{ $sub->descripcion }}
+                        <a href="{{ $subHref }}" class="subcarpeta-card">
+                            {{ $sub->descripcion }}
                         </a>
                         @if(isset($permisos) && $permisos['eliminar'])
                         <button class="subcarpeta-del" title="Eliminar carpeta"
@@ -774,13 +800,26 @@ tr.seleccionada td { background: #EFF6FF !important; }
         <div class="nsub-field">
             <label class="nsub-label">Ícono</label>
             <div class="nsub-emoji-grid" id="nsub-emoji-grid">
-                @foreach(['📋','🌿','🛡️','🏗️','👨‍💼','🏢','📈','💰','📁','📄','📊','🔧','⚙️','🔑','📌','📎','🗂️','💼','🧾','📦','🚧','🌐','📡','🔬','💡','🏆','✅','⚠️','🔍','📝','🏛️','📐','🧩','🎯','🔐','📮','🧪','📉','🗃️'] as $em)
-                <div class="nsub-emoji-opt{{ $em === '📁' ? ' selected' : '' }}"
-                     data-emoji="{{ $em }}"
-                     onclick="elegirEmojiSub(this)">{{ $em }}</div>
+                @foreach([
+                    'fa-folder-open','fa-file-lines','fa-file-pdf','fa-clipboard-check','fa-clipboard-list',
+                    'fa-certificate','fa-graduation-cap','fa-book-open','fa-book','fa-chalkboard-user',
+                    'fa-chart-bar','fa-chart-line','fa-chart-pie','fa-magnifying-glass','fa-triangle-exclamation',
+                    'fa-shield-halved','fa-gears','fa-gear','fa-wrench','fa-hammer',
+                    'fa-users','fa-user-tie','fa-building','fa-hospital','fa-scale-balanced',
+                    'fa-seedling','fa-leaf','fa-earth-americas','fa-recycle','fa-droplet',
+                    'fa-ruler','fa-vest','fa-hard-hat','fa-truck','fa-boxes-stacked',
+                    'fa-coins','fa-calculator','fa-briefcase','fa-key','fa-lock',
+                    'fa-bell','fa-calendar-days','fa-clock','fa-flag','fa-star',
+                ] as $fa)
+                <div class="nsub-emoji-opt{{ $fa === 'fa-folder-open' ? ' selected' : '' }}"
+                     data-emoji="{{ $fa }}"
+                     title="{{ $fa }}"
+                     onclick="elegirEmojiSub(this)">
+                    <i class="fa-solid {{ $fa }}"></i>
+                </div>
                 @endforeach
             </div>
-            <input type="hidden" id="nsub-emoji-val" value="📁">
+            <input type="hidden" id="nsub-emoji-val" value="fa-folder-open">
         </div>
 
         <div class="modal-actions">
@@ -1487,9 +1526,9 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarVisor(
         document.getElementById('nsub-nombre').value    = '';
         document.getElementById('nsub-color-picker').value = '#0D2B5E';
         document.getElementById('nsub-color-hex').value    = '#0D2B5E';
-        document.getElementById('nsub-emoji-val').value    = '📁';
+        document.getElementById('nsub-emoji-val').value    = 'fa-folder-open';
         document.querySelectorAll('.nsub-emoji-opt').forEach(function(el) {
-            el.classList.toggle('selected', el.dataset.emoji === '📁');
+            el.classList.toggle('selected', el.dataset.emoji === 'fa-folder-open');
         });
         var btn = document.getElementById('nsub-btn-crear');
         btn.disabled    = false;
@@ -1600,15 +1639,18 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarVisor(
         }
 
         var color  = sub.color  || '#374151';
-        var icono  = sub.icono  || '📁';
+        var icono  = sub.icono  || 'fa-folder-open';
         var nombre = sub.descripcion || '';
+        var iconoHtml = icono && icono.startsWith('fa-')
+            ? '<i class="fa-solid ' + escHtml(icono) + ' submodulo-icon"></i>'
+            : '<span class="submodulo-icon" style="font-size:1.8rem">' + escHtml(icono) + '</span>';
 
         var wrap = document.createElement('div');
         wrap.className = 'submodulo-wrap';
         wrap.innerHTML =
             '<a href="/carpetas/' + sub.id + '" class="submodulo-card"' +
             ' style="background-color:' + escHtml(color) + '">' +
-                '<span class="submodulo-emoji">' + escHtml(icono)  + '</span>' +
+                iconoHtml +
                 '<span class="submodulo-nombre">' + escHtml(nombre) + '</span>' +
             '</a>' +
             '<button class="subcarpeta-del" title="Eliminar submódulo"' +

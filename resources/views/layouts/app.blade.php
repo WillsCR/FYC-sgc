@@ -8,23 +8,46 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous">
     @stack('styles')
 </head>
 <body>
 
 {{-- ── Navbar principal ─────────────────────────────────── --}}
 <nav class="navbar">
-    <a href="{{ route('panel') }}" class="navbar-logo">
-        <div class="navbar-logo-icon">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                <rect x="3"  y="3" width="4" height="18" fill="#0D2B5E"/>
-                <rect x="10" y="3" width="4" height="18" fill="#0D2B5E"/>
-                <rect x="17" y="3" width="4" height="18" fill="#0D2B5E"/>
-            </svg>
-        </div>
-        <div>
-            <div class="navbar-logo-text">F&C Chile SPA</div>
-            <div class="navbar-logo-sub">Ingeniería &amp; Construcción</div>
+    <a href="{{ route('panel') }}" class="navbar-logo"
+       style="display:inline-flex;align-items:center;gap:10px;text-decoration:none;
+              padding:5px 2px;transition:opacity .15s;flex-shrink:0"
+       onmouseover="this.style.opacity='.82'" onmouseout="this.style.opacity='1'">
+
+        {{-- Ícono columna clásica --}}
+        <svg xmlns="http://www.w3.org/2000/svg" width="30" height="38" viewBox="0 0 60 76" fill="none" aria-hidden="true">
+            <!-- capitel (parte superior) -->
+            <rect x="2"  y="2"  width="56" height="7"  rx="2" fill="white"/>
+            <rect x="8"  y="9"  width="44" height="4"  rx="1" fill="white"/>
+            <!-- fuste (columnas internas) -->
+            <rect x="10" y="13" width="8"  height="42" rx="2" fill="white"/>
+            <rect x="22" y="13" width="8"  height="42" rx="2" fill="white"/>
+            <rect x="34" y="13" width="8"  height="42" rx="2" fill="white"/>
+            <rect x="46" y="13" width="4"  height="42" rx="2" fill="white"/>
+            <!-- base -->
+            <rect x="8"  y="55" width="44" height="4"  rx="1" fill="white"/>
+            <rect x="2"  y="59" width="56" height="7"  rx="2" fill="white"/>
+            <!-- base inferior -->
+            <rect x="0"  y="68" width="60" height="5"  rx="2" fill="white"/>
+        </svg>
+
+        {{-- Texto --}}
+        <div style="line-height:1.15">
+            <div style="color:#ffffff;font-size:.95rem;font-weight:800;
+                        letter-spacing:.04em;font-family:'Inter',sans-serif">
+                F&amp;C CHILE SPA
+            </div>
+            <div style="color:rgba(255,255,255,.78);font-size:.6rem;font-weight:700;
+                        letter-spacing:.1em;text-transform:uppercase;
+                        font-family:'Inter',sans-serif">
+                Ingeniería &amp; Construcción
+            </div>
         </div>
     </a>
 
@@ -63,7 +86,8 @@
     <a href="{{ route('ambiente.index') }}" class="subnav-item {{ request()->routeIs('ambiente*') ? 'active' : '' }}">Medio Ambiente</a>
     <a href="{{ route('videos.index') }}"  class="subnav-item {{ request()->routeIs('videos*')   ? 'active' : '' }}">Videos</a>
     @if(session('es_admin'))
-        <a href="{{ route('usuarios.index') }}"   class="subnav-item {{ request()->routeIs('usuarios*') ? 'active' : '' }}">Usuarios</a>
+        <a href="{{ route('usuarios.index') }}" class="subnav-item {{ request()->routeIs('usuarios*') ? 'active' : '' }}">Usuarios</a>
+        <a href="{{ route('areas.index') }}"    class="subnav-item {{ request()->routeIs('areas*')    ? 'active' : '' }}">Áreas</a>
     @endif
 </div>
 

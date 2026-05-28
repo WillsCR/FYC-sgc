@@ -42,9 +42,12 @@
                 <a href="{{ route('carpetas.show', $bloque['carpeta_id']) }}"
                    class="bloque"
                    style="background: {{ $bloque['color'] }}; border-color: {{ $bloque['color'] }}; text-decoration:none">
-                    <div class="bloque-icon-wrap" style="background: rgba(255,255,255,.2)">
-                        <span style="font-size:1.5rem;line-height:1">{{ $bloque['emoji'] }}</span>
-                    </div>
+                    @php $icono = $bloque['emoji'] ?? ''; @endphp
+                    @if($icono && str_starts_with($icono, 'fa-'))
+                        <i class="fa-solid {{ $icono }} bloque-icon"></i>
+                    @elseif($icono)
+                        <span class="bloque-icon" style="font-size:1.8rem">{{ $icono }}</span>
+                    @endif
                     <div class="bloque-title">{{ $bloque['titulo'] }}</div>
                     <div class="bloque-badge">{{ $bloque['badge'] }}</div>
                 </a>
@@ -224,13 +227,25 @@
             <div class="nsub-field">
                 <label class="nsub-label">Ícono</label>
                 <div class="nsub-emoji-grid" id="mod-emoji-grid">
-                    @foreach(['📋','🌿','🛡️','🏗️','👨‍💼','🏢','📈','💰','📁','📄','📊','🔧','⚙️','🔑','📌','📎','🗂️','💼','🧾','📦','🚧','🌐','📡','🔬','💡','🏆','✅','⚠️','🔍','📝','🏛️','📐','🧩','🎯','🔐','📮','🧪','📉','🗃️','🌱','🌍','⚖️','👥','📚','⛏️','📱','🚀','🎓','🦺','♻️'] as $em)
-                    <div class="nsub-emoji-opt{{ $em === '📋' ? ' selected' : '' }}"
-                         data-emoji="{{ $em }}"
-                         onclick="elegirEmojiMod(this)">{{ $em }}</div>
+                    @foreach([
+                        'fa-clipboard-check','fa-seedling','fa-shield-halved','fa-truck','fa-user-tie',
+                        'fa-building','fa-chart-line','fa-coins','fa-folder-open','fa-file-lines',
+                        'fa-certificate','fa-graduation-cap','fa-book-open','fa-chart-bar','fa-magnifying-glass',
+                        'fa-triangle-exclamation','fa-gear','fa-gears','fa-wrench','fa-hammer',
+                        'fa-users','fa-hospital','fa-scale-balanced','fa-leaf','fa-earth-americas',
+                        'fa-recycle','fa-ruler','fa-vest','fa-hard-hat','fa-boxes-stacked',
+                        'fa-calculator','fa-briefcase','fa-key','fa-bell','fa-calendar-days',
+                        'fa-flag','fa-star','fa-lock','fa-chart-pie','fa-chalkboard-user',
+                    ] as $fa)
+                    <div class="nsub-emoji-opt{{ $fa === 'fa-clipboard-check' ? ' selected' : '' }}"
+                         data-emoji="{{ $fa }}"
+                         title="{{ $fa }}"
+                         onclick="elegirEmojiMod(this)">
+                        <i class="fa-solid {{ $fa }}"></i>
+                    </div>
                     @endforeach
                 </div>
-                <input type="hidden" name="icono" id="modulo-icono" value="📋">
+                <input type="hidden" name="icono" id="modulo-icono" value="fa-clipboard-check">
             </div>
 
             <div class="modal-actions">
@@ -295,9 +310,9 @@ function abrirModalCrearModulo() {
     document.getElementById('modulo-nombre').value       = '';
     document.getElementById('modulo-color-picker').value = '#0D2B5E';
     document.getElementById('modulo-color').value        = '#0D2B5E';
-    document.getElementById('modulo-icono').value        = '📋';
+    document.getElementById('modulo-icono').value        = 'fa-clipboard-check';
     document.querySelectorAll('#mod-emoji-grid .nsub-emoji-opt').forEach(function(el) {
-        el.classList.toggle('selected', el.dataset.emoji === '📋');
+        el.classList.toggle('selected', el.dataset.emoji === 'fa-clipboard-check');
     });
     var btn = document.getElementById('mod-btn-crear');
     btn.disabled    = false;
@@ -393,10 +408,13 @@ function insertarTarjetaModulo(modulo) {
             grid = wrapper;
         }
 
-        const color = modulo.color || '#374151';
-        const emoji = modulo.icono || '📁';
-        const badge = modulo.descripcion.substring(0, 3).toUpperCase();
-        const url   = `{{ url('/carpetas') }}/${modulo.id}`;
+        const color    = modulo.color || '#374151';
+        const icono    = modulo.icono || 'fa-folder-open';
+        const badge    = modulo.descripcion.substring(0, 3).toUpperCase();
+        const url      = `{{ url('/carpetas') }}/${modulo.id}`;
+        const iconoHtml = icono && icono.startsWith('fa-')
+            ? `<i class="fa-solid ${escHtml(icono)} bloque-icon"></i>`
+            : `<span class="bloque-icon" style="font-size:1.8rem">${escHtml(icono)}</span>`;
 
         @if(session('es_superadmin'))
         const btnElim = `<button class="btn-del-modulo" title="Eliminar módulo"
@@ -409,10 +427,8 @@ function insertarTarjetaModulo(modulo) {
         wrap.className     = 'bloque-wrap';
         wrap.dataset.moduloId = modulo.id;
         wrap.innerHTML = `
-            <a href="${url}" class="bloque" style="border-top-color:${color};text-decoration:none">
-                <div class="bloque-icon-wrap" style="background:${color}18">
-                    <span style="font-size:1.5rem;line-height:1">${emoji}</span>
-                </div>
+            <a href="${url}" class="bloque" style="background:${color};border-color:${color};text-decoration:none">
+                ${iconoHtml}
                 <div class="bloque-title">${escHtml(modulo.descripcion)}</div>
                 <div class="bloque-badge">${badge}</div>
             </a>

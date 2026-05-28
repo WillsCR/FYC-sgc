@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Usuario;
+use App\Models\Area;
 use App\Models\CarpetasPermisos;
 use App\Models\UsuarioArea;
 use App\Models\UsuarioPermisoArea;
@@ -12,18 +13,11 @@ use Illuminate\Support\Facades\DB;
 
 class UsuarioController extends Controller
 {
-    private const AREAS = [
-        1  => 'Recursos Humanos',
-        2  => 'Seguridad y Salud en el Trabajo',
-        3  => 'Abastecimiento y Finanzas',
-        4  => 'Contrato Pozos',
-        5  => 'Medio Ambiente',
-        6  => 'Control SGI',
-        7  => 'SGI Gestión',
-        8  => 'Patios e Infraestructura',
-        9  => 'Gerencia de Operaciones',
-        10 => 'Gerencia General',
-    ];
+    /** Carga el mapa id => descripcion de áreas desde la BD. */
+    private function areasDisponibles(): array
+    {
+        return Area::orderBy('id')->pluck('descripcion', 'id')->toArray();
+    }
 
     public function index()
     {
@@ -36,10 +30,11 @@ class UsuarioController extends Controller
             $query->where('id_perfil', 4);
         }
 
-        $usuarios = $query->get()->map(function ($u) {
+        $areasMap = $this->areasDisponibles();
+        $usuarios = $query->get()->map(function ($u) use ($areasMap) {
             $u->areas = UsuarioArea::where('id_usuario', $u->id)
                 ->pluck('id_area')
-                ->map(fn($id) => self::AREAS[$id] ?? null)
+                ->map(fn($id) => $areasMap[$id] ?? null)
                 ->filter()->values();
             return $u;
         });
@@ -55,7 +50,7 @@ class UsuarioController extends Controller
 
         $perfiles       = $this->perfilesDisponibles($perfil);
         $modulosCarpetas = $this->cargarModulosCarpetas();
-        $areas           = self::AREAS;
+        $areas           = $this->areasDisponibles();
         $permisosArea    = collect();
 
         return view('usuarios.crear', compact('actual', 'perfiles', 'modulosCarpetas', 'areas', 'permisosArea'));
@@ -122,7 +117,7 @@ class UsuarioController extends Controller
         $perfiles        = $this->perfilesDisponibles($perfil);
         $modulosCarpetas = $this->cargarModulosCarpetas();
         $permisosCarpetas = CarpetasPermisos::where('id_usuario', $id)->get()->keyBy('id_carpeta');
-        $areas           = self::AREAS;
+        $areas           = $this->areasDisponibles();
 
         $permisosArea = UsuarioPermisoArea::where('id_usuario', $id)
             ->get()
@@ -235,13 +230,16 @@ class UsuarioController extends Controller
      */
     private function guardarPermisosArea(int $usuarioId, array $permisosArea): void
     {
+        // IDs de áreas válidas (leídas de BD)
+        $idsValidos = Area::pluck('id')->toArray();
+
         // Eliminar permisos anteriores
         UsuarioPermisoArea::where('id_usuario', $usuarioId)->delete();
         UsuarioArea::where('id_usuario', $usuarioId)->delete();
 
         foreach ($permisosArea as $idArea => $perms) {
             $idArea = (int) $idArea;
-            if (! array_key_exists($idArea, self::AREAS)) continue;
+            if (! in_array($idArea, $idsValidos, true)) continue;
 
             $verPlan    = ! empty($perms['ver_planificacion']);
             $editarPlan = ! empty($perms['editar_planificacion']);
@@ -294,7 +292,37 @@ class UsuarioController extends Controller
 
     private function guardarPermisosCarpetas(int $usuarioId, string $correo, string $clave, array $carpetas): void
     {
+        // Carpetas con permiso unificado: un solo flag controla TODO el acceso.
+        // Añade aquí cualquier otro módulo que quieras tratar igual.
+        $carpetasPermUnico = [
+            9, // No Conformidades — un solo toggle "Acceso" → todos los flags a 1
+        ];
+
         foreach ($carpetas as $carpetaId => $perms) {
+            $carpetaId = (int) $carpetaId;
+
+            // ── Carpeta con permiso único (ej. No Conformidades) ──────────────
+            if (in_array($carpetaId, $carpetasPermUnico, true)) {
+                // El formulario envía solo carpetas[9][carga]; si está marcado = acceso completo
+                if (empty($perms['carga'])) continue;
+
+                CarpetasPermisos::updateOrCreate(
+                    ['id_carpeta' => $carpetaId, 'id_usuario' => $usuarioId],
+                    [
+                        'correo'       => '',
+                        'clave'        => '',
+                        'carga'        => 1,
+                        'descarga'     => 1,
+                        'crear'        => 1,
+                        'ocultar_raiz' => 0,
+                        'eliminar'     => 1,
+                        'editar'       => 1,
+                    ]
+                );
+                continue;
+            }
+
+            // ── Carpetas con permisos granulares (comportamiento normal) ──────
             $tieneAlguno = collect(['carga','descarga','crear','eliminar','editar'])
                 ->some(fn($p) => ! empty($perms[$p]));
             if (! $tieneAlguno) continue;

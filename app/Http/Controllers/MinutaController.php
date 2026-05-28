@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Mail\MinutaNotificacion;
+use App\Models\Area;
 use App\Services\PermisoService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -12,18 +13,16 @@ use Carbon\Carbon;
 
 class MinutaController extends Controller
 {
-    private const AREAS = [
-        1  => 'Recursos Humanos',
-        2  => 'Seguridad y Salud en el Trabajo',
-        3  => 'Abastecimiento y Finanzas',
-        4  => 'Contrato Pozos',
-        5  => 'Medio Ambiente',
-        6  => 'Control SGI',
-        7  => 'SGI Gestión',
-        8  => 'Patios e Infraestructura',
-        9  => 'Gerencia de Operaciones',
-        10 => 'Gerencia General',
-    ];
+    private ?array $areasCache = null;
+
+    /** Mapa id => descripcion cargado desde sgc_areas. */
+    private function areasMap(): array
+    {
+        if ($this->areasCache === null) {
+            $this->areasCache = Area::orderBy('id')->pluck('descripcion', 'id')->toArray();
+        }
+        return $this->areasCache;
+    }
 
     private const STATUS = [
         1 => 'En Proceso',
@@ -95,8 +94,9 @@ class MinutaController extends Controller
             ->withQueryString();
 
         // Enriquecer con nombre de área y conteo de compromisos
-        $minutas->getCollection()->transform(function ($m) {
-            $m->area_nombre     = self::AREAS[$m->id_area] ?? 'Área ' . $m->id_area;
+        $areasMap = $this->areasMap();
+        $minutas->getCollection()->transform(function ($m) use ($areasMap) {
+            $m->area_nombre     = $areasMap[$m->id_area] ?? 'Área ' . $m->id_area;
             $m->total_compromisos  = DB::table('sgc_minutas_compromisos')
                 ->where('id_minuta', $m->id)->count();
             $m->compromisos_abiertos = DB::table('sgc_minutas_compromisos')
@@ -108,10 +108,10 @@ class MinutaController extends Controller
 
         // Áreas para el filtro
         if ($esAdmin) {
-            $areasParaFiltro = self::AREAS;
+            $areasParaFiltro = $this->areasMap();
         } else {
             $areasParaFiltro = array_filter(
-                self::AREAS,
+                $this->areasMap(),
                 fn($id) => in_array($id, $areasPermitidas, true),
                 ARRAY_FILTER_USE_KEY
             );
@@ -119,7 +119,7 @@ class MinutaController extends Controller
 
         // Áreas donde puede editar (para mostrar botones)
         $areasConEdicion = $esAdmin
-            ? array_keys(self::AREAS)
+            ? array_keys($this->areasMap())
             : $this->areasConPermiso($usuario->id, 'editar_minutas');
 
         return view('minutas.index', compact(
@@ -143,9 +143,9 @@ class MinutaController extends Controller
         }
 
         $areas = $esAdmin
-            ? self::AREAS
+            ? $this->areasMap()
             : array_filter(
-                self::AREAS,
+                $this->areasMap(),
                 fn($id) => in_array($id, $this->areasConPermiso($usuario->id, 'editar_minutas'), true),
                 ARRAY_FILTER_USE_KEY
             );
@@ -234,7 +234,7 @@ class MinutaController extends Controller
             if (! in_array((int) $minuta->id_area, $areasPermitidas, true)) abort(403);
         }
 
-        $minuta->area_nombre = self::AREAS[$minuta->id_area] ?? 'Área ' . $minuta->id_area;
+        $minuta->area_nombre = $this->areasMap()[$minuta->id_area] ?? 'Área ' . $minuta->id_area;
         $minuta->proxima_reunion = $minuta->proxima_reunion && $minuta->proxima_reunion !== '0000-00-00'
             ? $minuta->proxima_reunion : null;
 
@@ -257,7 +257,7 @@ class MinutaController extends Controller
             });
 
         $areasConEdicion = $esAdmin
-            ? array_keys(self::AREAS)
+            ? array_keys($this->areasMap())
             : $this->areasConPermiso($usuario->id, 'editar_minutas');
 
         $puedeEditar = in_array((int) $minuta->id_area, $areasConEdicion, true);
@@ -288,9 +288,9 @@ class MinutaController extends Controller
             ? $minuta->proxima_reunion : null;
 
         $areas = $esAdmin
-            ? self::AREAS
+            ? $this->areasMap()
             : array_filter(
-                self::AREAS,
+                $this->areasMap(),
                 fn($id) => in_array($id, $this->areasConPermiso($usuario->id, 'editar_minutas'), true),
                 ARRAY_FILTER_USE_KEY
             );
@@ -393,7 +393,7 @@ class MinutaController extends Controller
 
         $datos = [
             'id'               => $minuta->id,
-            'area_nombre'      => self::AREAS[$minuta->id_area] ?? 'Área ' . $minuta->id_area,
+            'area_nombre'      => $this->areasMap()[$minuta->id_area] ?? 'Área ' . $minuta->id_area,
             'empresa'          => $minuta->empresa,
             'tipo_reunion'     => $minuta->tipo_reunion,
             'lugar'            => $minuta->lugar,
@@ -493,7 +493,7 @@ class MinutaController extends Controller
 
             $datos = [
                 'id'               => $minuta->id,
-                'area_nombre'      => self::AREAS[$minuta->id_area] ?? 'Área ' . $minuta->id_area,
+                'area_nombre'      => $this->areasMap()[$minuta->id_area] ?? 'Área ' . $minuta->id_area,
                 'empresa'          => $minuta->empresa,
                 'tipo_reunion'     => $minuta->tipo_reunion,
                 'lugar'            => $minuta->lugar,

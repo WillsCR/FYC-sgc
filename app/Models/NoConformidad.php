@@ -6,30 +6,29 @@ use Illuminate\Database\Eloquent\Model;
 
 class NoConformidad extends Model
 {
-    protected $table = 'ges_no_conformidades';
+    protected $table      = 'sgc_no_conformidades';
     protected $primaryKey = 'id';
-    public $timestamps = false;
+    const CREATED_AT      = 'creada_el';
+    const UPDATED_AT      = 'actualizada_el';
 
     protected $fillable = [
-        'num_nc', 'fecha_deteccion', 'origen', 'area', 'tipo_accion',
-        'nombre', 'cargo', 'descripcion', 'status_correccion',
+        'num_nc', 'fecha_deteccion', 'origen', 'id_area', 'tipo_accion',
+        'detectada_por', 'cargo', 'descripcion',
+        'resp_inmediata_nombre', 'resp_inmediata_cargo', 'status_correccion',
+        'resp_correctiva_nombre', 'resp_correctiva_cargo',
         'fecha_implem_acc_corr', 'fecha_seguim_acc_corr', 'status_acc_corr',
-        'status_seguim_acc_corr', 'accion_eficaz', 'fecha_cierre',
-        'registros', 'observaciones', 'id_usuario', 'fecha_ingreso'
+        'status_seguim_acc_corr', 'accion_eficaz',
+        'fecha_cierre', 'registros', 'observaciones', 'id_usuario',
     ];
 
     protected $casts = [
-        'fecha_deteccion' => 'date',
+        'fecha_deteccion'       => 'date',
         'fecha_implem_acc_corr' => 'date',
         'fecha_seguim_acc_corr' => 'date',
-        'fecha_cierre' => 'date',
-        'fecha_ingreso' => 'datetime'
+        'fecha_cierre'          => 'date',
     ];
 
-    public function usuario()
-    {
-        return $this->belongsTo(Usuario::class, 'id_usuario');
-    }
+    // ── Relaciones ────────────────────────────────────────────────────────────
 
     public function accionesInmediatas()
     {
@@ -46,13 +45,40 @@ class NoConformidad extends Model
         return $this->hasMany(NoConformidadDoc::class, 'id_nc');
     }
 
-    public function estadoTexto()
+    public function area()
     {
-        $estados = [
-            0 => 'Abierta',
-            1 => 'En proceso',
-            2 => 'Cerrada'
-        ];
-        return $estados[$this->status_correccion] ?? 'Desconocido';
+        return $this->belongsTo(Area::class, 'id_area');
+    }
+
+    // ── Helpers de texto ─────────────────────────────────────────────────────
+
+    public function tipoNombre(): string
+    {
+        return match ((int) $this->tipo_accion) {
+            1       => 'Correctiva',
+            2       => 'Oportunidad de Mejora',
+            default => '—',
+        };
+    }
+
+    public function statusNombre(string $campo): string
+    {
+        return (int) $this->$campo === 1 ? 'Resuelta' : 'Pendiente';
+    }
+
+    public function accionEficazNombre(): string
+    {
+        return match ((int) $this->accion_eficaz) {
+            1       => 'Sí',
+            2       => 'No',
+            default => '-',
+        };
+    }
+
+    public function fmtFecha($fecha): string
+    {
+        if (! $fecha || $fecha === '0000-00-00') return '—';
+        try { return \Carbon\Carbon::parse($fecha)->format('d-m-Y'); }
+        catch (\Exception $e) { return '—'; }
     }
 }

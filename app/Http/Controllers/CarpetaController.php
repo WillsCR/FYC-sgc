@@ -58,6 +58,14 @@ class CarpetaController extends Controller
 
         $carpetaActual = Carpeta::findOrFail($id);
 
+        // ── Módulo gestionado: ruta empieza con "@" → redirigir a esa ruta nombrada ──
+        if (str_starts_with((string) $carpetaActual->ruta, '@')) {
+            $routeName = ltrim($carpetaActual->ruta, '@');
+            if (\Illuminate\Support\Facades\Route::has($routeName)) {
+                return redirect()->route($routeName);
+            }
+        }
+
         $raices = Carpeta::where('id_padre', 0)
             ->orderBy('descripcion')
             ->get()
@@ -244,6 +252,13 @@ class CarpetaController extends Controller
         // Nunca borrar módulos raíz del sistema
         if ((int) $carpeta->id_padre === 0) {
             return response()->json(['error' => 'No se pueden eliminar los módulos raíz del sistema.'], 403);
+        }
+
+        // Nunca borrar submódulos gestionados (ruta "@xxx" → tienen módulo propio en la app)
+        if (str_starts_with((string) $carpeta->ruta, '@')) {
+            return response()->json([
+                'error' => "El submódulo \"{$carpeta->descripcion}\" está gestionado por la aplicación y no puede eliminarse desde aquí.",
+            ], 403);
         }
 
         $nombre = $carpeta->descripcion;

@@ -11,11 +11,16 @@ class Area extends Model
     public $timestamps = false;
 
     protected $fillable = [
-        'nombre', 'descripcion', 'jefe', 'email'
+        'descripcion',
     ];
 
     public function planificaciones()
     {
         return $this->hasMany(Planificacion::class, 'area');
+    }
+
+    public function usuariosAsignados(): int
+    {
+        return \App\Models\UsuarioArea::where('id_area', $this->id)->count();
     }
 }

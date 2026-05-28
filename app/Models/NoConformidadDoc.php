@@ -6,13 +6,12 @@ use Illuminate\Database\Eloquent\Model;
 
 class NoConformidadDoc extends Model
 {
-    protected $table = 'ges_no_conformidades_docs';
-    public $timestamps = false;
+    protected $table      = 'sgc_nc_documentos';
+    public $timestamps    = false;
+    const CREATED_AT      = 'creada_el';
 
     protected $fillable = [
-        'id_nc',
-        'documento',
-        'ruta',
+        'id_nc', 'archivo', 'nombre_original', 'tipo', 'id_usuario',
     ];
 
     public function noConformidad()

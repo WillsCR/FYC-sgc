@@ -165,18 +165,7 @@
             ? route('usuarios.update', $usuario->id)
             : route('usuarios.store');
         $metodo = isset($usuario) ? 'PUT' : 'POST';
-        $areas = [
-            1 => 'Recursos Humanos',
-            2 => 'Seguridad y Salud en el Trabajo',
-            3 => 'Abastecimiento y Finanzas',
-            4 => 'Contrato Pozos',
-            5 => 'Medio Ambiente',
-            6 => 'Control SGI',
-            7 => 'SGI Gestión',
-            8 => 'Patios e Infraestructura',
-            9 => 'Gerencia de Operaciones',
-            10 => 'Gerencia General',
-        ];
+        // $areas viene del controlador (AreaController → BD), no hardcodear aquí
     @endphp
 
     <form method="POST" action="{{ $accion }}">
@@ -459,6 +448,36 @@
                             </svg>
                         </div>
                         <div class="carpeta-perm-body {{ $tienePerm ? 'visible' : '' }}" id="perm-{{ $carpeta->id }}">
+                            @php
+                                // Carpetas con permiso único: un solo toggle "Acceso" controla todo.
+                                $carpetasPermUnico = [9]; // No Conformidades
+                            @endphp
+
+                            @if(in_array($carpeta->id, $carpetasPermUnico))
+                            {{-- ── Permiso único (acceso total o ninguno) ─────── --}}
+                            @php $isCheckedUnico = old("carpetas.{$carpeta->id}.carga", $perm2 ? (bool)$perm2->carga : false); @endphp
+                            <div style="display:flex;align-items:center;gap:14px;padding:6px 0">
+                                <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:.83rem;color:var(--text-primary);font-weight:500">
+                                    <input type="checkbox"
+                                           name="carpetas[{{ $carpeta->id }}][carga]"
+                                           value="1"
+                                           id="perm-unico-{{ $carpeta->id }}"
+                                           {{ $isCheckedUnico ? 'checked' : '' }}
+                                           style="width:18px;height:18px;accent-color:var(--navy);cursor:pointer"
+                                           onchange="document.getElementById('label-perm-unico-{{ $carpeta->id }}').classList.toggle('activo', this.checked)">
+                                    <span>🔑 Acceso completo</span>
+                                    <span id="label-perm-unico-{{ $carpeta->id }}"
+                                          class="{{ $isCheckedUnico ? 'activo' : '' }}"
+                                          style="font-size:.7rem;padding:2px 8px;border-radius:10px;background:{{ $isCheckedUnico ? '#DCFCE7' : '#F1F5F9' }};color:{{ $isCheckedUnico ? '#16A34A' : 'var(--text-muted)' }};font-weight:600;transition:all .12s">
+                                        {{ $isCheckedUnico ? 'Con acceso' : 'Sin acceso' }}
+                                    </span>
+                                </label>
+                                <p style="font-size:.72rem;color:var(--text-muted);margin:0">
+                                    Permite ver, crear, editar, eliminar y exportar registros.
+                                </p>
+                            </div>
+                            @else
+                            {{-- ── Permisos granulares (comportamiento normal) ── --}}
                             <div class="permisos-checks">
                                 @foreach(['carga'=>['📤','Subir'],'descarga'=>['📥','Descargar'],'crear'=>['📁','Crear'],'eliminar'=>['🗑️','Eliminar'],'editar'=>['✏️','Editar']] as $permKey => [$icon, $label])
                                 @php $isChecked = old("carpetas.{$carpeta->id}.{$permKey}", $perm2 ? (bool)$perm2->$permKey : false); @endphp
@@ -470,6 +489,7 @@
                                 </label>
                                 @endforeach
                             </div>
+                            @endif
                         </div>
                     </div>
                     @endforeach

@@ -450,7 +450,7 @@
                         <div class="carpeta-perm-body {{ $tienePerm ? 'visible' : '' }}" id="perm-{{ $carpeta->id }}">
                             @php
                                 // Carpetas con permiso único: un solo toggle "Acceso" controla todo.
-                                $carpetasPermUnico = [9, 98]; // No Conformidades, Control de Instrumentos
+                                $carpetasPermUnico = [9, 11, 98, 99]; // No Conformidades, Cert. Calidad, Control de Instrumentos, Matriz Cursos
                             @endphp
 
                             @if(in_array($carpeta->id, $carpetasPermUnico))

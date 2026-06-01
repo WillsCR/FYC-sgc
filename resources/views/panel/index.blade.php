@@ -150,11 +150,12 @@
 .nsub-color-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .nsub-color-presets { display: flex; gap: 6px; flex-wrap: wrap; }
 .nsub-color-preset {
-    width: 22px; height: 22px; border-radius: 4px;
+    width: 28px; height: 28px; border-radius: 5px;
     border: 2px solid transparent; cursor: pointer; display: inline-block;
-    transition: transform .12s, border-color .12s;
+    transition: transform .12s, border-color .12s, box-shadow .12s;
 }
-.nsub-color-preset:hover { transform: scale(1.2); border-color: rgba(0,0,0,.25); }
+.nsub-color-preset:hover { transform: scale(1.15); border-color: rgba(0,0,0,.3); }
+.nsub-color-preset.selected { border-color: #fff; box-shadow: 0 0 0 2px var(--navy); transform: scale(1.1); }
 .nsub-emoji-grid {
     display: flex; flex-wrap: wrap; gap: 6px;
     max-height: 150px; overflow-y: auto;
@@ -207,18 +208,12 @@
             <div class="nsub-field">
                 <label class="nsub-label">Color</label>
                 <div class="nsub-color-row">
-                    <input type="color" id="modulo-color-picker" value="#0D2B5E"
-                           oninput="document.getElementById('modulo-color').value=this.value"
-                           style="width:36px;height:36px;border:2px solid var(--border);border-radius:4px;padding:0;background:none;cursor:pointer;flex-shrink:0">
-                    <input type="text" name="color" id="modulo-color" class="nsub-input" value="#0D2B5E"
-                           maxlength="7" placeholder="#000000"
-                           oninput="sincronizarColorMod(this.value)"
-                           style="width:100px;font-family:monospace">
+                    <input type="hidden" name="color" id="modulo-color" value="#1B4F72">
                     <div class="nsub-color-presets">
-                        @foreach(['#0D2B5E','#15803D','#991B1B','#B45309','#7C3AED','#0C4A6E','#1D4ED8','#065F46','#374151','#0891B2','#BE185D','#9A3412'] as $c)
-                        <span class="nsub-color-preset" title="{{ $c }}"
+                        @foreach(['#1B4F72','#2E6E8E','#3D86A4','#5499B4'] as $c)
+                        <span class="nsub-color-preset {{ $c === '#1B4F72' ? 'selected' : '' }}" title="{{ $c }}"
                               style="background:{{ $c }}"
-                              onclick="elegirColorPresetMod('{{ $c }}')"></span>
+                              onclick="elegirColorPresetMod('{{ $c }}', this)"></span>
                         @endforeach
                     </div>
                 </div>
@@ -307,9 +302,8 @@ function showToast(msg, tipo = 'ok') {
 
 // ── Modal crear módulo ─────────────────────────────────────
 function abrirModalCrearModulo() {
-    document.getElementById('modulo-nombre').value       = '';
-    document.getElementById('modulo-color-picker').value = '#0D2B5E';
-    document.getElementById('modulo-color').value        = '#0D2B5E';
+    document.getElementById('modulo-nombre').value = '';
+    elegirColorPresetMod('#1B4F72', document.querySelector('#modal-crear-modulo .nsub-color-preset[title="#1B4F72"]'));
     document.getElementById('modulo-icono').value        = 'fa-clipboard-check';
     document.querySelectorAll('#mod-emoji-grid .nsub-emoji-opt').forEach(function(el) {
         el.classList.toggle('selected', el.dataset.emoji === 'fa-clipboard-check');
@@ -325,15 +319,12 @@ function cerrarModalCrearModulo() {
     document.getElementById('modal-crear-modulo').classList.remove('visible');
 }
 
-function elegirColorPresetMod(hex) {
-    document.getElementById('modulo-color-picker').value = hex;
-    document.getElementById('modulo-color').value        = hex;
-}
-
-function sincronizarColorMod(val) {
-    if (/^#[0-9a-fA-F]{6}$/.test(val)) {
-        document.getElementById('modulo-color-picker').value = val;
-    }
+function elegirColorPresetMod(hex, el) {
+    document.getElementById('modulo-color').value = hex;
+    document.querySelectorAll('#modal-crear-modulo .nsub-color-preset').forEach(function(s) {
+        s.classList.remove('selected');
+    });
+    if (el) el.classList.add('selected');
 }
 
 function elegirEmojiMod(el) {
@@ -349,7 +340,7 @@ document.getElementById('form-crear-modulo').addEventListener('submit', async fu
     e.preventDefault();
 
     const nombre = document.getElementById('modulo-nombre').value.trim();
-    const color  = document.getElementById('modulo-color').value.trim() || document.getElementById('modulo-color-picker').value;
+    const color  = document.getElementById('modulo-color').value.trim();
     const icono  = document.getElementById('modulo-icono').value.trim();
     const btn    = this.querySelector('[type="submit"]');
 

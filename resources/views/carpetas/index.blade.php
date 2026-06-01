@@ -342,11 +342,12 @@
 .nsub-color-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .nsub-color-presets { display: flex; gap: 6px; flex-wrap: wrap; }
 .nsub-color-preset {
-    width: 22px; height: 22px; border-radius: 4px;
+    width: 28px; height: 28px; border-radius: 5px;
     border: 2px solid transparent; cursor: pointer; display: inline-block;
-    transition: transform .12s, border-color .12s;
+    transition: transform .12s, border-color .12s, box-shadow .12s;
 }
-.nsub-color-preset:hover { transform: scale(1.2); border-color: #fff; }
+.nsub-color-preset:hover { transform: scale(1.15); border-color: rgba(0,0,0,.3); }
+.nsub-color-preset.selected { border-color: #fff; box-shadow: 0 0 0 2px var(--navy); transform: scale(1.1); }
 .nsub-emoji-grid {
     display: flex; flex-wrap: wrap; gap: 6px;
     max-height: 160px; overflow-y: auto;
@@ -780,18 +781,12 @@ tr.seleccionada td { background: #EFF6FF !important; }
         <div class="nsub-field">
             <label class="nsub-label">Color</label>
             <div class="nsub-color-row">
-                <input type="color" id="nsub-color-picker" value="#0D2B5E"
-                       oninput="document.getElementById('nsub-color-hex').value=this.value"
-                       style="width:36px;height:36px;border:2px solid var(--border);border-radius:4px;padding:0;background:none;cursor:pointer;flex-shrink:0">
-                <input type="text" id="nsub-color-hex" class="nsub-input" value="#0D2B5E"
-                       maxlength="7" placeholder="#000000"
-                       oninput="sincronizarColorSub(this.value)"
-                       style="width:100px;font-family:monospace">
+                <input type="hidden" id="nsub-color-hex" value="#0D2B5E">
                 <div class="nsub-color-presets">
                     @foreach(['#0D2B5E','#15803D','#991B1B','#B45309','#7C3AED','#0C4A6E','#1D4ED8','#065F46','#374151','#0891B2','#BE185D','#9A3412'] as $c)
-                    <span class="nsub-color-preset" title="{{ $c }}"
+                    <span class="nsub-color-preset {{ $c === '#0D2B5E' ? 'selected' : '' }}" title="{{ $c }}"
                           style="background:{{ $c }}"
-                          onclick="elegirColorPresetSub('{{ $c }}')"></span>
+                          onclick="elegirColorPresetSub('{{ $c }}', this)"></span>
                     @endforeach
                 </div>
             </div>
@@ -1524,8 +1519,10 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarVisor(
 
     window.abrirModalNuevoSubmodulo = function() {
         document.getElementById('nsub-nombre').value    = '';
-        document.getElementById('nsub-color-picker').value = '#0D2B5E';
-        document.getElementById('nsub-color-hex').value    = '#0D2B5E';
+        document.getElementById('nsub-color-hex').value = '#0D2B5E';
+        document.querySelectorAll('#modal-nuevo-submodulo .nsub-color-preset').forEach(function(s) {
+            s.classList.toggle('selected', s.title === '#0D2B5E');
+        });
         document.getElementById('nsub-emoji-val').value    = 'fa-folder-open';
         document.querySelectorAll('.nsub-emoji-opt').forEach(function(el) {
             el.classList.toggle('selected', el.dataset.emoji === 'fa-folder-open');
@@ -1541,15 +1538,12 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarVisor(
         document.getElementById('modal-nuevo-submodulo').classList.remove('visible');
     };
 
-    window.elegirColorPresetSub = function(hex) {
-        document.getElementById('nsub-color-picker').value = hex;
-        document.getElementById('nsub-color-hex').value    = hex;
-    };
-
-    window.sincronizarColorSub = function(val) {
-        if (/^#[0-9a-fA-F]{6}$/.test(val)) {
-            document.getElementById('nsub-color-picker').value = val;
-        }
+    window.elegirColorPresetSub = function(hex, el) {
+        document.getElementById('nsub-color-hex').value = hex;
+        document.querySelectorAll('#modal-nuevo-submodulo .nsub-color-preset').forEach(function(s) {
+            s.classList.remove('selected');
+        });
+        if (el) el.classList.add('selected');
     };
 
     window.elegirEmojiSub = function(el) {
@@ -1571,7 +1565,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarVisor(
             return;
         }
         if (!/^#[0-9a-fA-F]{6}$/.test(color)) {
-            color = document.getElementById('nsub-color-picker').value;
+            color = '#0D2B5E';
         }
 
         var btn = document.getElementById('nsub-btn-crear');

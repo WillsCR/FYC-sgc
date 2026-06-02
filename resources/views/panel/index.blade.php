@@ -539,33 +539,9 @@ function cerrarBienvenida() {
     m.style.opacity = '0';
     setTimeout(() => m.style.display = 'none', 280);
 }
-@if(session('bienvenida'))
-window.addEventListener('DOMContentLoaded', () => {
-    const m = document.getElementById('modal-bienvenida');
-    if (!m) return;
-    m.style.display = 'flex';
-    requestAnimationFrame(() => m.style.opacity = '1');
-
-    @if($videoBienvenida)
-    // Intentar reproducir automáticamente
-    const vid = document.getElementById('video-bienvenida');
-    if (vid) {
-        vid.play().then(() => {
-            // Autoplay ok (muted) — mostrar botón para activar sonido
-            document.getElementById('btn-activar-sonido')?.classList.remove('oculto');
-        }).catch(() => {
-            // Si falla autoplay, el usuario reproducirá manualmente
-        });
-    }
-    @else
-    // Sin video: cierre automático a los 6 segundos
-    setTimeout(cerrarBienvenida, 6000);
-    @endif
-});
-@endif
 </script>
 
-{{-- ── Modal bienvenida ──────────────────────────────── --}}
+{{-- ── MODAL DE BIENVENIDA COMPLETO (Sin Cierre Automático y Corregido) ──────────────────────────────── --}}
 @if(session('bienvenida'))
 <style>
 /* 1. Fondo oscuro semitransparente que cubre la pantalla */
@@ -582,13 +558,13 @@ window.addEventListener('DOMContentLoaded', () => {
     transition: opacity .28s ease;
 }
 
-/* 2. Tarjeta del Modal (Cuadrada, con el degradado e iluminación de la imagen) */
+/* 2. Tarjeta del Modal (Cuadrada por defecto, adaptable con video) */
 .bienvenida-card {
     background: radial-gradient(circle at 50% 30%, #163d6b 0%, #091d37 55%, #030a14 100%);
     border-radius: 14px;
     width: 100%;
     max-width: 460px;
-    aspect-ratio: 1 / 1; 
+    min-height: 460px;
     box-shadow: 0 30px 70px rgba(0,0,0,.6);
     position: relative;
     display: flex;
@@ -598,9 +574,15 @@ window.addEventListener('DOMContentLoaded', () => {
     padding: 45px 30px 25px;
     color: #fff;
     box-sizing: border-box;
-    
-    
     animation: bienvenida-card-in .45s cubic-bezier(.22, 1, .36, 1) forwards;
+}
+
+/* Variante si el modal detecta que viene un video */
+.bienvenida-card.has-video {
+    aspect-ratio: auto;
+    max-height: 85vh;
+    overflow-y: auto;
+    min-height: auto;
 }
 
 /* Keyframes para el efecto Fade + Desplazamiento de la tarjeta */
@@ -658,21 +640,71 @@ window.addEventListener('DOMContentLoaded', () => {
     font-family: 'Inter', sans-serif;
 }
 
-/* 5. Mensaje central */
+/* 5. Video wrapper */
+.bienvenida-video-wrap {
+    width: 100%;
+    max-width: 100%;
+    position: relative;
+    border-radius: 8px;
+    overflow: hidden;
+    margin: 12px 0;
+}
+.bienvenida-video-wrap video {
+    width: 100%;
+    max-height: 280px;
+    object-fit: contain;
+    display: block;
+    background: #000;
+}
+.btn-sonido {
+    position: absolute;
+    bottom: 12px;
+    right: 12px;
+    background: rgba(0, 0, 0, 0.7);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    padding: 6px 12px;
+    border-radius: 18px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    z-index: 5;
+    transition: background .15s;
+}
+.btn-sonido:hover {
+    background: rgba(0, 0, 0, 0.85);
+}
+.btn-sonido.oculto {
+    display: none;
+}
+
+/* 6. Mensaje central y Nombre */
 .bienvenida-message {
+    color: #ffffff;
     text-align: center;
     margin-bottom: 15px;
 }
 .bienvenida-message p {
-    color: #ffffff
+    color: #fff !important;
     font-size: 1.05rem;
     font-weight: 400;
     margin: 8px 0;
     line-height: 1.5;
     font-family: 'Inter', sans-serif;
 }
+.bienvenida-user-title {
+    font-size: 1.6rem; 
+    font-weight: 800; 
+    margin: 15px 0 5px 0; 
+    text-align: center; 
+    color: #fff;
+    font-family: 'Inter', sans-serif;
+}
 
-/* 6. Footer de la tarjeta */
+/* 7. Footer de la tarjeta */
 .bienvenida-footer {
     font-size: 0.75rem;
     color: rgba(255, 255, 255, 0.6);
@@ -681,11 +713,11 @@ window.addEventListener('DOMContentLoaded', () => {
 </style>
 
 <div id="modal-bienvenida" onclick="if(event.target===this)cerrarBienvenida()">
-    <div class="bienvenida-card">
+    <div class="bienvenida-card @if($videoBienvenida) has-video @endif">
         {{-- Botón para cerrar --}}
         <button class="bienvenida-close" onclick="cerrarBienvenida()" title="Cerrar">✕</button>
 
-        {{-- Encabezado: Tu SVG del navbar redimensionado para el modal --}}
+        {{-- Encabezado: Tu SVG del navbar --}}
         <div class="bienvenida-brand-wrap">
             <svg xmlns="http://www.w3.org/2000/svg" width="42" height="53" viewBox="0 0 60 76" fill="none" aria-hidden="true">
                 <rect x="2"  y="2"  width="56" height="7"  rx="2" fill="white"/>
@@ -704,9 +736,26 @@ window.addEventListener('DOMContentLoaded', () => {
             </div>
         </div>
 
+        {{-- Nombre del usuario dinámico extraído de la sesión --}}
+        <h1 class="bienvenida-user-title">¡Te damos la Bienvenida, {{ session('bienvenida') }}!</h1>
+
+        {{-- Video de bienvenida (si existe) --}}
+        @if($videoBienvenida)
+        <div class="bienvenida-video-wrap">
+            <video id="video-bienvenida" controls autoplay muted preload="auto"
+                   src="{{ route('videos.stream', $videoBienvenida->id) }}"
+                   type="{{ $videoBienvenida->tipo_mime }}">
+                Tu navegador no soporta la reproducción de video.
+            </video>
+            <button id="btn-activar-sonido" class="btn-sonido oculto" onclick="activarSonido()">
+                🔊 Activar sonido
+            </button>
+        </div>
+        @endif
+
         {{-- Cuerpo del mensaje --}}
         <div class="bienvenida-message">
-            <p>Nos alegra tenerte aquí, {{ session('bienvenida') }}.</p>
+            <p>Nos alegra tenerte aquí.</p>
             <p>Tienes acceso a la plataforma de gestión y control transversal.</p>
         </div>
 
@@ -719,28 +768,42 @@ window.addEventListener('DOMContentLoaded', () => {
 
 @push('scripts')
 <script>
-
 function cerrarBienvenida() {
     const modal = document.getElementById('modal-bienvenida');
     if (!modal) return;
     modal.style.opacity = '0';
     setTimeout(() => {
         modal.style.display = 'none';
-    }, 1280);
+    }, 280);
 }
 
+function activarSonido() {
+    const video = document.getElementById('video-bienvenida');
+    if (!video) return;
+    video.muted = false;
+    document.getElementById('btn-activar-sonido')?.classList.add('oculto');
+}
 
 document.addEventListener('DOMContentLoaded', () => {
     const modal = document.getElementById('modal-bienvenida');
     if (!modal) return;
     
+    // Desplegar el modal visualmente
     modal.style.display = 'flex';
-   
-    modal.offsetHeight; 
+    modal.offsetHeight; // Forzar reflow para transiciones suaves
     modal.style.opacity = '1';
+
+    // Control lógico exclusivo para cuando exista elemento de video
+    const video = document.getElementById('video-bienvenida');
+    if (video) {
+        video.play().then(() => {
+            document.getElementById('btn-activar-sonido')?.classList.remove('oculto');
+        }).catch(() => {
+            document.getElementById('btn-activar-sonido')?.classList.remove('oculto');
+        });
+    }
+    // Nota: El bloque "else" con el setTimeout fue removido para evitar cierres automáticos.
 });
 </script>
 @endpush
 @endif
-
-@endpush

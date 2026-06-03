@@ -322,6 +322,7 @@
     padding: 8px 22px; border-radius: 6px; font-size: 14px;
     cursor: pointer;
 }
+
 </style>
 @endpush
 

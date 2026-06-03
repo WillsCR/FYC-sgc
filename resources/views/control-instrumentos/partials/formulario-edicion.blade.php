@@ -1,182 +1,125 @@
-<form id="formEditarProgramaInline" method="POST" enctype="multipart/form-data">
+<form id="form-editar-prog" data-id="{{ $programa->id }}" novalidate>
     @csrf
     @method('PUT')
-    
-    <ul class="nav nav-tabs" role="tablist">
-        <li class="nav-item">
-            <a class="nav-link active" data-toggle="tab" href="#tabDatos">Datos Principales</a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link" data-toggle="tab" href="#tabCertificados">Certificados</a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link" data-toggle="tab" href="#tabCalibración">Calibración</a>
-        </li>
-    </ul>
 
-    <div class="tab-content mt-3">
-        {{-- Tab: Datos Principales --}}
-        <div id="tabDatos" class="tab-pane fade show active">
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label>Descripción *</label>
-                        <input type="text" name="descripcion" class="form-control" id="descripcion" required>
-                    </div>
+    <div class="modal-content-pad">
+
+        <div class="form-section">
+            <div class="form-section-title"><i class="fa-solid fa-cog"></i> Características del equipo</div>
+            <div class="form-row" style="grid-template-columns:2fr 1fr 1fr 1fr 1fr">
+                <div class="form-group">
+                    <label>Descripción *</label>
+                    <input type="text" name="descripcion" required value="{{ $programa->descripcion }}">
                 </div>
-                <div class="col-md-3">
-                    <div class="form-group">
-                        <label>Marca</label>
-                        <input type="text" name="marca" class="form-control" id="marca">
-                    </div>
+                <div class="form-group">
+                    <label>Marca</label>
+                    <input type="text" name="marca" value="{{ $programa->marca }}">
                 </div>
-                <div class="col-md-3">
-                    <div class="form-group">
-                        <label>Modelo</label>
-                        <input type="text" name="modelo" class="form-control" id="modelo">
-                    </div>
+                <div class="form-group">
+                    <label>Modelo</label>
+                    <input type="text" name="modelo" value="{{ $programa->modelo }}">
+                </div>
+                <div class="form-group">
+                    <label>Serie</label>
+                    <input type="text" name="serie" value="{{ $programa->serie }}">
+                </div>
+                <div class="form-group">
+                    <label>N° Interno</label>
+                    <input type="text" name="interno" value="{{ $programa->interno }}">
                 </div>
             </div>
-            <div class="row">
-                <div class="col-md-3">
-                    <div class="form-group">
-                        <label>Serie</label>
-                        <input type="text" name="serie" class="form-control" id="serie">
-                    </div>
+            <div class="form-row-2" style="margin-top:12px">
+                <div class="form-group">
+                    <label>Proyecto / Contrato *</label>
+                    <select name="id_contrato" required>
+                        <option value="">Seleccione...</option>
+                        @foreach($areas as $area)
+                            <option value="{{ $area->id }}" {{ $programa->id_contrato == $area->id ? 'selected' : '' }}>
+                                {{ $area->descripcion }}
+                            </option>
+                        @endforeach
+                    </select>
                 </div>
-                <div class="col-md-3">
-                    <div class="form-group">
-                        <label>Nº Interno</label>
-                        <input type="text" name="interno" class="form-control" id="interno">
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label>Proyecto *</label>
-                        <select name="id_area" class="form-control" id="id_area" required>
-                            <option value="">Seleccione</option>
-                            @foreach($areas ?? [] as $area)
-                                <option value="{{ $area->id }}">{{ $area->descripcion }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        {{-- Tab: Certificados --}}
-        <div id="tabCertificados" class="tab-pane fade">
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="custom-control custom-checkbox">
-                        <input type="checkbox" name="cert_calidad" id="cert_calidad" class="custom-control-input" value="1">
-                        <label class="custom-control-label" for="cert_calidad">
-                            <strong>Certificado de Calidad</strong>
+                <div class="form-group">
+                    <label>Tipo de certificado</label>
+                    <div style="display:flex;gap:20px;padding-top:4px">
+                        <label class="form-check">
+                            <input type="checkbox" name="cert_calidad" value="1"
+                                   {{ $programa->cert_calidad ? 'checked' : '' }}>
+                            <label>Certificado de Calidad</label>
                         </label>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="custom-control custom-checkbox">
-                        <input type="checkbox" name="cert_calibracion" id="cert_calibracion" class="custom-control-input" value="1">
-                        <label class="custom-control-label" for="cert_calibracion">
-                            <strong>Certificado de Calibración</strong>
+                        <label class="form-check">
+                            <input type="checkbox" name="cert_calibracion" value="1"
+                                   {{ $programa->cert_calibracion ? 'checked' : '' }}>
+                            <label>Certificado de Calibración</label>
                         </label>
                     </div>
                 </div>
             </div>
         </div>
 
-        {{-- Tab: Calibración --}}
-        <div id="tabCalibración" class="tab-pane fade">
-            <div class="row">
-                <div class="col-md-4">
-                    <div class="form-group">
-                        <label>Frecuencia Calibración *</label>
-                        <select name="calibracion" class="form-control" id="calibracion" required>
-                            <option value="">Seleccione</option>
-                            <option value="1">Anual</option>
-                            <option value="2">Mensual</option>
-                            <option value="3">No aplica</option>
-                            <option value="4">Semestral</option>
-                        </select>
-                    </div>
+        <div class="form-section">
+            <div class="form-section-title"><i class="fa-solid fa-calendar"></i> Frecuencia</div>
+            <div class="form-row-2">
+                <div class="form-group">
+                    <label>Calibración *</label>
+                    <select name="calibracion" required>
+                        <option value="">Seleccione...</option>
+                        <option value="1" {{ $programa->calibracion == 1 ? 'selected' : '' }}>Anual</option>
+                        <option value="2" {{ $programa->calibracion == 2 ? 'selected' : '' }}>Mensual</option>
+                        <option value="3" {{ $programa->calibracion == 3 ? 'selected' : '' }}>No aplica</option>
+                        <option value="4" {{ $programa->calibracion == 4 ? 'selected' : '' }}>Semestral</option>
+                    </select>
                 </div>
-                <div class="col-md-4">
-                    <div class="form-group">
-                        <label>Frecuencia Verificación</label>
-                        <select name="verificacion" class="form-control" id="verificacion">
-                            <option value="">Seleccione</option>
-                            <option value="1">Mensual</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="form-group">
-                        <label>Nº Certificado Calibración</label>
-                        <input type="text" name="num_cert_calibracion" class="form-control" id="num_cert_calibracion">
-                    </div>
-                </div>
-            </div>
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label>Última Calibración</label>
-                        <input type="date" name="fecha_ultima" class="form-control" id="fecha_ultima">
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label>Próxima Calibración</label>
-                        <input type="date" name="fecha_proxima" class="form-control" id="fecha_proxima">
-                    </div>
-                </div>
-            </div>
-            <div class="row">
-                <div class="col-md-12">
-                    <div class="form-group">
-                        <label>Observaciones</label>
-                        <textarea name="observaciones" class="form-control" id="observaciones" rows="3"></textarea>
-                    </div>
+                <div class="form-group">
+                    <label>Verificación</label>
+                    <select name="verificacion">
+                        <option value="">Seleccione...</option>
+                        <option value="1" {{ $programa->verificacion == 1 ? 'selected' : '' }}>Mensual</option>
+                    </select>
                 </div>
             </div>
         </div>
+
+        <div class="form-section">
+            <div class="form-section-title"><i class="fa-solid fa-flask"></i> Datos de calibración</div>
+            <div class="form-row-3">
+                <div class="form-group">
+                    <label>N° Certificado</label>
+                    <input type="text" name="certificado_calibracion"
+                           value="{{ $programa->certificado_calibracion }}">
+                </div>
+                <div class="form-group">
+                    <label>Última calibración</label>
+                    <input type="date" name="ultima"
+                           value="{{ $programa->ultima ? $programa->ultima->format('Y-m-d') : '' }}">
+                </div>
+                <div class="form-group">
+                    <label>Próxima calibración</label>
+                    <input type="date" name="proxima"
+                           value="{{ $programa->proxima ? $programa->proxima->format('Y-m-d') : '' }}">
+                </div>
+            </div>
+        </div>
+
+        <div class="form-row-2">
+            <div class="form-group">
+                <label>Responsable</label>
+                <input type="text" name="responsable" value="{{ $programa->responsable }}"
+                       placeholder="Ej: Juan Pérez">
+            </div>
+            <div class="form-group">
+                <label>Observaciones</label>
+                <textarea name="observaciones" rows="2">{{ $programa->observaciones }}</textarea>
+            </div>
+        </div>
+
     </div>
 
     <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
-        <button type="submit" class="btn btn-primary">
+        <button type="button" class="btn-accion btn-secondary-ci" onclick="cerrarModal('modal-editar')">Cancelar</button>
+        <button type="submit" class="btn-accion btn-primary-ci">
             <i class="fa-solid fa-save"></i> Guardar Cambios
         </button>
     </div>
 </form>
-
-<script>
-    document.getElementById('formEditarProgramaInline').addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        const formData = new FormData(this);
-        const programaId = {{ $programa->id ?? 'null' }};
-        
-        $.ajax({
-            type: 'POST',
-            url: `/control-instrumentos/${programaId}`,
-            data: formData,
-            contentType: false,
-            processData: false,
-            success: function(response) {
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Guardado',
-                    text: 'Programa actualizado correctamente',
-                    timer: 2000,
-                    showConfirmButton: false
-                }).then(() => {
-                    location.reload();
-                });
-            },
-            error: function(xhr) {
-                Swal.fire('Error', 'No se pudo guardar el programa', 'error');
-            }
-        });
-    });
-</script>

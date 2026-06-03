@@ -10,22 +10,62 @@ class ProgramaVerificacion extends Model
     public $timestamps = false;
 
     protected $fillable = [
-        'id_equipo',
-        'tipo_verificacion',
-        'fecha_programada',
-        'fecha_realizada',
-        'estado',
+        'id_equipo_interno',
+        'id_contrato',
+        'id_equipo_generico',
+        'id_usuario',
+        'descripcion',
+        'marca',
+        'modelo',
+        'serie',
+        'interno',
+        'calibracion',
+        'verificacion',
+        'certificado_calibracion',
+        'ultima',
+        'proxima',
+        'cert_calidad',
+        'cert_calibracion',
+        'observaciones',
+        'responsable',
     ];
 
     protected $casts = [
-        'fecha_programada' => 'date',
-        'fecha_realizada'  => 'date',
+        'ultima'          => 'date',
+        'proxima'         => 'date',
+        'cert_calidad'    => 'boolean',
+        'cert_calibracion'=> 'boolean',
     ];
 
-    public function equipo()
+    // ── Relaciones ──────────────────────────────────────────────────────────
+
+    public function area()
     {
-        return $this->belongsTo(EquipoInterno::class, 'id_equipo');
+        return $this->belongsTo(Area::class, 'id_contrato');
     }
 
-    
+    public function responsables()
+    {
+        return $this->hasMany(EquipoResponsable::class, 'id_programa_verificacion');
+    }
+
+    public function archivos()
+    {
+        return $this->hasMany(ArchivoEquipo::class, 'id_programa_verificacion')
+                    ->where('estado', 'activo');
+    }
+
+    public function archivosCalidad()
+    {
+        return $this->hasMany(ArchivoEquipo::class, 'id_programa_verificacion')
+                    ->where('tipo_documento', 'cert_calidad')
+                    ->where('estado', 'activo');
+    }
+
+    public function archivosCalibra()
+    {
+        return $this->hasMany(ArchivoEquipo::class, 'id_programa_verificacion')
+                    ->where('tipo_documento', 'cert_calibracion')
+                    ->where('estado', 'activo');
+    }
 }

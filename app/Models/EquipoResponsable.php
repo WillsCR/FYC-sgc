@@ -7,15 +7,21 @@ use Illuminate\Database\Eloquent\Model;
 class EquipoResponsable extends Model
 {
     protected $table = 'sgc_equipos_responsables';
-    protected $primaryKey = 'id';
     public $timestamps = false;
 
     protected $fillable = [
-        'id_equipo', 'nombre', 'cargo', 'email'
+        'id_usuario',
+        'id_equipo_interno',
+        'id_programa_verificacion',
     ];
 
-    public function equipo()
+    public function usuario()
     {
-        return $this->belongsTo(EquipoInterno::class, 'id_equipo');
+        return $this->belongsTo(Usuario::class, 'id_usuario');
+    }
+
+    public function programa()
+    {
+        return $this->belongsTo(ProgramaVerificacion::class, 'id_programa_verificacion');
     }
 }

@@ -9,7 +9,7 @@
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
-            <form id="formNuevoPrograma" action="{{ route('programa-verificacion.store') }}" method="POST" enctype="multipart/form-data">
+            <form id="formNuevoPrograma" action="{{ route('control-instrumentos.store') }}" method="POST" enctype="multipart/form-data">
                 @csrf
                 <div class="modal-body">
                     {{-- Características del Equipo --}}
@@ -54,7 +54,7 @@
                                 <div class="col-md-4">
                                     <div class="form-group">
                                         <label>Proyecto (Contrato) *</label>
-                                        <select name="id_programa_verificacion" class="form-control" required>
+                                        <select name="id_contrato" class="form-control" required>
                                             <option value="">Seleccione</option>
                                             @foreach($areas as $area)
                                                 <option value="{{ $area->id }}">{{ $area->descripcion }}</option>
@@ -187,11 +187,43 @@
 </div>
 
 <script>
-    // Mostrar/ocultar campos de certificados según checkboxes
     document.getElementById('cert_calidad_new').addEventListener('change', function() {
         document.getElementById('capaCalidadNuevo').style.display = this.checked ? 'block' : 'none';
     });
     document.getElementById('cert_calibracion_new').addEventListener('change', function() {
         document.getElementById('capaCalibNuevo').style.display = this.checked ? 'block' : 'none';
+    });
+
+    document.getElementById('formNuevoPrograma').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+        const btn = this.querySelector('[type=submit]');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Guardando...';
+
+        $.ajax({
+            type: 'POST',
+            url: this.action,
+            data: formData,
+            contentType: false,
+            processData: false,
+            success: function(response) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Guardado',
+                    text: 'Programa creado correctamente',
+                    timer: 2000,
+                    showConfirmButton: false
+                }).then(() => { location.reload(); });
+            },
+            error: function(xhr) {
+                const msg = xhr.responseJSON?.errors
+                    ? Object.values(xhr.responseJSON.errors).flat().join('\n')
+                    : (xhr.responseJSON?.message || 'Error al guardar el programa');
+                Swal.fire('Error', msg, 'error');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-save"></i> Guardar Programa';
+            }
+        });
     });
 </script>

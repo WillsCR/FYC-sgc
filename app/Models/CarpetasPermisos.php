@@ -11,7 +11,7 @@ class CarpetasPermisos extends Model
     public $timestamps = false;
 
     protected $fillable = [
-        'id_carpeta', 'id_usuario', 'carga', 'descarga', 'crear', 'eliminar', 'editar'
+        'id_carpeta', 'id_usuario', 'ver', 'carga', 'descarga', 'crear', 'ocultar_raiz', 'eliminar', 'editar'
     ];
 
     public function carpeta()

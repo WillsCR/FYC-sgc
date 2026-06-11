@@ -8,13 +8,28 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Border;
 
 class CertCalidadController extends Controller
 {
     /** sgc_carpetas3 id para Certificados de Calidad */
     private const CC_CARPETA_ID = 11;
 
+    /** Puede ver (solo lectura o acceso completo). */
     private function tieneAcceso(): bool
+    {
+        $u = PermisoService::usuarioActual();
+        return $u && ($u->esAdmin()
+            || PermisoService::can('ver',   'carpeta', self::CC_CARPETA_ID)
+            || PermisoService::can('carga', 'carpeta', self::CC_CARPETA_ID));
+    }
+
+    /** Puede gestionar (crear, editar, eliminar). */
+    private function puedeGestionar(): bool
     {
         $u = PermisoService::usuarioActual();
         return $u && ($u->esAdmin() || PermisoService::can('carga', 'carpeta', self::CC_CARPETA_ID));
@@ -27,14 +42,15 @@ class CertCalidadController extends Controller
         if (! $this->tieneAcceso()) abort(403);
 
         $usuario        = PermisoService::usuarioActual();
-        $puedeGestionar = $this->tieneAcceso();
+        $puedeGestionar = $this->puedeGestionar();
 
         $query = CertCalidad::query();
 
-        if ($s = $request->input('descripcion'))    $query->where('descripcion',    'like', "%{$s}%");
-        if ($s = $request->input('tipo'))           $query->where('tipo_certificado','like', "%{$s}%");
-        if ($s = $request->input('contrato'))       $query->where('contrato',        'like', "%{$s}%");
-        if ($s = $request->input('marca'))          $query->where('marca',           'like', "%{$s}%");
+        if ($s = $request->input('descripcion'))    $query->where('descripcion',           'like', "%{$s}%");
+        if ($s = $request->input('tipo'))           $query->where('tipo_certificado',       'like', "%{$s}%");
+        if ($s = $request->input('contrato'))       $query->where('contrato',               'like', "%{$s}%");
+        if ($s = $request->input('marca'))          $query->where('marca',                  'like', "%{$s}%");
+        if ($s = $request->input('procedimiento'))  $query->where('procedimiento_asociado', 'like', "%{$s}%");
         if ($request->input('solo_aplica'))         $query->where('aplica', true);
         if ($request->input('solo_critico'))        $query->where('critico', true);
 
@@ -47,7 +63,7 @@ class CertCalidadController extends Controller
 
     public function store(Request $request)
     {
-        if (! $this->tieneAcceso()) return response()->json(['error' => 'Sin permiso'], 403);
+        if (! $this->puedeGestionar()) return response()->json(['error' => 'Sin permiso'], 403);
 
         $request->validate(['descripcion' => 'required|string|max:400']);
 
@@ -76,7 +92,7 @@ class CertCalidadController extends Controller
 
     public function update(Request $request, CertCalidad $cert)
     {
-        if (! $this->tieneAcceso()) return response()->json(['error' => 'Sin permiso'], 403);
+        if (! $this->puedeGestionar()) return response()->json(['error' => 'Sin permiso'], 403);
 
         $request->validate(['descripcion' => 'required|string|max:400']);
 
@@ -108,7 +124,7 @@ class CertCalidadController extends Controller
 
     public function destroy(CertCalidad $cert)
     {
-        if (! $this->tieneAcceso()) return response()->json(['error' => 'Sin permiso'], 403);
+        if (! $this->puedeGestionar()) return response()->json(['error' => 'Sin permiso'], 403);
 
         if ($cert->archivo_ruta && Storage::disk('local')->exists($cert->archivo_ruta)) {
             Storage::disk('local')->delete($cert->archivo_ruta);
@@ -116,6 +132,97 @@ class CertCalidadController extends Controller
         $cert->delete();
 
         return response()->json(['success' => true, 'message' => 'Registro eliminado']);
+    }
+
+    // ── EXPORTAR EXCEL ────────────────────────────────────────────────────────
+
+    public function exportar(Request $request)
+    {
+        if (! $this->tieneAcceso()) abort(403);
+
+        $query = CertCalidad::query();
+        if ($s = $request->input('descripcion'))    $query->where('descripcion',           'like', "%{$s}%");
+        if ($s = $request->input('tipo'))           $query->where('tipo_certificado',       'like', "%{$s}%");
+        if ($s = $request->input('contrato'))       $query->where('contrato',               'like', "%{$s}%");
+        if ($s = $request->input('marca'))          $query->where('marca',                  'like', "%{$s}%");
+        if ($s = $request->input('procedimiento'))  $query->where('procedimiento_asociado', 'like', "%{$s}%");
+        if ($request->input('solo_aplica'))         $query->where('aplica', true);
+        if ($request->input('solo_critico'))        $query->where('critico', true);
+
+        $registros = $query->orderBy('numero')->orderBy('descripcion')->get();
+
+        $spreadsheet = new Spreadsheet();
+        $ws = $spreadsheet->getActiveSheet();
+        $ws->setTitle('Certificados de Calidad');
+
+        // ── Cabecera ──────────────────────────────────────────────────────────
+        $headers = ['N°','Descripción','Tipo Certificado','Contrato','Aplica','Crítico',
+                    'Marca','Modelo','Procedimiento Asociado','Vencimiento','Estado','Observaciones'];
+        foreach ($headers as $col => $header) {
+            $cell = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($col + 1) . '1';
+            $ws->setCellValue($cell, $header);
+        }
+
+        $headerStyle = [
+            'font'      => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+            'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '0F6E56']],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
+            'borders'   => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'FFFFFF']]],
+        ];
+        $ws->getStyle('A1:L1')->applyFromArray($headerStyle);
+        $ws->getRowDimension(1)->setRowHeight(20);
+
+        // ── Datos ─────────────────────────────────────────────────────────────
+        foreach ($registros as $i => $r) {
+            $row = $i + 2;
+            $ws->setCellValue("A{$row}", $r->numero);
+            $ws->setCellValue("B{$row}", $r->descripcion);
+            $ws->setCellValue("C{$row}", $r->tipo_certificado);
+            $ws->setCellValue("D{$row}", $r->contrato);
+            $ws->setCellValue("E{$row}", $r->aplica  ? 'Sí' : 'No');
+            $ws->setCellValue("F{$row}", $r->critico ? 'Sí' : 'No');
+            $ws->setCellValue("G{$row}", $r->marca);
+            $ws->setCellValue("H{$row}", $r->modelo);
+            $ws->setCellValue("I{$row}", $r->procedimiento_asociado);
+            $ws->setCellValue("J{$row}", $r->vencimiento?->format('d-m-Y'));
+            $ws->setCellValue("K{$row}", ucfirst($r->semaforo));
+            $ws->setCellValue("L{$row}", $r->observaciones);
+
+            // Color semáforo en columna Estado
+            $semaforoColor = match($r->semaforo) {
+                'verde'   => 'DCFCE7',
+                'naranja' => 'FEF3C7',
+                'rojo'    => 'FEE2E2',
+                default   => 'F3F4F6',
+            };
+            $ws->getStyle("K{$row}")->getFill()
+               ->setFillType(Fill::FILL_SOLID)
+               ->getStartColor()->setRGB($semaforoColor);
+        }
+
+        // ── Ancho de columnas ─────────────────────────────────────────────────
+        foreach (['A'=>6,'B'=>40,'C'=>22,'D'=>14,'E'=>8,'F'=>8,
+                  'G'=>14,'H'=>14,'I'=>40,'J'=>14,'K'=>12,'L'=>30] as $col => $width) {
+            $ws->getColumnDimension($col)->setWidth($width);
+        }
+
+        // ── Borde en datos ────────────────────────────────────────────────────
+        $lastRow = $registros->count() + 1;
+        if ($lastRow > 1) {
+            $ws->getStyle("A2:L{$lastRow}")->applyFromArray([
+                'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'D1D5DB']]],
+            ]);
+        }
+
+        $filename = 'certificados_calidad_' . now()->format('Ymd_His') . '.xlsx';
+        $writer   = new Xlsx($spreadsheet);
+
+        return response()->streamDownload(function () use ($writer) {
+            $writer->save('php://output');
+        }, $filename, [
+            'Content-Type'        => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Cache-Control'       => 'max-age=0',
+        ]);
     }
 
     // ── DESCARGAR ─────────────────────────────────────────────────────────────
@@ -154,7 +261,8 @@ class CertCalidadController extends Controller
 
     public function importar(Request $request)
     {
-        if (! $this->tieneAcceso()) return response()->json(['error' => 'Sin permiso'], 403);
+        $u = PermisoService::usuarioActual();
+        if (! $u || ! $u->esAdmin()) return response()->json(['error' => 'Solo los administradores pueden importar'], 403);
 
         $request->validate(['archivo_excel' => 'required|file|mimes:xlsx,xls,xlsm']);
 

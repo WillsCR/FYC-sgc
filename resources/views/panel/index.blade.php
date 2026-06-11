@@ -549,31 +549,30 @@ function cerrarBienvenida() {
     transition: opacity .28s ease;
 }
 
-/* 2. Tarjeta del Modal (Cuadrada por defecto, adaptable con video) */
+/* 2. Tarjeta del Modal */
 .bienvenida-card {
     background: radial-gradient(circle at 50% 30%, #163d6b 0%, #091d37 55%, #030a14 100%);
     border-radius: 14px;
     width: 100%;
-    max-width: 460px;
-    min-height: 460px;
+    max-width: 720px;
+    min-height: 420px;
+    max-height: 90vh;
+    overflow-y: auto;
     box-shadow: 0 30px 70px rgba(0,0,0,.6);
     position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: space-between;
-    padding: 45px 30px 25px;
+    padding: 20px 60px 30px;
     color: #fff;
     box-sizing: border-box;
     animation: bienvenida-card-in .45s cubic-bezier(.22, 1, .36, 1) forwards;
 }
 
-/* Variante si el modal detecta que viene un video */
+/* Variante con video: ocupa más altura */
 .bienvenida-card.has-video {
-    aspect-ratio: auto;
-    max-height: 85vh;
-    overflow-y: auto;
-    min-height: auto;
+    min-height: 520px;
 }
 
 /* Keyframes para el efecto Fade + Desplazamiento de la tarjeta */
@@ -582,24 +581,28 @@ function cerrarBienvenida() {
     to   { transform: translateY(0) scale(1); opacity: 1; }
 }
 
-/* 3. Botón cerrar (X de la esquina) */
+/* 3. Fila superior: contiene el botón X alineado a la derecha */
+.bienvenida-topbar {
+    width: 100%;
+    display: flex;
+    justify-content: flex-end;
+    flex-shrink: 0;
+    margin-bottom: 4px;
+}
 .bienvenida-close {
-    position: absolute; 
-    top: 16px; 
-    right: 16px;
-    background: rgba(255, 255, 255, 0.08); 
-    border: none; 
+    background: rgba(255, 255, 255, 0.08);
+    border: none;
     color: rgba(255, 255, 255, 0.65);
-    width: 32px; 
-    height: 32px; 
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
-    font-size: 1rem; 
-    cursor: pointer; 
-    z-index: 10;
-    display: flex; 
-    align-items: center; 
+    font-size: 1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
     justify-content: center;
     transition: background .15s, color .15s;
+    flex-shrink: 0;
 }
 .bienvenida-close:hover {
     background: rgba(255, 255, 255, 0.2);
@@ -610,23 +613,23 @@ function cerrarBienvenida() {
 .bienvenida-brand-wrap {
     display: flex;
     align-items: center;
-    gap: 14px;
-    margin-top: 15px;
+    gap: 20px;
+    margin-top: 10px;
 }
 .bienvenida-brand-text {
     text-align: left;
     line-height: 1.2;
 }
 .bienvenida-brand-title {
-    font-size: 1.7rem;
+    font-size: 2.1rem;
     font-weight: 800;
     letter-spacing: 0.3px;
     font-family: 'Inter', sans-serif;
 }
 .bienvenida-brand-subtitle {
-    font-size: 0.8rem;
+    font-size: 0.9rem;
     font-weight: 600;
-    letter-spacing: 0.8px;
+    letter-spacing: 1px;
     opacity: 0.9;
     font-family: 'Inter', sans-serif;
 }
@@ -642,7 +645,7 @@ function cerrarBienvenida() {
 }
 .bienvenida-video-wrap video {
     width: 100%;
-    max-height: 280px;
+    max-height: 360px;
     object-fit: contain;
     display: block;
     background: #000;
@@ -676,21 +679,21 @@ function cerrarBienvenida() {
 .bienvenida-message {
     color: #ffffff;
     text-align: center;
-    margin-bottom: 15px;
+    margin-bottom: 18px;
 }
 .bienvenida-message p {
     color: #fff !important;
-    font-size: 1.05rem;
+    font-size: 1.1rem;
     font-weight: 400;
     margin: 8px 0;
-    line-height: 1.5;
+    line-height: 1.6;
     font-family: 'Inter', sans-serif;
 }
 .bienvenida-user-title {
-    font-size: 1.6rem; 
-    font-weight: 800; 
-    margin: 15px 0 5px 0; 
-    text-align: center; 
+    font-size: 2rem;
+    font-weight: 800;
+    margin: 20px 0 6px 0;
+    text-align: center;
     color: #fff;
     font-family: 'Inter', sans-serif;
 }
@@ -701,16 +704,58 @@ function cerrarBienvenida() {
     color: rgba(255, 255, 255, 0.6);
     font-family: 'Inter', sans-serif;
 }
+
+/* ── Responsivo ─────────────────────────────────────────────── */
+
+/* Tablet (≤ 768 px) */
+@media (max-width: 768px) {
+    #modal-bienvenida {
+        padding: 12px;
+        align-items: flex-end;   /* sube desde abajo como sheet */
+    }
+    .bienvenida-card {
+        max-width: 100%;
+        min-height: auto;
+        border-radius: 18px 18px 0 0;  /* bottom-sheet style */
+        padding: 16px 28px 24px;
+    }
+    .bienvenida-card.has-video {
+        min-height: auto;
+    }
+    .bienvenida-brand-title    { font-size: 1.5rem; }
+    .bienvenida-brand-subtitle { font-size: 0.78rem; }
+    .bienvenida-user-title     { font-size: 1.45rem; margin: 14px 0 4px; }
+    .bienvenida-message p      { font-size: 0.95rem; }
+    .bienvenida-video-wrap video { max-height: 240px; }
+}
+
+/* Móvil pequeño (≤ 480 px) */
+@media (max-width: 480px) {
+    #modal-bienvenida { padding: 0; }
+    .bienvenida-card {
+        border-radius: 16px 16px 0 0;
+        padding: 14px 20px 20px;
+    }
+    .bienvenida-brand-wrap     { gap: 12px; }
+    .bienvenida-brand-title    { font-size: 1.25rem; }
+    .bienvenida-brand-subtitle { font-size: 0.72rem; letter-spacing: 0.6px; }
+    .bienvenida-user-title     { font-size: 1.2rem; margin: 12px 0 4px; }
+    .bienvenida-message p      { font-size: 0.88rem; }
+    .bienvenida-video-wrap video { max-height: 200px; }
+    .bienvenida-footer         { font-size: 0.68rem; }
+}
 </style>
 
 <div id="modal-bienvenida" onclick="if(event.target===this)cerrarBienvenida()">
     <div class="bienvenida-card @if($videoBienvenida) has-video @endif">
-        {{-- Botón para cerrar --}}
-        <button class="bienvenida-close" onclick="cerrarBienvenida()" title="Cerrar">✕</button>
+        {{-- Fila superior con botón cerrar --}}
+        <div class="bienvenida-topbar">
+            <button class="bienvenida-close" onclick="cerrarBienvenida()" title="Cerrar">✕</button>
+        </div>
 
         {{-- Encabezado: Tu SVG del navbar --}}
         <div class="bienvenida-brand-wrap">
-            <svg xmlns="http://www.w3.org/2000/svg" width="42" height="53" viewBox="0 0 60 76" fill="none" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" width="56" height="70" viewBox="0 0 60 76" fill="none" aria-hidden="true">
                 <rect x="2"  y="2"  width="56" height="7"  rx="2" fill="white"/>
                 <rect x="8"  y="9"  width="44" height="4"  rx="1" fill="white"/>
                 <rect x="10" y="13" width="8"  height="42" rx="2" fill="white"/>
@@ -759,22 +804,6 @@ function cerrarBienvenida() {
 
 @push('scripts')
 <script>
-function cerrarBienvenida() {
-    const modal = document.getElementById('modal-bienvenida');
-    if (!modal) return;
-    modal.style.opacity = '0';
-    setTimeout(() => {
-        modal.style.display = 'none';
-    }, 280);
-}
-
-function activarSonido() {
-    const video = document.getElementById('video-bienvenida');
-    if (!video) return;
-    video.muted = false;
-    document.getElementById('btn-activar-sonido')?.classList.add('oculto');
-}
-
 document.addEventListener('DOMContentLoaded', () => {
     const modal = document.getElementById('modal-bienvenida');
     if (!modal) return;

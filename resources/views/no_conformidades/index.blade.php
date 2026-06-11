@@ -13,6 +13,21 @@
     --nc-radius:  8px;
 }
 
+/* ── Botones estilo CC (consistentes con otros módulos) ─────────────────────── */
+.btn-nc {
+    display: inline-flex; align-items: center; gap: 5px;
+    height: 34px; padding: 0 14px;
+    border: none; border-radius: 6px;
+    font-size: .8rem; font-weight: 600; cursor: pointer;
+    text-decoration: none; transition: opacity .15s; white-space: nowrap;
+    color: #fff;
+}
+.btn-nc:hover { opacity: .88; }
+.btn-nc-green  { background: #16a34a; }
+.btn-nc-navy   { background: #0D2B5E; }
+.btn-nc-gray   { background: #6b7280; }
+.btn-nc-dark   { background: #374151; }
+
 /* ── Page header ────────────────────────────────────────────────────────────── */
 .nc-page-header {
     display: flex;
@@ -665,21 +680,24 @@
             <h1>📋 Control de No Conformidades</h1>
             <p>Registro y seguimiento de hallazgos, acciones inmediatas y correctivas.</p>
         </div>
-        <div style="display:flex; align-items:center; gap:8px">
-            <a href="{{ route('nc.exportar') }}" class="btn-export" title="Descargar toda la información en Excel">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                Exportar Excel
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap">
+            <a href="{{ route('nc.exportar') }}" class="btn-nc btn-nc-green">
+                <i class="fa-solid fa-file-excel"></i> Exportar Excel
             </a>
             @if($puedeImportar)
-            <button class="btn-import" onclick="abrirModalImportar()" title="Importar NCs desde Excel">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                Importar Excel
+            <button class="btn-nc btn-nc-green" onclick="abrirModalImportar()">
+                <i class="fa-solid fa-file-excel"></i> Importar Excel
             </button>
-            <button class="btn-primary" onclick="abrirModalCrear()">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                Nueva NC
+            <button class="btn-nc btn-nc-navy" onclick="abrirModalCrear()">
+                <i class="fa-solid fa-plus"></i> Nueva NC
             </button>
             @endif
+            <a href="{{ route('carpetas.show', 1) }}" class="btn-nc btn-nc-gray">
+                <i class="fa-solid fa-arrow-left"></i> Volver
+            </a>
+            <a href="{{ route('panel') }}" class="btn-nc btn-nc-dark">
+                <i class="fa-solid fa-house"></i> Panel Principal
+            </a>
         </div>
     </div>
 

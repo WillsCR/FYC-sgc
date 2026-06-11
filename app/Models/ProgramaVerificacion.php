@@ -28,11 +28,14 @@ class ProgramaVerificacion extends Model
         'cert_calibracion',
         'observaciones',
         'responsable',
+        'correo_aviso',
+        'aviso_30d_enviado',
     ];
 
     protected $casts = [
-        'ultima'          => 'date',
-        'proxima'         => 'date',
+        'ultima'            => 'date',
+        'proxima'           => 'date',
+        'aviso_30d_enviado' => 'boolean',
         'cert_calidad'    => 'boolean',
         'cert_calibracion'=> 'boolean',
     ];

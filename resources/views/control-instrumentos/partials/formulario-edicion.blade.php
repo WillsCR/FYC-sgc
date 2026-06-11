@@ -6,7 +6,7 @@
 
         <div class="form-section">
             <div class="form-section-title"><i class="fa-solid fa-cog"></i> Características del equipo</div>
-            <div class="form-row" style="grid-template-columns:2fr 1fr 1fr 1fr 1fr">
+            <div class="form-row" style="grid-template-columns:repeat(auto-fill,minmax(130px,1fr))">
                 <div class="form-group">
                     <label>Descripción *</label>
                     <input type="text" name="descripcion" required value="{{ $programa->descripcion }}">
@@ -102,13 +102,18 @@
             </div>
         </div>
 
-        <div class="form-row-2">
+        <div class="form-row" style="grid-template-columns:repeat(auto-fill,minmax(180px,1fr))">
             <div class="form-group">
                 <label>Responsable</label>
                 <input type="text" name="responsable" value="{{ $programa->responsable }}"
                        placeholder="Ej: Juan Pérez">
             </div>
             <div class="form-group">
+                <label>Correo de aviso</label>
+                <input type="email" name="correo_aviso" value="{{ $programa->correo_aviso }}"
+                       placeholder="responsable@empresa.cl">
+            </div>
+            <div class="form-group" style="grid-column:span 2">
                 <label>Observaciones</label>
                 <textarea name="observaciones" rows="2">{{ $programa->observaciones }}</textarea>
             </div>

@@ -179,24 +179,24 @@
 
 /* ── Botones de acción (heredados del diseño del proyecto) ── */
 .btn-accion {
-    display: inline-flex; align-items: center; gap: 4px;
-    padding: 5px 12px; border-radius: var(--radius-sm);
-    font-size: .75rem; font-weight: 600; cursor: pointer;
-    border: 1px solid; text-decoration: none; transition: all .12s;
-    line-height: 1; background: transparent;
+    display: inline-flex; align-items: center; gap: 5px;
+    height: 34px; padding: 0 14px;
+    border: none; border-radius: 6px;
+    font-size: .8rem; font-weight: 600; cursor: pointer;
+    text-decoration: none; transition: opacity .15s; white-space: nowrap;
+    background: transparent; color: #fff;
 }
-.btn-primary-ci { color: #fff; border-color: var(--navy); background: var(--navy); }
-.btn-primary-ci:hover { background: var(--navy-mid); border-color: var(--navy-mid); }
-.btn-secondary-ci { color: var(--text-secondary); border-color: var(--border); background: transparent; }
-.btn-secondary-ci:hover { border-color: var(--navy); color: var(--navy); }
-.btn-success-ci { color: #15803D; border-color: #15803D; background: transparent; }
-.btn-success-ci:hover { background: #15803D; color: #fff; }
-.btn-edit  { color: var(--navy); border-color: var(--navy); }
-.btn-edit:hover  { background: var(--navy); color: #fff; }
-.btn-files { color: #0369A1; border-color: #0369A1; }
-.btn-files:hover { background: #0369A1; color: #fff; }
-.btn-del   { color: #DC2626; border-color: #DC2626; }
-.btn-del:hover   { background: #DC2626; color: #fff; }
+.btn-accion:hover { opacity: .88; }
+
+/* Variantes de color — mismas que CC */
+.btn-primary-ci   { background: var(--navy); color: #fff; }
+.btn-secondary-ci { background: #6b7280;     color: #fff; }
+.btn-success-ci   { background: #16a34a;     color: #fff; }
+
+/* Botones de tabla (iconos, más compactos) */
+.btn-edit  { height: 30px; width: 30px; padding: 0; justify-content: center; background: #eab308; color: #fff; border-radius: 6px; }
+.btn-files { height: 30px; width: 30px; padding: 0; justify-content: center; background: #0891b2; color: #fff; border-radius: 6px; }
+.btn-del   { height: 30px; width: 30px; padding: 0; justify-content: center; background: #dc2626; color: #fff; border-radius: 6px; }
 
 /* ── Toast notificaciones ───────────────────────────── */
 #ci-toasts { position: fixed; top: 68px; right: 16px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; }
@@ -288,6 +288,16 @@
                     <i class="fa-solid fa-plus"></i> Nuevo Registro
                 </button>
             @endif
+            <a href="{{ route('control-instrumentos.exportar') }}{{ request()->getQueryString() ? '?' . request()->getQueryString() : '' }}"
+               class="btn-accion btn-success-ci">
+                <i class="fa-solid fa-file-excel"></i> Exportar Excel
+            </a>
+            <a href="{{ route('carpetas.show', 1) }}" class="btn-accion btn-secondary-ci">
+                <i class="fa-solid fa-arrow-left"></i> Volver
+            </a>
+            <a href="{{ route('panel') }}" class="btn-accion" style="background:#374151">
+                <i class="fa-solid fa-house"></i> Panel Principal
+            </a>
         </div>
     </div>
 
@@ -526,7 +536,7 @@
 
                 <div class="form-section">
                     <div class="form-section-title"><i class="fa-solid fa-cog"></i> Características del equipo</div>
-                    <div class="form-row" style="grid-template-columns:2fr 1fr 1fr 1fr 1fr">
+                    <div class="form-row" style="grid-template-columns:repeat(auto-fill,minmax(130px,1fr))">
                         <div class="form-group">
                             <label>Descripción *</label>
                             <input type="text" name="descripcion" required placeholder="Ej: Amperímetro de tenazas">
@@ -633,12 +643,16 @@
                     </div>
                 </div>
 
-                <div class="form-row-2">
+                <div class="form-row" style="grid-template-columns:repeat(auto-fill,minmax(180px,1fr))">
                     <div class="form-group">
                         <label>Responsable</label>
                         <input type="text" name="responsable" placeholder="Ej: Juan Pérez">
                     </div>
                     <div class="form-group">
+                        <label>Correo de aviso</label>
+                        <input type="email" name="correo_aviso" placeholder="responsable@empresa.cl">
+                    </div>
+                    <div class="form-group" style="grid-column:span 2">
                         <label>Observaciones</label>
                         <textarea name="observaciones" rows="2" placeholder="Notas adicionales..."></textarea>
                     </div>
@@ -786,16 +800,22 @@ const CSRF = '{{ csrf_token() }}';
 // ── Helpers de modal ──────────────────────────────────────
 function abrirModal(id) {
     document.getElementById(id).classList.add('activo');
-    document.body.style.overflow = 'hidden';
+    document.body.style.overflow    = 'hidden';
+    document.body.style.overflowX   = 'hidden';   // evita que el scroll horizontal desplace el modal
+    document.documentElement.style.overflowX = 'hidden';
 }
 function cerrarModal(id) {
     document.getElementById(id).classList.remove('activo');
-    document.body.style.overflow = '';
+    document.body.style.overflow    = '';
+    document.body.style.overflowX   = '';
+    document.documentElement.style.overflowX = '';
 }
 document.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
         document.querySelectorAll('.modal-overlay.activo').forEach(m => m.classList.remove('activo'));
-        document.body.style.overflow = '';
+        document.body.style.overflow    = '';
+        document.body.style.overflowX   = '';
+        document.documentElement.style.overflowX = '';
     }
 });
 

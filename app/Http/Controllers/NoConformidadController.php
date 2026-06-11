@@ -34,13 +34,23 @@ class NoConformidadController extends Controller
      * TODO el acceso a No Conformidades (lectura, escritura, exportar, importar).
      * Admins (perfil 1 y 2) siempre tienen acceso completo.
      */
+    /** Puede ver (solo lectura o acceso completo). */
     private function tieneAccesoNC(): bool
     {
-        $usuario = PermisoService::usuarioActual();
-        return $usuario->esAdmin() || PermisoService::can('carga', 'carpeta', self::NC_CARPETA_ID);
+        $u = PermisoService::usuarioActual();
+        return $u && ($u->esAdmin()
+            || PermisoService::can('ver',   'carpeta', self::NC_CARPETA_ID)
+            || PermisoService::can('carga', 'carpeta', self::NC_CARPETA_ID));
     }
 
-    /** Aborta 403 HTML si no tiene acceso. */
+    /** Puede gestionar (crear, editar, eliminar, importar). */
+    private function puedeGestionar(): bool
+    {
+        $u = PermisoService::usuarioActual();
+        return $u && ($u->esAdmin() || PermisoService::can('carga', 'carpeta', self::NC_CARPETA_ID));
+    }
+
+    /** Aborta 403 HTML si no puede ver. */
     private function checkVer(): void
     {
         if (! $this->tieneAccesoNC()) {
@@ -48,18 +58,12 @@ class NoConformidadController extends Controller
         }
     }
 
-    /** Aborta 403 JSON si no tiene acceso (para endpoints AJAX). */
+    /** Aborta 403 JSON si no puede gestionar. */
     private function checkGestionar(): void
     {
-        if (! $this->tieneAccesoNC()) {
+        if (! $this->puedeGestionar()) {
             abort(response()->json(['error' => 'Sin permiso para gestionar No Conformidades.'], 403));
         }
-    }
-
-    /** Alias semántico: en NC el permiso de gestión y de visualización son idénticos. */
-    private function puedeGestionar(): bool
-    {
-        return $this->tieneAccesoNC();
     }
 
     // ── INDEX ─────────────────────────────────────────────────────────────────

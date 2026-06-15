@@ -83,26 +83,96 @@ O acceder directamente vía: `http://localhost/FYC-sgc/public`
 ```
 FYC-sgc/
 ├── app/
+│   ├── Console/
+│   │   └── Commands/                     ← Comandos artisan personalizados
+│   ├── Helpers/
+│   │   ├── ControlInstrumentosHelper.php ← Lógica de instrumentos
+│   │   └── EstiloModulo.php              ← Estilos y temas
 │   ├── Http/
 │   │   ├── Controllers/
 │   │   │   ├── Auth/AuthController.php   ← Login, logout, migración hash
-│   │   │   └── PanelController.php       ← Panel principal
+│   │   │   ├── PanelController.php       ← Panel principal
+│   │   │   └── [Otros controllers]       ← Por módulo (usuarios, documentos, etc)
 │   │   └── Middleware/
 │   │       ├── AutenticadoMiddleware.php ← Protege rutas con sesión
 │   │       └── AdminMiddleware.php       ← Solo administradores
+│   ├── Mail/
+│   │   └── MinutaNotificacion.php        ← Mailable para notificaciones
 │   ├── Models/
-│   │   ├── Usuario.php                   ← sgc_usuarios (60+ columnas permiso)
-│   │   └── CarpetaPermiso.php            ← sgc_carpetas_permisos
-│   └── Services/
-│       └── PermisoService.php            ← can(), require(), usuarioActual()
-├── resources/views/
-│   ├── layouts/app.blade.php             ← Layout principal con navbar
-│   ├── auth/login.blade.php              ← Pantalla de login
-│   └── panel/index.blade.php            ← Panel (se expande en Sprint 2)
-├── routes/web.php                        ← Todas las rutas del sistema
-├── public/css/app.css                    ← Design system — Propuesta A
-└── .env.example                          ← Variables de entorno del proyecto
+│   │   ├── Usuario.php                   ← sgc_usuarios (autenticación)
+│   │   ├── User.php                      ← Usuario Laravel
+│   │   ├── Carpeta.php                   ← Árbol documental principal
+│   │   ├── CarpetaPermiso.php            ← Permisos granulares
+│   │   ├── Documento.php                 ← Documentos y archivos
+│   │   ├── Minuta.php                    ← Reuniones
+│   │   ├── MinutaCompromiso.php          ← Compromisos de reuniones
+│   │   ├── NoConformidad.php             ← No conformidades y hallazgos
+│   │   ├── AccionCorrectiva.php          ← Acciones correctivas
+│   │   ├── EquipoCertificado.php         ← Equipos e instrumentos
+│   │   ├── Noticia.php                   ← Publicaciones internas
+│   │   ├── Planificacion.php             ← Planificación y calendarios
+│   │   ├── Video.php                     ← Videos institucionales
+│   │   └── [Otros 30+ modelos]           ← Módulos de negocio
+│   ├── Services/
+│   │   └── PermisoService.php            ← can(), require(), usuarioActual()
+│   └── Providers/
+│       └── [Service providers]           ← Registro de servicios
+├── bootstrap/
+│   ├── app.php                           ← Bootstrap de Laravel
+│   ├── providers.php                     ← Registro de providers
+│   └── cache/                            ← Cache de bootstrap
+├── config/
+│   ├── app.php                           ← Configuración general
+│   ├── database.php                      ← Conexión BD
+│   ├── auth.php                          ← Guards y providers
+│   ├── mail.php                          ← Configuración de mails
+│   └── [Otros archivos config]
+├── database/
+│   ├── migrations/                       ← Migraciones laravel (sgc2_*)
+│   ├── seeders/                          ← Seeders para datos iniciales
+│   └── [Archivos SQL legacy]             ← Referencia de estructura original
+├── public/
+│   ├── index.php                         ← Entry point
+│   ├── css/                              ← Estilos compilados
+│   └── img/                              ← Imágenes públicas
+├── resources/
+│   ├── views/
+│   │   ├── layouts/app.blade.php         ← Layout principal con navbar
+│   │   ├── auth/login.blade.php          ← Pantalla de login
+│   │   ├── panel/                        ← Vistas del panel
+│   │   └── [Otros módulos]               ← Vistas por funcionalidad
+│   ├── css/                              ← Estilos source (Tailwind)
+│   └── js/                               ← JavaScript personalizado
+├── routes/
+│   ├── web.php                           ← Todas las rutas web
+│   └── console.php                       ← Rutas de comandos
+├── storage/
+│   ├── app/                              ← Archivos subidos (nc_docs/, etc)
+│   ├── framework/                        ← Cache, sessions, logs
+│   └── logs/                             ← Log files
+├── tests/
+│   ├── Feature/                          ← Tests de características
+│   └── Unit/                             ← Tests unitarios
+├── vendor/                               ← Dependencias composer
+├── artisan                               ← CLI de Laravel
+├── composer.json                         ← Dependencias PHP
+├── package.json                          ← Dependencias Node (Vite, Tailwind)
+├── phpunit.xml                           ← Configuración de tests
+├── vite.config.js                        ← Configuración Vite (bundler)
+├── .env.example                          ← Variables de entorno ejemplo
+└── README.md                             ← Este archivo
 ```
+
+### 📁 Organización por responsabilidad
+
+- **Controllers** — Lógica HTTP, request/response
+- **Models** — Entidades de BD, relaciones Eloquent
+- **Services** — Lógica de negocio reutilizable
+- **Helpers** — Funciones utilitarias globales
+- **Mail** — Clases de email
+- **Middleware** — Filtros de request
+- **Views** — Templates Blade (HTML)
+- **Routes** — Mapeo URL → Controller
 
 ---
 

@@ -121,8 +121,9 @@ Route::middleware(['auth.sgc'])->group(function () {
     Route::get('/archivos-equipos',                        [ArchivoEquipoController::class, 'index'])->name('archivos-equipos.index');
         // ─── Control de Instrumentos ─────────────────────────────────────────────────
     Route::prefix('control-instrumentos')->name('control-instrumentos.')->group(function () {
-        Route::get('/',     [App\Http\Controllers\ControlInstrumentosController::class, 'index'])->name('index');
-        Route::post('/',    [App\Http\Controllers\ControlInstrumentosController::class, 'store'])->name('store');
+        Route::get('/',         [App\Http\Controllers\ControlInstrumentosController::class, 'index'])  ->name('index');
+        Route::post('/',        [App\Http\Controllers\ControlInstrumentosController::class, 'store'])  ->name('store');
+        Route::get('/exportar', [App\Http\Controllers\ControlInstrumentosController::class, 'exportar'])->name('exportar');
         Route::post('/importar', [App\Http\Controllers\ControlInstrumentosController::class, 'importar'])->name('importar');
         Route::get('/{programaVerificacion}/edit', [App\Http\Controllers\ControlInstrumentosController::class, 'edit'])->name('edit');
         Route::put('/{programaVerificacion}', [App\Http\Controllers\ControlInstrumentosController::class, 'update'])->name('update');
@@ -136,6 +137,7 @@ Route::middleware(['auth.sgc'])->group(function () {
         Route::get('/',                  [App\Http\Controllers\CertCalidadController::class, 'index'])   ->name('index');
         Route::post('/',                 [App\Http\Controllers\CertCalidadController::class, 'store'])   ->name('store');
         Route::post('/importar',         [App\Http\Controllers\CertCalidadController::class, 'importar'])->name('importar');
+        Route::get('/exportar',          [App\Http\Controllers\CertCalidadController::class, 'exportar'])->name('exportar');
         Route::get('/{cert}/datos',      [App\Http\Controllers\CertCalidadController::class, 'datos'])  ->name('datos');
         Route::post('/{cert}',           [App\Http\Controllers\CertCalidadController::class, 'update']) ->name('update');
         Route::delete('/{cert}',         [App\Http\Controllers\CertCalidadController::class, 'destroy'])->name('destroy');
@@ -144,8 +146,9 @@ Route::middleware(['auth.sgc'])->group(function () {
 
     // ─── Matriz Cursos ───────────────────────────────────────────────────────────
     Route::prefix('matriz-cursos')->name('matriz-cursos.')->group(function () {
-        Route::get('/',  [App\Http\Controllers\MatrizCursosController::class, 'index'])->name('index');
+        Route::get('/',          [App\Http\Controllers\MatrizCursosController::class, 'index'])   ->name('index');
         Route::post('/importar', [App\Http\Controllers\MatrizCursosController::class, 'importar'])->name('importar');
+        Route::get('/exportar',  [App\Http\Controllers\MatrizCursosController::class, 'exportar'])->name('exportar');
 
         // Trabajadores
         Route::post('/trabajadores',                  [App\Http\Controllers\MatrizCursosController::class, 'storeTrabajador'])->name('trabajadores.store');

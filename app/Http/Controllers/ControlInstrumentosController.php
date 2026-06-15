@@ -12,6 +12,11 @@ use App\Helpers\ControlInstrumentosHelper;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Border;
 use Illuminate\Support\Str;
 
 class ControlInstrumentosController extends Controller
@@ -24,10 +29,20 @@ class ControlInstrumentosController extends Controller
      * Permiso único: `carga` sobre carpeta 98 controla TODO el acceso a CI.
      * Admins siempre tienen acceso completo.
      */
+    /** Puede ver (solo lectura o acceso completo). */
     private function tieneAccesoCI(): bool
     {
-        $usuario = PermisoService::usuarioActual();
-        return $usuario && ($usuario->esAdmin() || PermisoService::can('carga', 'carpeta', self::CI_CARPETA_ID));
+        $u = PermisoService::usuarioActual();
+        return $u && ($u->esAdmin()
+            || PermisoService::can('ver',   'carpeta', self::CI_CARPETA_ID)
+            || PermisoService::can('carga', 'carpeta', self::CI_CARPETA_ID));
+    }
+
+    /** Puede gestionar (crear, editar, eliminar). */
+    private function puedeGestionarCI(): bool
+    {
+        $u = PermisoService::usuarioActual();
+        return $u && ($u->esAdmin() || PermisoService::can('carga', 'carpeta', self::CI_CARPETA_ID));
     }
 
     private function checkAcceso(): void
@@ -94,7 +109,7 @@ class ControlInstrumentosController extends Controller
 
         $areas          = Area::orderBy('descripcion')->get();
         $usuarios       = Usuario::orderBy('nombre')->get();
-        $puedeGestionar = $this->tieneAccesoCI();   // crear / editar
+        $puedeGestionar = $this->puedeGestionarCI(); // crear / editar / eliminar
         $puedeImportar  = $usuario && $usuario->esAdmin();  // solo admins
 
         return view('control-instrumentos.index-nuevo', compact(
@@ -114,7 +129,7 @@ class ControlInstrumentosController extends Controller
             'calibracion' => 'required|in:1,2,3,4',
         ]);
 
-        if (! $this->tieneAccesoCI()) abort(403);
+        if (! $this->puedeGestionarCI()) abort(403);
         $usuario = PermisoService::usuarioActual();
 
         $programa = ProgramaVerificacion::create([
@@ -133,6 +148,7 @@ class ControlInstrumentosController extends Controller
             'proxima'                 => $request->fecha_proxima ?: null,
             'observaciones'           => $request->observaciones,
             'responsable'             => $request->responsable ?: null,
+            'correo_aviso'            => $request->correo_aviso ?: null,
             'id_usuario'              => $usuario->id,
         ]);
 
@@ -171,7 +187,7 @@ class ControlInstrumentosController extends Controller
             'calibracion' => 'required|in:1,2,3,4',
         ]);
 
-        if (! $this->tieneAccesoCI()) abort(403);
+        if (! $this->puedeGestionarCI()) abort(403);
 
         $programaVerificacion->update([
             'id_contrato'             => $request->id_contrato,
@@ -189,6 +205,7 @@ class ControlInstrumentosController extends Controller
             'proxima'                 => $request->proxima ?: null,
             'observaciones'           => $request->observaciones,
             'responsable'             => $request->responsable ?: null,
+            'correo_aviso'            => $request->correo_aviso ?: null,
         ]);
 
         return response()->json(['success' => true, 'message' => 'Programa actualizado correctamente']);
@@ -200,6 +217,123 @@ class ControlInstrumentosController extends Controller
     {
         $programa = $programaVerificacion->load(['archivosCalidad', 'archivosCalibra']);
         return view('control-instrumentos.partials.gestionar-archivos', compact('programa'));
+    }
+
+    // ── Exportar Excel ───────────────────────────────────────────────────────
+
+    public function exportar(Request $request)
+    {
+        $this->checkAcceso();
+
+        $search   = $request->input('search', '');
+        $proyecto = $request->input('proyecto', '');
+        $estado   = $request->input('estado', '');
+
+        $query = ProgramaVerificacion::with(['area']);
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('descripcion',            'like', "%{$search}%")
+                  ->orWhere('marca',                'like', "%{$search}%")
+                  ->orWhere('modelo',               'like', "%{$search}%")
+                  ->orWhere('serie',                'like', "%{$search}%")
+                  ->orWhere('certificado_calibracion','like', "%{$search}%");
+            });
+        }
+        if ($proyecto) $query->where('id_contrato', $proyecto);
+
+        $hoy = Carbon::today();
+        if ($estado === 'vigente') {
+            $query->where('proxima', '>', $hoy->copy()->addDays(30));
+        } elseif ($estado === 'por_vencer') {
+            $query->whereBetween('proxima', [$hoy->toDateString(), $hoy->copy()->addDays(30)->toDateString()]);
+        } elseif ($estado === 'vencido') {
+            $query->where(function ($q) use ($hoy) {
+                $q->where('proxima', '<', $hoy->toDateString())->orWhereNull('proxima');
+            });
+        }
+
+        $registros = $query->orderBy('ultima', 'desc')->orderBy('descripcion')->get();
+
+        $spreadsheet = new Spreadsheet();
+        $ws = $spreadsheet->getActiveSheet();
+        $ws->setTitle('Control de Instrumentos');
+
+        // ── Cabecera ──────────────────────────────────────────────────────────
+        $headers = ['N°','Proyecto','Tipo de Certificado','Descripción','Marca','Modelo',
+                    'N° Serie','N° Interno','Calibración','Verificación',
+                    'N° Cert. Calibración','Última','Próxima','Estado','Responsable'];
+        foreach ($headers as $col => $h) {
+            $cell = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($col + 1) . '1';
+            $ws->setCellValue($cell, $h);
+        }
+        $ws->getStyle('A1:O1')->applyFromArray([
+            'font'      => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+            'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '0D2B5E']],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER,
+                            'vertical'   => Alignment::VERTICAL_CENTER],
+            'borders'   => ['allBorders' => ['borderStyle' => Border::BORDER_THIN,
+                                             'color'       => ['rgb' => 'FFFFFF']]],
+        ]);
+        $ws->getRowDimension(1)->setRowHeight(20);
+
+        // ── Datos ─────────────────────────────────────────────────────────────
+        foreach ($registros as $i => $p) {
+            $row = $i + 2;
+
+            $semaforo = 'Sin fecha';
+            if ($p->proxima) {
+                $dias = Carbon::today()->diffInDays($p->proxima, false);
+                $semaforo = $dias < 0 ? 'Vencido' : ($dias <= 30 ? 'Por vencer' : 'Vigente');
+            }
+
+            $ws->setCellValue("A{$row}", $i + 1);
+            $ws->setCellValue("B{$row}", $p->area?->descripcion ?? '—');
+            $ws->setCellValue("C{$row}", $p->tipo_certificado);
+            $ws->setCellValue("D{$row}", $p->descripcion);
+            $ws->setCellValue("E{$row}", $p->marca);
+            $ws->setCellValue("F{$row}", $p->modelo);
+            $ws->setCellValue("G{$row}", $p->serie);
+            $ws->setCellValue("H{$row}", $p->numero_interno);
+            $ws->setCellValue("I{$row}", $p->calibracion);
+            $ws->setCellValue("J{$row}", $p->verificacion);
+            $ws->setCellValue("K{$row}", $p->certificado_calibracion);
+            $ws->setCellValue("L{$row}", $p->ultima?->format('d-m-Y'));
+            $ws->setCellValue("M{$row}", $p->proxima?->format('d-m-Y'));
+            $ws->setCellValue("N{$row}", $semaforo);
+            $ws->setCellValue("O{$row}", $p->responsable);
+
+            $color = match($semaforo) {
+                'Vigente'    => 'DCFCE7',
+                'Por vencer' => 'FEF3C7',
+                default      => 'FEE2E2',
+            };
+            $ws->getStyle("N{$row}")->getFill()
+               ->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB($color);
+        }
+
+        // ── Ancho de columnas ─────────────────────────────────────────────────
+        foreach (['A'=>5,'B'=>20,'C'=>28,'D'=>34,'E'=>12,'F'=>12,'G'=>16,'H'=>10,
+                  'I'=>14,'J'=>14,'K'=>18,'L'=>13,'M'=>13,'N'=>13,'O'=>20] as $col => $w) {
+            $ws->getColumnDimension($col)->setWidth($w);
+        }
+
+        if ($registros->count() > 0) {
+            $ws->getStyle('A2:O' . ($registros->count() + 1))->applyFromArray([
+                'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN,
+                                               'color'       => ['rgb' => 'D1D5DB']]],
+            ]);
+        }
+
+        $filename = 'control_instrumentos_' . now()->format('Ymd_His') . '.xlsx';
+        $writer   = new Xlsx($spreadsheet);
+
+        return response()->streamDownload(function () use ($writer) {
+            $writer->save('php://output');
+        }, $filename, [
+            'Content-Type'  => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Cache-Control' => 'max-age=0',
+        ]);
     }
 
     // ── Importar Excel ───────────────────────────────────────────────────────
@@ -395,7 +529,7 @@ class ControlInstrumentosController extends Controller
 
     public function destroy(ProgramaVerificacion $programaVerificacion)
     {
-        if (! $this->tieneAccesoCI()) abort(403);
+        if (! $this->puedeGestionarCI()) abort(403);
 
         $programaVerificacion->delete();
 

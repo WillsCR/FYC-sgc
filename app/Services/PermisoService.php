@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Session;
 
 class PermisoService
 {
-    private const ACCIONES_VALIDAS = ['carga', 'descarga', 'crear', 'eliminar', 'editar'];
+    private const ACCIONES_VALIDAS = ['ver', 'carga', 'descarga', 'crear', 'eliminar', 'editar'];
     private const RECURSOS_VALIDOS = ['global', 'carpeta'];
 
     /**

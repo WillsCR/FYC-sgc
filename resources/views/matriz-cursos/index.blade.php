@@ -311,6 +311,13 @@
             <i class="fa-solid fa-file-excel"></i> Importar Excel
         </button>
         @endif
+        <a href="{{ route('matriz-cursos.exportar') }}{{ request()->getQueryString() ? '?' . request()->getQueryString() : '' }}"
+           class="btn-mc btn-mc-green">
+            <i class="fa-solid fa-file-excel"></i> Exportar Excel
+        </a>
+        <a href="{{ route('carpetas.show', 5) }}" class="btn-mc btn-mc-navy" style="background:#6b7280">
+            <i class="fa-solid fa-arrow-left"></i> Volver
+        </a>
         <a href="{{ route('panel') }}" class="btn-mc btn-mc-navy" style="background:#374151">
             <i class="fa-solid fa-house"></i> Panel Principal
         </a>
@@ -354,8 +361,10 @@
         <i class="fa-solid fa-filter"></i>
     </button>
     @if($puedeGestionar)
-    <button type="button" class="btn-mc-icon btn-mc-add" style="border-radius:50%;width:30px;height:30px;margin-left:4px"
-            onclick="abrirModalNuevoTrabajador()" title="Agregar trabajador">+</button>
+    <button type="button" class="btn-mc btn-mc-navy" style="height:30px;padding:0 12px;background:#0D2B5E"
+            onclick="abrirModalNuevoTrabajador()">
+        <i class="fa-solid fa-plus"></i> Nuevo Trabajador
+    </button>
     @endif
 </div>
 </form>

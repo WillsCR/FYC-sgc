@@ -9,12 +9,27 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Border;
 
 class MatrizCursosController extends Controller
 {
     private const MC_CARPETA_ID = 99; // sgc_carpetas3 id para Matriz Cursos
 
+    /** Puede ver (solo lectura o acceso completo). */
     private function tieneAcceso(): bool
+    {
+        $u = PermisoService::usuarioActual();
+        return $u && ($u->esAdmin()
+            || PermisoService::can('ver',   'carpeta', self::MC_CARPETA_ID)
+            || PermisoService::can('carga', 'carpeta', self::MC_CARPETA_ID));
+    }
+
+    /** Puede gestionar (crear, editar, eliminar). */
+    private function puedeGestionar(): bool
     {
         $u = PermisoService::usuarioActual();
         return $u && ($u->esAdmin() || PermisoService::can('carga', 'carpeta', self::MC_CARPETA_ID));
@@ -32,7 +47,7 @@ class MatrizCursosController extends Controller
         if (! $this->tieneAcceso()) abort(403);
 
         $usuario        = PermisoService::usuarioActual();
-        $puedeGestionar = $this->tieneAcceso();
+        $puedeGestionar = $this->puedeGestionar();
 
         $query = MatrizTrabajador::with('cursos');
 
@@ -56,7 +71,7 @@ class MatrizCursosController extends Controller
 
     public function storeTrabajador(Request $request)
     {
-        if (! $this->tieneAcceso()) abort(response()->json(['error' => 'Sin permiso'], 403));
+        if (! $this->puedeGestionar()) abort(response()->json(['error' => 'Sin permiso'], 403));
 
         $request->validate([
             'nombres'   => 'required|string|max:200',
@@ -76,7 +91,7 @@ class MatrizCursosController extends Controller
 
     public function updateTrabajador(Request $request, MatrizTrabajador $trabajador)
     {
-        if (! $this->tieneAcceso()) abort(response()->json(['error' => 'Sin permiso'], 403));
+        if (! $this->puedeGestionar()) abort(response()->json(['error' => 'Sin permiso'], 403));
 
         $request->validate([
             'nombres'   => 'required|string|max:200',
@@ -96,7 +111,7 @@ class MatrizCursosController extends Controller
 
     public function destroyTrabajador(MatrizTrabajador $trabajador)
     {
-        if (! $this->tieneAcceso()) abort(response()->json(['error' => 'Sin permiso'], 403));
+        if (! $this->puedeGestionar()) abort(response()->json(['error' => 'Sin permiso'], 403));
 
         // Eliminar archivos de cursos
         foreach ($trabajador->cursos as $curso) {
@@ -138,7 +153,7 @@ class MatrizCursosController extends Controller
 
     public function storeCurso(Request $request, MatrizTrabajador $trabajador)
     {
-        if (! $this->tieneAcceso()) abort(response()->json(['error' => 'Sin permiso'], 403));
+        if (! $this->puedeGestionar()) abort(response()->json(['error' => 'Sin permiso'], 403));
 
         $request->validate(['curso' => 'required|string|max:300']);
 
@@ -160,7 +175,7 @@ class MatrizCursosController extends Controller
 
     public function updateCurso(Request $request, MatrizCurso $curso)
     {
-        if (! $this->tieneAcceso()) abort(response()->json(['error' => 'Sin permiso'], 403));
+        if (! $this->puedeGestionar()) abort(response()->json(['error' => 'Sin permiso'], 403));
 
         $request->validate(['curso' => 'required|string|max:300']);
 
@@ -185,7 +200,7 @@ class MatrizCursosController extends Controller
 
     public function destroyCurso(MatrizCurso $curso)
     {
-        if (! $this->tieneAcceso()) abort(response()->json(['error' => 'Sin permiso'], 403));
+        if (! $this->puedeGestionar()) abort(response()->json(['error' => 'Sin permiso'], 403));
 
         if ($curso->archivo_ruta && Storage::disk('local')->exists($curso->archivo_ruta)) {
             Storage::disk('local')->delete($curso->archivo_ruta);
@@ -203,11 +218,123 @@ class MatrizCursosController extends Controller
         return Storage::disk('local')->download($curso->archivo_ruta, $curso->archivo_nombre);
     }
 
+    // ── EXPORTAR EXCEL ────────────────────────────────────────────────────────
+
+    public function exportar(Request $request)
+    {
+        if (! $this->tieneAcceso()) abort(403);
+
+        $query = MatrizTrabajador::with('cursos');
+        if ($s = $request->input('nombres'))    $query->where('nombres',   'like', "%{$s}%");
+        if ($s = $request->input('apellidos'))  $query->where('apellidos', 'like', "%{$s}%");
+        if ($s = $request->input('rut'))        $query->where('rut',       'like', "%{$s}%");
+        if ($s = $request->input('cargo'))      $query->where('cargo',     'like', "%{$s}%");
+        if ($s = $request->input('contrato'))   $query->where('contrato',  'like', "%{$s}%");
+        if ($s = $request->input('trabajador_id')) $query->where('id', $s);
+
+        $trabajadores = $query->orderBy('apellidos')->orderBy('nombres')->get();
+
+        $spreadsheet = new Spreadsheet();
+        $ws = $spreadsheet->getActiveSheet();
+        $ws->setTitle('Matriz Cursos');
+
+        // ── Cabecera ──────────────────────────────────────────────────────────
+        $headers = ['NOMBRES','APELLIDOS','RUT','CARGO','CONTRATO',
+                    'CURSO','ENTIDAD ACREDITADORA','FECHA REALIZACIÓN',
+                    'FECHA VENCIMIENTO','CORREO AVISO','ESTADO'];
+        foreach ($headers as $col => $h) {
+            $cell = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($col + 1) . '1';
+            $ws->setCellValue($cell, $h);
+        }
+        $ws->getStyle('A1:K1')->applyFromArray([
+            'font'      => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+            'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '0D2B5E']],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER,
+                            'vertical'   => Alignment::VERTICAL_CENTER],
+            'borders'   => ['allBorders' => ['borderStyle' => Border::BORDER_THIN,
+                                             'color'       => ['rgb' => 'FFFFFF']]],
+        ]);
+        $ws->getRowDimension(1)->setRowHeight(20);
+
+        // ── Datos ─────────────────────────────────────────────────────────────
+        $row = 2;
+        foreach ($trabajadores as $t) {
+            $cursos = $t->cursos;
+            if ($cursos->isEmpty()) {
+                // Trabajador sin cursos — una fila vacía
+                $ws->setCellValue("A{$row}", $t->nombres);
+                $ws->setCellValue("B{$row}", $t->apellidos);
+                $ws->setCellValue("C{$row}", $t->rut);
+                $ws->setCellValue("D{$row}", $t->cargo);
+                $ws->setCellValue("E{$row}", $t->contrato);
+                $ws->setCellValue("F{$row}", 'Sin cursos registrados');
+                $row++;
+                continue;
+            }
+
+            foreach ($cursos as $c) {
+                $semaforo = $c->semaforo;
+                $estadoTexto = match($semaforo) {
+                    'verde'   => 'Vigente',
+                    'naranja' => 'Por vencer',
+                    'rojo'    => 'Vencido',
+                    default   => '—',
+                };
+
+                $ws->setCellValue("A{$row}", $t->nombres);
+                $ws->setCellValue("B{$row}", $t->apellidos);
+                $ws->setCellValue("C{$row}", $t->rut);
+                $ws->setCellValue("D{$row}", $t->cargo);
+                $ws->setCellValue("E{$row}", $t->contrato);
+                $ws->setCellValue("F{$row}", $c->curso);
+                $ws->setCellValue("G{$row}", $c->entidad_acreditadora);
+                $ws->setCellValue("H{$row}", $c->fecha_realizacion?->format('d-m-Y'));
+                $ws->setCellValue("I{$row}", $c->fecha_vencimiento?->format('d-m-Y'));
+                $ws->setCellValue("J{$row}", $c->correo_aviso);
+                $ws->setCellValue("K{$row}", $estadoTexto);
+
+                $color = match($semaforo) {
+                    'verde'   => 'DCFCE7',
+                    'naranja' => 'FEF3C7',
+                    'rojo'    => 'FEE2E2',
+                    default   => 'F3F4F6',
+                };
+                $ws->getStyle("K{$row}")->getFill()
+                   ->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB($color);
+
+                $row++;
+            }
+        }
+
+        // ── Ancho columnas ────────────────────────────────────────────────────
+        foreach (['A'=>18,'B'=>18,'C'=>14,'D'=>22,'E'=>22,
+                  'F'=>34,'G'=>22,'H'=>16,'I'=>16,'J'=>26,'K'=>13] as $col => $w) {
+            $ws->getColumnDimension($col)->setWidth($w);
+        }
+
+        if ($row > 2) {
+            $ws->getStyle("A2:K" . ($row - 1))->applyFromArray([
+                'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN,
+                                               'color'       => ['rgb' => 'D1D5DB']]],
+            ]);
+        }
+
+        $filename = 'matriz_cursos_' . now()->format('Ymd_His') . '.xlsx';
+        $writer   = new Xlsx($spreadsheet);
+
+        return response()->streamDownload(function () use ($writer) {
+            $writer->save('php://output');
+        }, $filename, [
+            'Content-Type'  => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Cache-Control' => 'max-age=0',
+        ]);
+    }
+
     // ── IMPORTAR EXCEL ────────────────────────────────────────────────────────
 
     public function importar(Request $request)
     {
-        if (! $this->tieneAcceso()) abort(response()->json(['error' => 'Sin permiso'], 403));
+        if (! $this->puedeGestionar()) abort(response()->json(['error' => 'Sin permiso'], 403));
 
         $request->validate(['archivo_excel' => 'required|file|mimes:xlsx,xls']);
 

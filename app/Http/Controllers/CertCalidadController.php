@@ -78,6 +78,7 @@ class CertCalidadController extends Controller
             'marca'                => $request->marca                ?: null,
             'modelo'               => $request->modelo               ?: null,
             'vencimiento'          => $request->vencimiento          ?: null,
+            'correo_aviso'         => $request->correo_aviso         ?: null,
             'observaciones'        => $request->observaciones        ?: null,
         ]);
 
@@ -96,6 +97,9 @@ class CertCalidadController extends Controller
 
         $request->validate(['descripcion' => 'required|string|max:400']);
 
+        $nuevoVencimiento = $request->vencimiento ?: null;
+        $resetAviso = $nuevoVencimiento && $cert->vencimiento?->format('Y-m-d') !== $nuevoVencimiento;
+
         $cert->update([
             'numero'               => $request->numero               ?: null,
             'contrato'             => $request->contrato             ?: null,
@@ -106,8 +110,11 @@ class CertCalidadController extends Controller
             'procedimiento_asociado' => $request->procedimiento_asociado ?: null,
             'marca'                => $request->marca                ?: null,
             'modelo'               => $request->modelo               ?: null,
-            'vencimiento'          => $request->vencimiento          ?: null,
+            'vencimiento'          => $nuevoVencimiento,
+            'correo_aviso'         => $request->correo_aviso         ?: null,
             'observaciones'        => $request->observaciones        ?: null,
+            // Resetear flag si la fecha de vencimiento cambió (certificado renovado)
+            'aviso_30d_enviado'    => $resetAviso ? false : $cert->aviso_30d_enviado,
         ]);
 
         if ($request->hasFile('archivo')) {
@@ -251,6 +258,7 @@ class CertCalidadController extends Controller
             'marca'                => $cert->marca,
             'modelo'               => $cert->modelo,
             'vencimiento'          => $cert->vencimiento?->format('Y-m-d'),
+            'correo_aviso'         => $cert->correo_aviso,
             'observaciones'        => $cert->observaciones,
             'archivo_nombre'       => $cert->archivo_nombre,
             'semaforo'             => $cert->semaforo,

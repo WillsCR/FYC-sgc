@@ -12,3 +12,6 @@ Artisan::command('inspire', function () {
 // Ejecuta cada día a las 08:00 AM y envía correos a responsables de
 // certificados que vencen dentro de los próximos 30 días.
 Schedule::command('ci:avisos-vencimiento')->dailyAt('08:00');
+
+// ── Avisos de vencimiento Certificados de Calidad ──────────────────────────
+Schedule::command('cc:avisos-vencimiento')->dailyAt('08:05');

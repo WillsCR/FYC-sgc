@@ -376,9 +376,15 @@
                         <label for="f-critico">Es crítico</label>
                     </div>
                 </div>
-                <div class="cc-form-group" style="grid-column:span 2">
+                <div class="cc-form-group">
                     <label>Fecha de Vencimiento</label>
                     <input type="date" id="f-vencimiento">
+                </div>
+                <div class="cc-form-group">
+                    <label>Correo aviso vencimiento</label>
+                    <input type="email" id="f-correo-aviso" placeholder="correo@ejemplo.com"
+                           style="width:100%;box-sizing:border-box">
+                    <span style="font-size:.7rem;color:#6b7280">Se enviará un aviso 30 días antes del vencimiento.</span>
                 </div>
             </div>
 
@@ -506,7 +512,7 @@ function abrirModalNuevo() {
     document.getElementById('form-id').value = '';
     document.getElementById('modal-form-titulo').innerHTML = '<i class="fa-solid fa-plus" style="margin-right:6px"></i>Nuevo Certificado';
     document.getElementById('btn-guardar').innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Guardar';
-    ['f-numero','f-descripcion','f-contrato','f-tipo','f-marca','f-modelo','f-procedimiento','f-observaciones'].forEach(id => {
+    ['f-numero','f-descripcion','f-contrato','f-tipo','f-marca','f-modelo','f-procedimiento','f-observaciones','f-correo-aviso'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.value = '';
     });
@@ -532,7 +538,8 @@ async function abrirModalEditar(id) {
     document.getElementById('f-tipo').value         = data.tipo_certificado || '';
     document.getElementById('f-marca').value        = data.marca        || '';
     document.getElementById('f-modelo').value       = data.modelo       || '';
-    document.getElementById('f-vencimiento').value  = data.vencimiento  || '';
+    document.getElementById('f-vencimiento').value   = data.vencimiento  || '';
+    document.getElementById('f-correo-aviso').value  = data.correo_aviso || '';
     document.getElementById('f-procedimiento').value = data.procedimiento_asociado || '';
     document.getElementById('f-observaciones').value = data.observaciones || '';
     document.getElementById('f-aplica').checked     = !!data.aplica;
@@ -561,6 +568,7 @@ async function guardarRegistro() {
     fd.append('marca',                document.getElementById('f-marca').value.trim());
     fd.append('modelo',               document.getElementById('f-modelo').value.trim());
     fd.append('vencimiento',          document.getElementById('f-vencimiento').value);
+    fd.append('correo_aviso',         document.getElementById('f-correo-aviso').value.trim());
     fd.append('procedimiento_asociado', document.getElementById('f-procedimiento').value.trim());
     fd.append('observaciones',        document.getElementById('f-observaciones').value.trim());
     fd.append('aplica',               document.getElementById('f-aplica').checked ? '1' : '0');

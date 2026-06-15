@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aviso de vencimiento</title>
+<style>
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f4f6f9; margin: 0; padding: 0; color: #1e293b; }
+  .wrap { max-width: 600px; margin: 32px auto; background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,.1); }
+  .header { background: #0D2B5E; padding: 28px 32px; text-align: center; }
+  .header h1 { color: #fff; font-size: 1.15rem; margin: 12px 0 4px; }
+  .header p  { color: rgba(255,255,255,.7); font-size: .82rem; margin: 0; }
+  .alert-bar { background: #FEF3C7; border-left: 5px solid #F59E0B; padding: 14px 20px; display: flex; align-items: center; gap: 12px; }
+  .alert-bar .icon { font-size: 1.6rem; }
+  .alert-bar .text { font-size: .88rem; color: #92400E; font-weight: 600; }
+  .body { padding: 28px 32px; }
+  .body p  { font-size: .9rem; color: #374151; line-height: 1.6; margin: 0 0 16px; }
+  .card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 18px 20px; margin-bottom: 20px; }
+  .card-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #e2e8f0; font-size: .85rem; }
+  .card-row:last-child { border-bottom: none; }
+  .card-row .label { color: #6b7280; font-weight: 600; }
+  .card-row .value { color: #1e293b; font-weight: 500; text-align: right; }
+  .dias-badge { display: inline-block; background: #FEF3C7; color: #92400E; border: 1px solid #F59E0B; border-radius: 6px; padding: 4px 12px; font-weight: 700; font-size: .9rem; margin: 4px 0 16px; }
+  .dias-badge.rojo { background: #FEE2E2; color: #991B1B; border-color: #EF4444; }
+  .footer { background: #f1f5f9; padding: 16px 32px; text-align: center; font-size: .75rem; color: #94a3b8; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  {{-- Header --}}
+  <div class="header">
+    <h1>⚠️ Aviso de Vencimiento de Certificado</h1>
+    <p>Certificados de Calidad — F&amp;C Chile SPA</p>
+  </div>
+
+  {{-- Alerta --}}
+  @php
+    $dias = \Carbon\Carbon::today()->diffInDays($cert->vencimiento, false);
+    $badgeClass = $dias <= 7 ? 'rojo' : '';
+  @endphp
+  <div class="alert-bar">
+    <span class="icon">🔔</span>
+    <span class="text">
+      El certificado vence en <strong>{{ $dias }} día{{ $dias !== 1 ? 's' : '' }}</strong>.
+      Se requiere acción antes del <strong>{{ $cert->vencimiento->format('d-m-Y') }}</strong>.
+    </span>
+  </div>
+
+  {{-- Cuerpo --}}
+  <div class="body">
+    <p>Estimado/a <strong>Responsable</strong>,</p>
+    <p>
+      Le informamos que el equipo/herramienta indicado a continuación tiene su certificado
+      próximo a vencer. Por favor, coordine su renovación con anticipación para mantener
+      la conformidad del sistema de gestión.
+    </p>
+
+    <span class="dias-badge {{ $badgeClass }}">
+      Vence en {{ $dias }} día{{ $dias !== 1 ? 's' : '' }} — {{ $cert->vencimiento->format('d \d\e F, Y') }}
+    </span>
+
+    <div class="card">
+      <div class="card-row">
+        <span class="label">Equipo / Herramienta</span>
+        <span class="value">{{ $cert->descripcion }}</span>
+      </div>
+      @if($cert->tipo_certificado)
+      <div class="card-row">
+        <span class="label">Tipo de Certificado</span>
+        <span class="value">{{ $cert->tipo_certificado }}</span>
+      </div>
+      @endif
+      @if($cert->marca || $cert->modelo)
+      <div class="card-row">
+        <span class="label">Marca / Modelo</span>
+        <span class="value">{{ trim($cert->marca . ' ' . $cert->modelo) }}</span>
+      </div>
+      @endif
+      @if($cert->contrato)
+      <div class="card-row">
+        <span class="label">Contrato</span>
+        <span class="value">{{ $cert->contrato }}</span>
+      </div>
+      @endif
+      @if($cert->procedimiento_asociado)
+      <div class="card-row">
+        <span class="label">Procedimiento Asociado</span>
+        <span class="value">{{ $cert->procedimiento_asociado }}</span>
+      </div>
+      @endif
+      <div class="card-row">
+        <span class="label">Fecha de Vencimiento</span>
+        <span class="value" style="color:#D97706;font-weight:700">{{ $cert->vencimiento->format('d-m-Y') }}</span>
+      </div>
+      <div class="card-row">
+        <span class="label">Estado actual</span>
+        <span class="value">{{ ucfirst($cert->semaforo) }}</span>
+      </div>
+    </div>
+
+    <p style="font-size:.82rem;color:#6b7280;margin:0">
+      Este aviso fue generado automáticamente por el sistema SGC de F&amp;C Chile SPA.
+      Por favor, no responda este correo directamente.
+    </p>
+  </div>
+
+  <div class="footer">
+    © {{ date('Y') }} F&amp;C Chile SPA · Ingeniería &amp; Construcción<br>
+    Sistema de Gestión y Control Transversal
+  </div>
+</div>
+</body>
+</html>

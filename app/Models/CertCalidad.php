@@ -12,13 +12,15 @@ class CertCalidad extends Model
         'numero', 'contrato', 'descripcion', 'tipo_certificado',
         'aplica', 'critico', 'procedimiento_asociado',
         'marca', 'modelo', 'vencimiento', 'observaciones',
+        'correo_aviso', 'aviso_30d_enviado',
         'archivo_nombre', 'archivo_ruta', 'archivo_mime',
     ];
 
     protected $casts = [
-        'aplica'    => 'boolean',
-        'critico'   => 'boolean',
-        'vencimiento' => 'date',
+        'aplica'            => 'boolean',
+        'critico'           => 'boolean',
+        'vencimiento'       => 'date',
+        'aviso_30d_enviado' => 'boolean',
     ];
 
     /**

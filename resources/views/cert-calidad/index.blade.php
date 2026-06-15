@@ -166,14 +166,23 @@
         LISTA MAESTRA — CERTIFICADOS DE CALIDAD
     </div>
     <div class="cc-header-btns">
-        @if($puedeGestionar)
+        @if($usuario->esAdmin())
         <button class="btn-cc btn-cc-green" onclick="abrirModal('modal-importar')">
             <i class="fa-solid fa-file-excel"></i> Importar Excel
         </button>
-        <button class="btn-cc btn-cc-blue" onclick="abrirModalNuevo()">
+        @endif
+        @if($puedeGestionar)
+        <button class="btn-cc" style="background:#0D2B5E;color:#fff" onclick="abrirModalNuevo()">
             <i class="fa-solid fa-plus"></i> Nuevo Registro
         </button>
         @endif
+        <a href="{{ route('cert-calidad.exportar') }}{{ request()->getQueryString() ? '?' . request()->getQueryString() : '' }}"
+           class="btn-cc" style="background:#16a34a;color:#fff">
+            <i class="fa-solid fa-file-excel"></i> Exportar Excel
+        </a>
+        <a href="{{ route('carpetas.show', 1) }}" class="btn-cc btn-cc-gray">
+            <i class="fa-solid fa-arrow-left"></i> Volver
+        </a>
         <a href="{{ route('panel') }}" class="btn-cc btn-cc-navy" style="background:#374151">
             <i class="fa-solid fa-house"></i> Panel Principal
         </a>
@@ -184,10 +193,11 @@
 <form id="form-filtros" method="GET" action="{{ route('cert-calidad.index') }}">
 <div class="cc-filters">
     <span class="cc-filter-label">Filtrar:</span>
-    <input type="text" name="descripcion" placeholder="Descripción" value="{{ request('descripcion') }}">
-    <input type="text" name="tipo"        placeholder="Tipo certificado" value="{{ request('tipo') }}" style="width:140px">
-    <input type="text" name="contrato"    placeholder="Contrato" value="{{ request('contrato') }}" style="width:120px">
-    <input type="text" name="marca"       placeholder="Marca" value="{{ request('marca') }}" style="width:100px">
+    <input type="text" name="descripcion"   placeholder="Descripción" value="{{ request('descripcion') }}">
+    <input type="text" name="tipo"          placeholder="Tipo certificado" value="{{ request('tipo') }}" style="width:140px">
+    <input type="text" name="contrato"      placeholder="Contrato" value="{{ request('contrato') }}" style="width:120px">
+    <input type="text" name="marca"         placeholder="Marca" value="{{ request('marca') }}" style="width:100px">
+    <input type="text" name="procedimiento" placeholder="Procedimiento asociado" value="{{ request('procedimiento') }}" style="width:180px">
     <label class="cc-chk-label">
         <input type="checkbox" name="solo_aplica"  value="1" {{ request('solo_aplica')  ? 'checked' : '' }}>
         Solo Aplica
@@ -407,7 +417,8 @@
     </div>
 </div>
 
-{{-- Modal: Importar Excel --}}
+{{-- Modal: Importar Excel (solo admins) --}}
+@if($usuario->esAdmin())
 <div id="modal-importar" class="cc-modal-overlay"
      onclick="if(event.target===this)cerrarModal('modal-importar')">
     <div class="cc-modal" style="max-width:500px">
@@ -440,6 +451,7 @@
         </div>
     </div>
 </div>
+@endif
 
 {{-- Modal: Confirmar eliminar --}}
 <div id="modal-confirm" class="cc-modal-overlay"

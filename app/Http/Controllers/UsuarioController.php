@@ -292,31 +292,37 @@ class UsuarioController extends Controller
 
     private function guardarPermisosCarpetas(int $usuarioId, string $correo, string $clave, array $carpetas): void
     {
-        // Carpetas con permiso unificado: un solo flag controla TODO el acceso.
-        // Añade aquí cualquier otro módulo que quieras tratar igual.
-        $carpetasPermUnico = [
-            9, // No Conformidades — un solo toggle "Acceso" → todos los flags a 1
-        ];
+        // Módulos especiales: 3 niveles → Sin acceso / Solo visualización / Acceso completo
+        $carpetasPermUnico = [9, 11, 98, 99]; // NC, Cert. Calidad, CI, Matriz Cursos
 
         foreach ($carpetas as $carpetaId => $perms) {
             $carpetaId = (int) $carpetaId;
 
-            // ── Carpeta con permiso único (ej. No Conformidades) ──────────────
+            // ── Módulos especiales: 2 opciones ───────────────────────────────
+            // nivel_acceso = 'ver' | 'completo' | 'ninguno' / ausente
             if (in_array($carpetaId, $carpetasPermUnico, true)) {
-                // El formulario envía solo carpetas[9][carga]; si está marcado = acceso completo
-                if (empty($perms['carga'])) continue;
+                $nivel    = trim($perms['nivel_acceso'] ?? 'ninguno');
+                $cargaVal = $nivel === 'completo' ? 1 : 0;
+
+                // Sin acceso: borrar registro si existe
+                if (! in_array($nivel, ['ver', 'completo'], true)) {
+                    CarpetasPermisos::where('id_carpeta', $carpetaId)
+                        ->where('id_usuario', $usuarioId)->delete();
+                    continue;
+                }
 
                 CarpetasPermisos::updateOrCreate(
                     ['id_carpeta' => $carpetaId, 'id_usuario' => $usuarioId],
                     [
                         'correo'       => '',
                         'clave'        => '',
-                        'carga'        => 1,
-                        'descarga'     => 1,
-                        'crear'        => 1,
+                        'ver'          => 1,       // siempre 1 para ambas opciones
+                        'carga'        => $cargaVal,
+                        'descarga'     => $cargaVal,
+                        'crear'        => $cargaVal,
                         'ocultar_raiz' => 0,
-                        'eliminar'     => 1,
-                        'editar'       => 1,
+                        'eliminar'     => $cargaVal,
+                        'editar'       => $cargaVal,
                     ]
                 );
                 continue;

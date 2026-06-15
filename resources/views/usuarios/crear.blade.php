@@ -434,28 +434,51 @@
                             @endphp
 
                             @if(in_array($carpeta->id, $carpetasPermUnico))
-                            {{-- ── Permiso único (acceso total o ninguno) ─────── --}}
-                            @php $isCheckedUnico = old("carpetas.{$carpeta->id}.carga", $perm2 ? (bool)$perm2->carga : false); @endphp
-                            <div style="display:flex;align-items:center;gap:14px;padding:6px 0">
-                                <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:.83rem;color:var(--text-primary);font-weight:500">
-                                    <input type="checkbox"
-                                           name="carpetas[{{ $carpeta->id }}][carga]"
-                                           value="1"
-                                           id="perm-unico-{{ $carpeta->id }}"
-                                           {{ $isCheckedUnico ? 'checked' : '' }}
-                                           style="width:18px;height:18px;accent-color:var(--navy);cursor:pointer"
-                                           onchange="document.getElementById('label-perm-unico-{{ $carpeta->id }}').classList.toggle('activo', this.checked)">
-                                    <span>🔑 Acceso completo</span>
-                                    <span id="label-perm-unico-{{ $carpeta->id }}"
-                                          class="{{ $isCheckedUnico ? 'activo' : '' }}"
-                                          style="font-size:.7rem;padding:2px 8px;border-radius:10px;background:{{ $isCheckedUnico ? '#DCFCE7' : '#F1F5F9' }};color:{{ $isCheckedUnico ? '#16A34A' : 'var(--text-muted)' }};font-weight:600;transition:all .12s">
-                                        {{ $isCheckedUnico ? 'Con acceso' : 'Sin acceso' }}
-                                    </span>
-                                </label>
-                                <p style="font-size:.72rem;color:var(--text-muted);margin:0">
-                                    Permite ver, crear, editar, eliminar y exportar registros.
-                                </p>
+                            {{-- ── 2 opciones exclusivas + sin acceso implícito ── --}}
+                            @php
+                                $hasCarga    = $perm2 ? (bool)$perm2->carga : false;
+                                $hasVer      = $perm2 ? (bool)($perm2->ver ?? false) : false;
+                                $nivelActual = $hasCarga ? 'completo' : ($hasVer ? 'ver' : 'ninguno');
+                            @endphp
+                            <input type="hidden"
+                                   id="nivel-{{ $carpeta->id }}"
+                                   name="carpetas[{{ $carpeta->id }}][nivel_acceso]"
+                                   value="{{ $nivelActual }}">
+                            <div style="display:flex;gap:10px;padding:8px 0;flex-wrap:wrap">
+                                <div id="opt-ver-{{ $carpeta->id }}"
+                                     onclick="toggleNivelPerm({{ $carpeta->id }},'ver')"
+                                     style="flex:1;min-width:180px;cursor:pointer;padding:10px 14px;border-radius:8px;
+                                            border:2px solid {{ $nivelActual==='ver' ? '#1d4ed8' : 'var(--border)' }};
+                                            background:{{ $nivelActual==='ver' ? '#EFF6FF' : '#fff' }};
+                                            transition:all .15s;user-select:none">
+                                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">
+                                        <span style="font-size:1rem">👁</span>
+                                        <span style="font-size:.82rem;font-weight:700;color:{{ $nivelActual==='ver' ? '#1d4ed8' : 'var(--text-primary)' }}">Solo visualización</span>
+                                        @if($nivelActual==='ver')
+                                        <span style="margin-left:auto;font-size:.68rem;background:#1d4ed8;color:#fff;padding:1px 7px;border-radius:10px;font-weight:600">Activo</span>
+                                        @endif
+                                    </div>
+                                    <div style="font-size:.71rem;color:var(--text-muted)">Puede ver y exportar registros. No puede crear, editar ni eliminar.</div>
+                                </div>
+                                <div id="opt-completo-{{ $carpeta->id }}"
+                                     onclick="toggleNivelPerm({{ $carpeta->id }},'completo')"
+                                     style="flex:1;min-width:180px;cursor:pointer;padding:10px 14px;border-radius:8px;
+                                            border:2px solid {{ $nivelActual==='completo' ? '#16A34A' : 'var(--border)' }};
+                                            background:{{ $nivelActual==='completo' ? '#DCFCE7' : '#fff' }};
+                                            transition:all .15s;user-select:none">
+                                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">
+                                        <span style="font-size:1rem">🔑</span>
+                                        <span style="font-size:.82rem;font-weight:700;color:{{ $nivelActual==='completo' ? '#16A34A' : 'var(--text-primary)' }}">Acceso completo</span>
+                                        @if($nivelActual==='completo')
+                                        <span style="margin-left:auto;font-size:.68rem;background:#16A34A;color:#fff;padding:1px 7px;border-radius:10px;font-weight:600">Activo</span>
+                                        @endif
+                                    </div>
+                                    <div style="font-size:.71rem;color:var(--text-muted)">Puede ver, crear, editar, eliminar y exportar. Importar solo admins.</div>
+                                </div>
                             </div>
+                            @if($nivelActual==='ninguno')
+                            <p style="font-size:.72rem;color:var(--text-muted);margin:2px 0 6px;font-style:italic">Sin acceso — selecciona una opción para otorgar permisos.</p>
+                            @endif
                             @else
                             {{-- ── Permisos granulares (comportamiento normal) ── --}}
                             <div class="permisos-checks">
@@ -551,6 +574,40 @@ function toggleCarpeta(id) {
     var body  = document.getElementById('perm-' + id);
     var arrow = document.getElementById('arrow-' + id);
     arrow.style.transform = body.classList.toggle('visible') ? 'rotate(90deg)' : '';
+}
+
+function toggleNivelPerm(carpetaId, nivel) {
+    const hidden = document.getElementById(`nivel-${carpetaId}`);
+    const nuevoNivel = hidden.value === nivel ? 'ninguno' : nivel;
+    hidden.value = nuevoNivel;
+
+    const cfg = {
+        ver:      { border: '#1d4ed8', bg: '#EFF6FF', txtColor: '#1d4ed8', badgeBg: '#1d4ed8' },
+        completo: { border: '#16A34A', bg: '#DCFCE7', txtColor: '#16A34A', badgeBg: '#16A34A' },
+    };
+
+    ['ver', 'completo'].forEach(op => {
+        const card  = document.getElementById(`opt-${op}-${carpetaId}`);
+        const title = card?.querySelector('span:nth-child(2)');
+        let badge   = card?.querySelector('.nivel-badge');
+        const active = nuevoNivel === op;
+        const c = cfg[op];
+
+        if (!card) return;
+        card.style.borderColor = active ? c.border : 'var(--border)';
+        card.style.background  = active ? c.bg     : '#fff';
+        if (title) title.style.color = active ? c.txtColor : 'var(--text-primary)';
+
+        if (active && !badge) {
+            badge = document.createElement('span');
+            badge.className = 'nivel-badge';
+            badge.style.cssText = `margin-left:auto;font-size:.68rem;background:${c.badgeBg};color:#fff;padding:1px 7px;border-radius:10px;font-weight:600`;
+            badge.textContent = 'Activo';
+            card.querySelector('div').appendChild(badge);
+        } else if (!active && badge) {
+            badge.remove();
+        }
+    });
 }
 </script>
 @endpush

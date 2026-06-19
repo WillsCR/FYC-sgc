@@ -505,7 +505,7 @@ function descargarPDF() {
         } catch (e) {
             console.error('Error capturando gráficos:', e);
             document.getElementById('spinner').classList.remove('visible');
-            alert('No se pudieron capturar los gráficos. Intenta nuevamente.');
+            showToast('⚠ No se pudieron capturar los gráficos. Intenta nuevamente.', 'warning');
         }
     }, 80);
 }

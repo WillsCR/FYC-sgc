@@ -7,7 +7,15 @@ use Illuminate\Database\Eloquent\Model;
 class MatrizTrabajador extends Model
 {
     protected $table    = 'sgc_matriz_trabajadores';
-    protected $fillable = ['nombres', 'apellidos', 'rut', 'cargo', 'contrato'];
+    protected $fillable = [
+        'nombres', 'apellidos', 'rut', 'cargo', 'contrato',
+        'nivel_estudios', 'especialidad',
+        'cert_titulo_nombre', 'cert_titulo_ruta', 'cert_titulo_mime',
+        'cv_nombre', 'cv_ruta', 'cv_mime',
+        'cumple',
+    ];
+
+    protected $casts = ['cumple' => 'boolean'];
 
     public function cursos()
     {

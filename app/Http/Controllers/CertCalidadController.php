@@ -272,10 +272,21 @@ class CertCalidadController extends Controller
         $u = PermisoService::usuarioActual();
         if (! $u || ! $u->esAdmin()) return response()->json(['error' => 'Solo los administradores pueden importar'], 403);
 
-        $request->validate(['archivo_excel' => 'required|file|mimes:xlsx,xls,xlsm']);
+        $request->validate(['archivo_excel' => 'required|file']);
+
+        $ext = strtolower($request->file('archivo_excel')->getClientOriginalExtension());
+        if (! in_array($ext, ['xlsx', 'xls', 'xlsm', 'xlsb'])) {
+            return response()->json(['error' => 'Formato no válido. Use .xlsx, .xls o .xlsm'], 422);
+        }
 
         try {
-            $spreadsheet = IOFactory::load($request->file('archivo_excel')->getPathname());
+            $filePath = $request->file('archivo_excel')->getPathname();
+
+            // XLSM es XLSX con macros: forzar reader Xlsx y deshabilitar macros.
+            $readerType = in_array($ext, ['xlsm', 'xlsb']) ? 'Xlsx' : IOFactory::identify($filePath);
+            $reader = IOFactory::createReader($readerType);
+            $reader->setReadDataOnly(true);
+            $spreadsheet = $reader->load($filePath);
 
             // Sólo procesamos la hoja "LM Certificados"
             $hojasObjetivo = ['lm certificados', 'certificados'];
@@ -346,8 +357,9 @@ class CertCalidadController extends Controller
                 'mensaje'    => "Importados {$importados} registros" . ($omitidos ? " ({$omitidos} omitidos por duplicado)" : '') . '.',
             ]);
 
-        } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()], 400);
+        } catch (\Throwable $e) {
+            \Log::error('CertCalidad::importar — ' . $e->getMessage(), ['archivo' => $ext ?? '']);
+            return response()->json(['success' => false, 'message' => 'Error al procesar el archivo: ' . $e->getMessage()], 500);
         }
     }
 

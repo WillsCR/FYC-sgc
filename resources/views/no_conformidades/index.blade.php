@@ -1396,7 +1396,7 @@ async function abrirModalEditar(id) {
    ELIMINAR DOC EXISTENTE (desde modal edición)
 ════════════════════════════════════════════════════════════════════════════ */
 async function eliminarDocExistente(docId) {
-    if (!confirm('¿Eliminar este archivo de evidencia?')) return;
+    sgcConfirm('¿Eliminar este archivo de evidencia?', async () => {
     try {
         const res = await window.sgcFetch(`${NC_DOC_BASE}/${docId}`, { method: 'DELETE' });
         if (!res.ok) { mostrarErr('No se pudo eliminar el archivo.'); return; }
@@ -1404,6 +1404,7 @@ async function eliminarDocExistente(docId) {
     } catch(e) {
         mostrarErr('Error de conexión.');
     }
+    });
 }
 
 /* ════════════════════════════════════════════════════════════════════════════
@@ -1496,19 +1497,20 @@ async function guardarNC() {
    ELIMINAR NC
 ════════════════════════════════════════════════════════════════════════════ */
 async function eliminarNC(id, num) {
-    if (!confirm(`¿Eliminar la No Conformidad N° ${num}?\n\nSe eliminarán también todas sus acciones y documentos asociados. Esta acción no se puede deshacer.`)) return;
-
-    try {
-        const res  = await window.sgcFetch(`${NC_BASE}/${id}`, { method: 'DELETE' });
-        const data = await res.json();
-
-        if (!res.ok) { mostrarErr(data.error || 'No se pudo eliminar.'); return; }
-
-        mostrarOk(data.mensaje || `NC N° ${num} eliminada.`);
-        setTimeout(() => location.reload(), 900);
-    } catch(e) {
-        mostrarErr('Error de conexión.');
-    }
+    sgcConfirm(
+        `¿Eliminar la No Conformidad N° <strong>${num}</strong>?<br><small style="color:#6b7280">Se eliminarán también todas sus acciones y documentos asociados. Esta acción no se puede deshacer.</small>`,
+        async () => {
+        try {
+            const res  = await window.sgcFetch(`${NC_BASE}/${id}`, { method: 'DELETE' });
+            const data = await res.json();
+            if (!res.ok) { mostrarErr(data.error || 'No se pudo eliminar.'); return; }
+            mostrarOk(data.mensaje || `NC N° ${num} eliminada.`);
+            setTimeout(() => location.reload(), 900);
+        } catch(e) {
+            mostrarErr('Error de conexión.');
+        }
+        }
+    );
 }
 
 /* ════════════════════════════════════════════════════════════════════════════

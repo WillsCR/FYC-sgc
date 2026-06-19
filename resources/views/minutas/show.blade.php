@@ -160,10 +160,10 @@
             </a>
             @endif
             @if($esAdmin)
-            <form method="POST" action="{{ route('minutas.destroy', $minuta->id) }}"
-                  onsubmit="return confirm('¿Eliminar esta minuta y todos sus compromisos?')">
+            <form id="form-del-minuta-show" method="POST" action="{{ route('minutas.destroy', $minuta->id) }}">
                 @csrf @method('DELETE')
-                <button type="submit" class="btn-accion btn-del">🗑️ Eliminar</button>
+                <button type="button" class="btn-accion btn-del"
+                    onclick="sgcConfirm('¿Eliminar esta minuta y todos sus compromisos?<br><small style=\'color:#6b7280\'>Esta acción no se puede deshacer.</small>', () => document.getElementById('form-del-minuta-show').submit())">🗑️ Eliminar</button>
             </form>
             @endif
         </div>

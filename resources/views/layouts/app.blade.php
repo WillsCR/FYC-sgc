@@ -96,6 +96,40 @@
     @yield('content')
 </main>
 
+{{-- ── Modal de confirmación global ─────────────────────────────────────────── --}}
+<div id="sgc-confirm-overlay" style="
+    display:none; position:fixed; inset:0; z-index:99999;
+    background:rgba(0,0,0,.5); align-items:center; justify-content:center; padding:20px;
+    font-family:'Inter',sans-serif;">
+  <div style="
+      background:#fff; border-radius:10px; max-width:440px; width:100%;
+      box-shadow:0 20px 60px rgba(0,0,0,.3); overflow:hidden; animation:sgcFadeIn .18s ease;">
+    <div id="sgc-confirm-header" style="
+        background:#1B3A6B; padding:16px 20px;
+        display:flex; align-items:center; gap:10px;">
+      <span id="sgc-confirm-icon" style="font-size:1.15rem; color:#fff"></span>
+      <span id="sgc-confirm-title" style="color:#fff; font-weight:700; font-size:.95rem"></span>
+    </div>
+    <div style="padding:20px 20px 8px">
+      <p id="sgc-confirm-msg" style="margin:0; color:#374151; font-size:.88rem; line-height:1.55"></p>
+    </div>
+    <div style="padding:12px 20px 18px; display:flex; justify-content:flex-end; gap:10px">
+      <button id="sgc-confirm-cancel" style="
+          height:36px; padding:0 18px; border:1px solid #d1d5db; border-radius:6px;
+          background:#fff; color:#374151; font-size:.83rem; font-weight:600; cursor:pointer">
+        Cancelar
+      </button>
+      <button id="sgc-confirm-ok" style="
+          height:36px; padding:0 18px; border:none; border-radius:6px;
+          font-size:.83rem; font-weight:700; cursor:pointer; color:#fff">
+      </button>
+    </div>
+  </div>
+</div>
+<style>
+@keyframes sgcFadeIn { from { opacity:0; transform:translateY(-12px); } to { opacity:1; transform:none; } }
+</style>
+
 @stack('scripts')
 <script>
     window.CSRF_TOKEN = '{{ csrf_token() }}';
@@ -107,6 +141,36 @@
         },
         ...options
     });
+
+    /**
+     * sgcConfirm(message, onConfirm, options)
+     * options: { title, icon, btnText, btnColor, danger }
+     */
+    window.sgcConfirm = function(message, onConfirm, opts = {}) {
+        const overlay  = document.getElementById('sgc-confirm-overlay');
+        const title    = document.getElementById('sgc-confirm-title');
+        const icon     = document.getElementById('sgc-confirm-icon');
+        const msg      = document.getElementById('sgc-confirm-msg');
+        const btnOk    = document.getElementById('sgc-confirm-ok');
+        const btnCan   = document.getElementById('sgc-confirm-cancel');
+        const header   = document.getElementById('sgc-confirm-header');
+
+        const isDanger   = opts.danger !== false;
+        title.textContent    = opts.title    || (isDanger ? 'Confirmar eliminación' : 'Confirmar acción');
+        icon.innerHTML       = opts.icon     || (isDanger ? '<i class="fa-solid fa-triangle-exclamation"></i>' : '<i class="fa-solid fa-circle-question"></i>');
+        msg.innerHTML        = message;
+        btnOk.textContent    = opts.btnText  || (isDanger ? 'Eliminar' : 'Confirmar');
+        btnOk.style.background = opts.btnColor || (isDanger ? '#dc2626' : '#1B3A6B');
+        header.style.background = isDanger ? '#1B3A6B' : '#1B3A6B';
+
+        overlay.style.display = 'flex';
+
+        const close = () => { overlay.style.display = 'none'; };
+
+        btnOk.onclick = () => { close(); onConfirm(); };
+        btnCan.onclick = close;
+        overlay.onclick = (e) => { if (e.target === overlay) close(); };
+    };
 </script>
 </body>
 </html>

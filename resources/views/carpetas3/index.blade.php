@@ -219,8 +219,7 @@
 
     // Eliminar archivo
     function eliminarArchivo(id) {
-        if (!confirm('¿Eliminar este archivo?')) return;
-        
+        sgcConfirm('¿Eliminar este archivo?<br><small style="color:#6b7280">Esta acción no se puede deshacer.</small>', () => {
         fetch(`/archivos3/${id}`, {
             method: 'DELETE',
             headers: {
@@ -229,16 +228,11 @@
         })
         .then(r => r.json())
         .then(data => {
-            if (data.ok) {
-                showToast('✓ Archivo eliminado correctamente', 'ok');
-                setTimeout(() => location.reload(), 800);
-            } else {
-                showToast('Error al eliminar: ' + (data.error || 'Intenta de nuevo'), 'err');
-            }
+            if (data.ok) { location.reload(); }
+            else { alert('Error: ' + data.error); }
         })
-        .catch(err => {
-            showToast('Error de conexión: ' + err.message, 'err');
-        });
+        .catch(err => alert('Error: ' + err.message));
+        }); // sgcConfirm
     }
 </script>
 @endsection

@@ -518,7 +518,7 @@ function agregarCompromiso() {
 function eliminarFila(btn, tbodyId) {
     const tbody = document.getElementById(tbodyId);
     if (tbody.querySelectorAll('tr').length <= 1) {
-        alert('Debe haber al menos una fila.');
+        showToast('⚠ Debe haber al menos una fila en la tabla', 'warning');
         return;
     }
     btn.closest('tr').remove();

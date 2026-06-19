@@ -932,16 +932,17 @@ async function guardarCursoEdit(cursoId, trabajadorId) {
 }
 
 // ── Eliminar curso ────────────────────────────────────────────────────────────
-async function eliminarCurso(cursoId, trabajadorId) {
-    if (!confirm('¿Eliminar este curso?')) return;
-    const res = await mcFetch(`${ROUTES.cursosBase}/${cursoId}`, { method: 'DELETE' });
-    const data = await res.json();
-    if (data.success) {
-        notif('ok', 'Curso eliminado');
-        abrirModalEditar(trabajadorId);
-    } else {
-        notif('err', 'Error al eliminar');
-    }
+function eliminarCurso(cursoId, trabajadorId) {
+    sgcConfirm('¿Eliminar este curso?', async () => {
+        const res = await mcFetch(`${ROUTES.cursosBase}/${cursoId}`, { method: 'DELETE' });
+        const data = await res.json();
+        if (data.success) {
+            notif('ok', 'Curso eliminado');
+            abrirModalEditar(trabajadorId);
+        } else {
+            notif('err', 'Error al eliminar');
+        }
+    });
 }
 
 // ── Eliminar trabajador ───────────────────────────────────────────────────────

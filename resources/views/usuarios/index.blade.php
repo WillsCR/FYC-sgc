@@ -179,10 +179,10 @@
                                 ✏️ Editar
                             </a>
                             @if($actual->esSuperAdmin() && $usr->id !== $actual->id && (int)$usr->id_perfil !== 1)
-                            <form method="POST" action="{{ route('usuarios.destroy', $usr->id) }}"
-                                  onsubmit="return confirm('¿Desactivar a {{ addslashes($usr->nombre ?? '') }}?')">
+                            <form id="form-del-usr-{{ $usr->id }}" method="POST" action="{{ route('usuarios.destroy', $usr->id) }}">
                                 @csrf @method('DELETE')
-                                <button type="submit" class="btn-deactivate">🚫</button>
+                                <button type="button" class="btn-deactivate"
+                                    onclick="sgcConfirm('¿Desactivar a <strong>{{ addslashes($usr->nombre ?? '') }}</strong>?', () => document.getElementById('form-del-usr-{{ $usr->id }}').submit(), {title:'Desactivar usuario', icon:'<i class=\'fa-solid fa-user-slash\'></i>', btnText:'Desactivar', btnColor:'#d97706', danger:false})">🚫</button>
                             </form>
                             @endif
                         </div>

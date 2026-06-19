@@ -385,8 +385,7 @@ document.getElementById('editar-area-nombre').addEventListener('keydown', functi
 
 /* ── Eliminar área ──────────────────────────────────────────────────────────── */
 async function eliminarArea(id, nombre) {
-    if (! confirm(`¿Eliminar el área "${nombre}"?\n\nSolo se puede eliminar si no tiene usuarios asignados.`)) return;
-
+    sgcConfirm(`¿Eliminar el área <strong>${nombre}</strong>?<br><small style="color:#6b7280">Solo se puede eliminar si no tiene usuarios asignados.</small>`, async () => {
     try {
         const res  = await window.sgcFetch(`${BASE_AREAS}/${id}`, { method: 'DELETE' });
         const data = await res.json();
@@ -402,6 +401,7 @@ async function eliminarArea(id, nombre) {
     } catch (e) {
         mostrarErr('Error de conexión. Intenta de nuevo.');
     }
+    }); // sgcConfirm
 }
 
 // Enter en input nueva área

@@ -349,11 +349,10 @@
                             @endif
 
                             @if($esAdmin)
-                            <form method="POST" action="{{ route('minutas.destroy', $m->id) }}"
-                                  onsubmit="return confirm('¿Eliminar esta minuta y todos sus compromisos?')">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit" class="btn-accion btn-del" title="Eliminar">🗑️</button>
+                            <form id="form-del-minuta-{{ $m->id }}" method="POST" action="{{ route('minutas.destroy', $m->id) }}">
+                                @csrf @method('DELETE')
+                                <button type="button" class="btn-accion btn-del" title="Eliminar"
+                                    onclick="sgcConfirm('¿Eliminar esta minuta y todos sus compromisos?<br><small style=\'color:#6b7280\'>Esta acción no se puede deshacer.</small>', () => document.getElementById('form-del-minuta-{{ $m->id }}').submit())">🗑️</button>
                             </form>
                             @endif
                         </div>

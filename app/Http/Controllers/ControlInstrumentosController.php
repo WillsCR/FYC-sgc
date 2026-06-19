@@ -340,10 +340,18 @@ class ControlInstrumentosController extends Controller
 
     public function importar(Request $request)
     {
-        $request->validate(['archivo_excel' => 'required|file|mimes:xlsx,xls']);
+        $request->validate(['archivo_excel' => 'required|file']);
+        $ext = strtolower($request->file('archivo_excel')->getClientOriginalExtension());
+        if (! in_array($ext, ['xlsx', 'xls', 'xlsm'])) {
+            return response()->json(['error' => 'Formato no válido. Use .xlsx, .xls o .xlsm'], 422);
+        }
 
         try {
-            $spreadsheet = IOFactory::load($request->file('archivo_excel')->getPathname());
+            $filePath = $request->file('archivo_excel')->getPathname();
+            $readerType = ($ext === 'xlsm') ? 'Xlsx' : IOFactory::identify($filePath);
+            $reader = IOFactory::createReader($readerType);
+            $reader->setReadDataOnly(true);
+            $spreadsheet = $reader->load($filePath);
 
             // Buscar la hoja "Seguimiento" (nombre exacto o parcial, sin distinción de mayúsculas)
             $ws = null;
@@ -402,8 +410,9 @@ class ControlInstrumentosController extends Controller
                 'mensaje'    => "Se importaron {$importados} registros desde hoja \"{$hojaUsada}\"" . ($errores ? " ({$errores} con error)" : ''),
             ]);
 
-        } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()], 400);
+        } catch (\Throwable $e) {
+            \Log::error('ControlInstrumentos::importar — ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Error al procesar el archivo: ' . $e->getMessage()], 500);
         }
     }
 

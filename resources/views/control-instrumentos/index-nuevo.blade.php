@@ -197,6 +197,8 @@
 .btn-edit  { height: 30px; width: 30px; padding: 0; justify-content: center; background: #eab308; color: #fff; border-radius: 6px; }
 .btn-files { height: 30px; width: 30px; padding: 0; justify-content: center; background: #0891b2; color: #fff; border-radius: 6px; }
 .btn-del   { height: 30px; width: 30px; padding: 0; justify-content: center; background: #dc2626; color: #fff; border-radius: 6px; }
+/* Botón eliminar en modal de confirmación (texto visible, no icono) */
+#confirm-ok.btn-del { width: auto; padding: 0 16px; }
 
 /* ── Toast notificaciones ───────────────────────────── */
 #ci-toasts { position: fixed; top: 68px; right: 16px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; }

@@ -144,6 +144,20 @@ Route::middleware(['auth.sgc'])->group(function () {
         Route::get('/{cert}/descargar',  [App\Http\Controllers\CertCalidadController::class, 'descargar'])->name('descargar');
     });
 
+    // ─── Matriz Control de Competencias ─────────────────────────────────────────
+    Route::prefix('matriz-competencias')->name('matriz-competencias.')->group(function () {
+        Route::get('/',          [App\Http\Controllers\MatrizCompetenciasController::class, 'index'])   ->name('index');
+        Route::post('/',         [App\Http\Controllers\MatrizCompetenciasController::class, 'store'])   ->name('store');
+        Route::post('/importar', [App\Http\Controllers\MatrizCompetenciasController::class, 'importar'])->name('importar');
+        Route::get('/exportar',  [App\Http\Controllers\MatrizCompetenciasController::class, 'exportar'])->name('exportar');
+        Route::put('/{trabajador}',                     [App\Http\Controllers\MatrizCompetenciasController::class, 'update'])   ->name('update');
+        Route::delete('/{trabajador}',                  [App\Http\Controllers\MatrizCompetenciasController::class, 'destroy'])  ->name('destroy');
+        Route::get('/{trabajador}/datos',               [App\Http\Controllers\MatrizCompetenciasController::class, 'datos'])    ->name('datos');
+        Route::get('/{trabajador}/descargar/{tipo}',    [App\Http\Controllers\MatrizCompetenciasController::class, 'descargar'])->name('descargar');
+        Route::get('/{trabajador}/ver/{tipo}',          [App\Http\Controllers\MatrizCompetenciasController::class, 'ver'])->name('ver');
+        Route::delete('/{trabajador}/archivo/{tipo}',   [App\Http\Controllers\MatrizCompetenciasController::class, 'destroyArchivo'])->name('archivo.destroy');
+    });
+
     // ─── Matriz Cursos ───────────────────────────────────────────────────────────
     Route::prefix('matriz-cursos')->name('matriz-cursos.')->group(function () {
         Route::get('/',          [App\Http\Controllers\MatrizCursosController::class, 'index'])   ->name('index');

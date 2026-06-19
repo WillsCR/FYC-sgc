@@ -508,21 +508,19 @@
 
                             {{-- Cerrar --}}
                             @if($esAdmin && (int)$p->id_estado !== 2)
-                            <form method="POST" action="{{ route('planificacion.cerrar', $p->id) }}"
-                                  onsubmit="return confirm('¿Cerrar esta planificación?')">
+                            <form id="form-cerrar-{{ $p->id }}" method="POST" action="{{ route('planificacion.cerrar', $p->id) }}">
                                 @csrf
-                                <button type="submit" class="btn-accion btn-cerrar"
-                                        title="Cerrar planificación">✓</button>
+                                <button type="button" class="btn-accion btn-cerrar" title="Cerrar planificación"
+                                    onclick="sgcConfirm('¿Cerrar esta planificación?', () => document.getElementById('form-cerrar-{{ $p->id }}').submit(), {title:'Confirmar cierre', icon:'<i class=\'fa-solid fa-lock\'></i>', btnText:'Cerrar', btnColor:'#0891b2', danger:false})">✓</button>
                             </form>
                             @endif
 
                             {{-- Eliminar --}}
                             @if($esAdmin)
-                            <form method="POST" action="{{ route('planificacion.destroy', $p->id) }}"
-                                  onsubmit="return confirm('¿Eliminar esta planificación? Esta acción no se puede deshacer.')">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit" class="btn-accion btn-del" title="Eliminar">🗑️</button>
+                            <form id="form-del-plan-{{ $p->id }}" method="POST" action="{{ route('planificacion.destroy', $p->id) }}">
+                                @csrf @method('DELETE')
+                                <button type="button" class="btn-accion btn-del" title="Eliminar"
+                                    onclick="sgcConfirm('¿Eliminar esta planificación?<br><small style=\'color:#6b7280\'>Esta acción no se puede deshacer.</small>', () => document.getElementById('form-del-plan-{{ $p->id }}').submit())">🗑️</button>
                             </form>
                             @endif
                         </div>

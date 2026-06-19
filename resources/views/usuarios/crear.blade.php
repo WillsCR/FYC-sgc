@@ -430,7 +430,7 @@
                         </div>
                         <div class="carpeta-perm-body {{ $tienePerm ? 'visible' : '' }}" id="perm-{{ $carpeta->id }}">
                             @php
-                                $carpetasPermUnico = [9, 11, 98, 99]; // No Conformidades, Cert. Calidad, Control de Instrumentos, Matriz Cursos
+                                $carpetasPermUnico = [9, 11, 98, 99, 105]; // No Conformidades, Cert. Calidad, Control de Instrumentos, Matriz Cursos, Matriz Competencias
                             @endphp
 
                             @if(in_array($carpeta->id, $carpetasPermUnico))

@@ -172,5 +172,64 @@
         overlay.onclick = (e) => { if (e.target === overlay) close(); };
     };
 </script>
+<style>
+.toast-container { 
+    position: fixed; 
+    bottom: 24px; 
+    right: 24px; 
+    z-index: 9999; 
+    max-width: 360px;
+}
+.toast-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 13px 16px;
+    border-radius: 8px;
+    font-size: .85rem;
+    font-weight: 500;
+    color: #fff;
+    margin-bottom: 10px;
+    box-shadow: 0 4px 12px rgba(0,0,0,.15);
+    animation: slideIn .3s cubic-bezier(.22,1,.36,1) forwards;
+    word-break: break-word;
+}
+.toast-item.ok  { background: #2e7d32; }
+.toast-item.err { background: #c62828; }
+.toast-item.warning { background: #f57c00; }
+.toast-item.info { background: #1976d2; }
+.toast-item svg { flex-shrink: 0; width: 18px; height: 18px; }
+@keyframes slideIn { 
+    from { transform: translateX(400px); opacity: 0; } 
+    to { transform: translateX(0); opacity: 1; } 
+}
+</style>
+
+<div class="toast-container" id="toast-container"></div>
+
+<script>
+// Función global para mostrar notificaciones
+function showToast(message, type = 'ok', duration = 4000) {
+    const container = document.getElementById('toast-container');
+    
+    const icons = {
+        ok: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>',
+        err: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>',
+        warning: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 20h20L12 2z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+        info: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>'
+    };
+    
+    const toast = document.createElement('div');
+    toast.className = `toast-item ${type}`;
+    toast.innerHTML = `${icons[type] || icons.info}<span>${message}</span>`;
+    
+    container.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.style.animation = 'slideOut .3s ease forwards';
+        setTimeout(() => toast.remove(), 300);
+    }, duration);
+}
+</script>
 </body>
 </html>

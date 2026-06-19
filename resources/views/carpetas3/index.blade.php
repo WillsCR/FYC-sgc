@@ -190,13 +190,10 @@
 </div>
 
 <script>
-    // Subir archivo via AJAX
+    // Subir archivo via AJAX (reemplazo líneas 200-240)
     document.getElementById('formSubirArchivo').addEventListener('submit', function(e) {
         e.preventDefault();
-        
-        const formData = new FormData();
-        formData.append('archivo', document.getElementById('archivo').files[0]);
-        formData.append('descripcion', document.getElementById('descripcion').value);
+        const formData = new FormData(this);
         formData.append('id_carpeta', {{ $carpetaActual->id }});
 
         fetch('{{ route("archivos3.subir") }}', {
@@ -209,13 +206,15 @@
         .then(r => r.json())
         .then(data => {
             if (data.ok) {
-                alert('Archivo subido correctamente');
-                location.reload();
+                showToast('✓ Archivo subido correctamente', 'ok');
+                setTimeout(() => location.reload(), 800);
             } else {
-                alert('Error: ' + data.error);
+                showToast('Error al subir: ' + (data.error || 'Intenta de nuevo'), 'err');
             }
         })
-        .catch(err => alert('Error: ' + err.message));
+        .catch(err => {
+            showToast('Error de conexión: ' + err.message, 'err');
+        });
     });
 
     // Eliminar archivo

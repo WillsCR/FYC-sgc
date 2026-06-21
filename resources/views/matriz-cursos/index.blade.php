@@ -165,7 +165,7 @@
     border-radius: 8px;
     box-shadow: 0 8px 40px rgba(0,0,0,.22);
     width: 100%;
-    max-width: 860px;
+    max-width: 1050px;
     position: relative;
 }
 .mc-modal-head {
@@ -253,6 +253,32 @@
     border: 1px solid #bfdbfe;
     border-radius: 3px; font-size: .74rem; box-sizing: border-box;
 }
+
+/* Multi-correo: filas de inputs */
+.mc-correos-container { display: flex; flex-direction: column; gap: 3px; }
+.mc-correo-fila { display: flex; align-items: center; gap: 3px; }
+.mc-correo-fila input {
+    flex: 1; height: 26px; padding: 0 5px;
+    border: 1px solid #bbf7d0; border-radius: 3px;
+    font-size: .72rem; box-sizing: border-box;
+}
+.mc-correo-fila input:focus { border-color: #16a34a; outline: none; }
+.mc-edit-curso-row .mc-correo-fila input { border-color: #bfdbfe; }
+.mc-edit-curso-row .mc-correo-fila input:focus { border-color: #3b82f6; }
+.mc-btn-add-correo {
+    width: 20px; height: 20px; border-radius: 3px; border: none;
+    background: #16a34a; color: #fff; cursor: pointer;
+    font-size: .9rem; font-weight: 700; line-height: 1;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.mc-btn-add-correo:hover { background: #15803d; }
+.mc-btn-rem-correo {
+    width: 20px; height: 20px; border-radius: 3px; border: none;
+    background: #dc2626; color: #fff; cursor: pointer;
+    font-size: .9rem; font-weight: 700; line-height: 1;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.mc-btn-rem-correo:hover { background: #b91c1c; }
 
 .mc-modal-foot {
     display: flex; justify-content: flex-end; gap: 8px;
@@ -462,7 +488,14 @@
             <td class="td-semaforo">
                 <span class="semaforo semaforo-{{ $semaforo }}" title="{{ $semaforo }}"></span>
             </td>
-            <td style="font-size:.73rem;color:#374151">{{ $c->correo_aviso ?? '—' }}</td>
+            <td style="font-size:.73rem;color:#374151">
+                @if($c->correo_aviso)
+                    @foreach(explode(',', $c->correo_aviso) as $em)
+                        <div>{{ trim($em) }}</div>
+                    @endforeach
+                @else —
+                @endif
+            </td>
 
             @if($i === 0)
             <td class="td-actions" rowspan="{{ $rowspan }}">
@@ -598,7 +631,16 @@
                             </button>
                             <span id="nc-archivo-nombre" style="font-size:.68rem;color:#6b7280;display:block;margin-top:2px;word-break:break-all"></span>
                         </td>
-                        <td><input type="text" id="nc-correo" placeholder="email@empresa.cl"></td>
+                        <td>
+                            <div class="mc-correos-container" id="nc-correos-container">
+                                <div class="mc-correo-fila">
+                                    <input type="text" class="mc-correo-input" placeholder="email@empresa.cl">
+                                    <button type="button" class="mc-btn-add-correo" title="Agregar correo"
+                                            onclick="mcAgregarCorreo('nc-correos-container')">+</button>
+                                </div>
+                            </div>
+                            <input type="hidden" id="nc-correo" value="">
+                        </td>
                         <td style="text-align:center">
                             <button class="btn-mc-icon btn-mc-add" style="width:28px;height:28px;border-radius:4px"
                                     onclick="agregarCurso()" title="Agregar curso">+</button>
@@ -793,7 +835,7 @@ function renderCursos(cursos, trabajadorId) {
                     ? `<a href="${ROUTES.cursosBase}/${c.id}/descargar" style="color:var(--mc-blue);font-size:.72rem"><i class="fa-solid fa-download"></i> Descargar</a>`
                     : '<span style="color:#9ca3af">—</span>'}
             </td>
-            <td style="font-size:.72rem">${escHtml(c.correo_aviso || '—')}</td>
+            <td style="font-size:.72rem">${(c.correo_aviso||'').split(',').filter(Boolean).map(e=>`<div>${escHtml(e.trim())}</div>`).join('')||'—'}</td>
             <td style="text-align:center">
                 <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:${semColor};border:2px solid rgba(0,0,0,.15)"></span>
             </td>
@@ -845,6 +887,7 @@ async function agregarCurso() {
     fd.append('entidad_acreditadora',  document.getElementById('nc-entidad').value.trim());
     fd.append('fecha_realizacion',     document.getElementById('nc-realizado').value);
     fd.append('fecha_vencimiento',     document.getElementById('nc-vencimiento').value);
+    _mcSyncHidden(document.getElementById('nc-correos-container'), 'nc-correo');
     fd.append('correo_aviso',          document.getElementById('nc-correo').value.trim());
     const archivo = document.getElementById('nc-archivo').files[0];
     if (archivo) fd.append('archivo', archivo);
@@ -854,7 +897,8 @@ async function agregarCurso() {
     if (data.success) {
         notif('ok', 'Curso agregado');
         // Limpiar campos
-        ['nc-curso','nc-entidad','nc-realizado','nc-vencimiento','nc-correo'].forEach(x => document.getElementById(x).value = '');
+        ['nc-curso','nc-entidad','nc-realizado','nc-vencimiento'].forEach(x => document.getElementById(x).value = '');
+        mcCorreosReset('nc-correos-container', 'nc-correo');
         document.getElementById('nc-archivo').value = '';
         document.getElementById('nc-archivo-nombre').textContent = '';
         // Recargar lista
@@ -896,7 +940,10 @@ async function editarCursoInline(cursoId, trabajadorId) {
             <span id="ec-archivo-nombre-${cursoId}" style="font-size:.68rem;color:#374151;display:block;margin-top:2px;word-break:break-all"></span>
             ${c.archivo_nombre ? `<a href="${ROUTES.cursosBase}/${cursoId}/descargar" style="font-size:.7rem;color:var(--mc-blue);display:block;margin-top:2px"><i class="fa-solid fa-download"></i> actual</a>` : ''}
         </td>
-        <td><input type="text" id="ec-correo-${cursoId}" value="${escHtml(c.correo_aviso||'')}"></td>
+        <td>
+            <div class="mc-correos-container" id="ec-correos-container-${cursoId}"></div>
+            <input type="hidden" id="ec-correo-${cursoId}" value="${escHtml(c.correo_aviso||'')}">
+        </td>
         <td></td>
         <td style="text-align:center;white-space:nowrap">
             <button class="btn-mc-icon btn-mc-green" style="width:26px;height:26px;background:#16a34a"
@@ -908,6 +955,7 @@ async function editarCursoInline(cursoId, trabajadorId) {
                 <i class="fa-solid fa-xmark" style="font-size:.65rem"></i>
             </button>
         </td>`;
+    mcCorreosInit(`ec-correos-container-${cursoId}`, `ec-correo-${cursoId}`, c.correo_aviso || '');
 }
 
 async function guardarCursoEdit(cursoId, trabajadorId) {
@@ -916,6 +964,7 @@ async function guardarCursoEdit(cursoId, trabajadorId) {
     fd.append('entidad_acreditadora', document.getElementById(`ec-entidad-${cursoId}`).value.trim());
     fd.append('fecha_realizacion',    document.getElementById(`ec-realizado-${cursoId}`).value);
     fd.append('fecha_vencimiento',    document.getElementById(`ec-vencimiento-${cursoId}`).value);
+    _mcSyncHidden(document.getElementById(`ec-correos-container-${cursoId}`), `ec-correo-${cursoId}`);
     fd.append('correo_aviso',         document.getElementById(`ec-correo-${cursoId}`).value.trim());
     const archivo = document.getElementById(`ec-archivo-${cursoId}`).files[0];
     if (archivo) fd.append('archivo', archivo);
@@ -1006,5 +1055,84 @@ async function ejecutarImport() {
 function escHtml(s) {
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+
+// ── Multi-correo: filas de inputs ────────────────────────────────────────────
+function mcCorreosInit(containerId, hiddenId, initialValue) {
+    const container = document.getElementById(containerId);
+    const hidden    = document.getElementById(hiddenId);
+    if (!container || !hidden) return;
+    container.innerHTML = '';
+    const correos = (initialValue || '').split(',').map(e => e.trim()).filter(Boolean);
+    if (correos.length === 0) correos.push('');
+    correos.forEach((email, i) => {
+        _mcAgregarFila(container, hiddenId, email, i === 0);
+    });
+}
+
+function mcAgregarCorreo(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    // Determinar hiddenId: nc-correo o ec-correo-X
+    const hiddenId = containerId === 'nc-correos-container'
+        ? 'nc-correo'
+        : 'ec-correo-' + containerId.replace('ec-correos-container-', '');
+    _mcAgregarFila(container, hiddenId, '', false);
+    container.querySelectorAll('.mc-correo-input:last-of-type')[0]?.focus();
+}
+
+function _mcAgregarFila(container, hiddenId, valor, esPrimera) {
+    const fila = document.createElement('div');
+    fila.className = 'mc-correo-fila';
+
+    const input = document.createElement('input');
+    input.type        = 'text';
+    input.className   = 'mc-correo-input';
+    input.placeholder = 'email@empresa.cl';
+    input.value       = valor;
+    input.addEventListener('input', () => _mcSyncHidden(container, hiddenId));
+
+    const btnAdd = document.createElement('button');
+    btnAdd.type      = 'button';
+    btnAdd.className = 'mc-btn-add-correo';
+    btnAdd.title     = 'Agregar correo';
+    btnAdd.textContent = '+';
+    btnAdd.onclick   = () => mcAgregarCorreo(container.id);
+
+    fila.appendChild(input);
+
+    if (!esPrimera) {
+        const btnRem = document.createElement('button');
+        btnRem.type      = 'button';
+        btnRem.className = 'mc-btn-rem-correo';
+        btnRem.title     = 'Quitar correo';
+        btnRem.textContent = '×';
+        btnRem.onclick   = () => { fila.remove(); _mcSyncHidden(container, hiddenId); };
+        fila.appendChild(btnRem);
+    }
+
+    fila.appendChild(btnAdd);
+    container.appendChild(fila);
+}
+
+function _mcSyncHidden(container, hiddenId) {
+    const hidden = document.getElementById(hiddenId);
+    if (!hidden) return;
+    const emails = Array.from(container.querySelectorAll('.mc-correo-input'))
+        .map(i => i.value.trim()).filter(Boolean);
+    hidden.value = emails.join(',');
+}
+
+function mcCorreosReset(containerId, hiddenId) {
+    const container = document.getElementById(containerId);
+    const hidden    = document.getElementById(hiddenId);
+    if (!container || !hidden) return;
+    container.innerHTML = '';
+    hidden.value = '';
+    _mcAgregarFila(container, hiddenId, '', true);
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    mcCorreosInit('nc-correos-container', 'nc-correo', '');
+});
 </script>
 @endpush

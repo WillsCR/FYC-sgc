@@ -102,7 +102,7 @@
             </div>
         </div>
 
-        <div class="form-row" style="grid-template-columns:repeat(auto-fill,minmax(180px,1fr))">
+        <div class="form-row-2" style="margin-bottom:12px">
             <div class="form-group">
                 <label>Responsable</label>
                 <input type="text" name="responsable" value="{{ $programa->responsable }}"
@@ -110,13 +110,13 @@
             </div>
             <div class="form-group">
                 <label>Correo de aviso</label>
-                <input type="email" name="correo_aviso" value="{{ $programa->correo_aviso }}"
-                       placeholder="responsable@empresa.cl">
+                <div class="ci-correos-container" id="ci-correos-edit"></div>
+                <input type="hidden" name="correo_aviso" id="ci-correo-edit" value="{{ $programa->correo_aviso ?? '' }}">
             </div>
-            <div class="form-group" style="grid-column:span 2">
-                <label>Observaciones</label>
-                <textarea name="observaciones" rows="2">{{ $programa->observaciones }}</textarea>
-            </div>
+        </div>
+        <div class="form-group">
+            <label>Observaciones</label>
+            <textarea name="observaciones" rows="2">{{ $programa->observaciones }}</textarea>
         </div>
 
     </div>
@@ -128,3 +128,8 @@
         </button>
     </div>
 </form>
+<script>
+    if (typeof ciCorreosEditInit === 'function') {
+        ciCorreosEditInit('{{ addslashes($programa->correo_aviso ?? '') }}');
+    }
+</script>

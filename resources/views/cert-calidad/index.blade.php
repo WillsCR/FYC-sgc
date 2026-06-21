@@ -110,7 +110,7 @@
 .cc-modal {
     background: #fff; border-radius: 8px;
     box-shadow: 0 8px 40px rgba(0,0,0,.22);
-    width: 100%; max-width: 780px; position: relative;
+    width: 100%; max-width: 960px; position: relative;
 }
 .cc-modal-head {
     display: flex; align-items: center; justify-content: space-between;
@@ -152,6 +152,16 @@
 
 /* Separador de sección */
 .cc-section-title { font-size: .78rem; font-weight: 700; color: var(--cc-navy); margin: 14px 0 10px; padding-bottom: 5px; border-bottom: 2px solid #e5e7eb; }
+
+/* ── Multi-correo ── */
+.cc-correos-container { display: flex; flex-direction: column; gap: 3px; }
+.cc-correo-fila { display: flex; align-items: center; gap: 3px; }
+.cc-correo-fila input { flex: 1; height: 30px; padding: 0 8px; border: 1px solid #d1d5db; border-radius: 4px; font-size: .8rem; box-sizing: border-box; }
+.cc-correo-fila input:focus { border-color: var(--cc-blue); outline: none; }
+.cc-btn-add-correo { width: 24px; height: 24px; border-radius: 4px; border: none; background: var(--cc-blue); color: #fff; cursor: pointer; font-size: 1rem; font-weight: 700; line-height: 1; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.cc-btn-add-correo:hover { background: #1d4ed8; }
+.cc-btn-rem-correo { width: 24px; height: 24px; border-radius: 4px; border: none; background: #dc2626; color: #fff; cursor: pointer; font-size: 1rem; font-weight: 700; line-height: 1; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.cc-btn-rem-correo:hover { background: #b91c1c; }
 </style>
 @endpush
 
@@ -382,8 +392,8 @@
                 </div>
                 <div class="cc-form-group">
                     <label>Correo aviso vencimiento</label>
-                    <input type="email" id="f-correo-aviso" placeholder="correo@ejemplo.com"
-                           style="width:100%;box-sizing:border-box">
+                    <div class="cc-correos-container" id="f-correos-container"></div>
+                    <input type="hidden" id="f-correo-aviso" value="">
                     <span style="font-size:.7rem;color:#6b7280">Se enviará un aviso 30 días antes del vencimiento.</span>
                 </div>
             </div>
@@ -512,10 +522,11 @@ function abrirModalNuevo() {
     document.getElementById('form-id').value = '';
     document.getElementById('modal-form-titulo').innerHTML = '<i class="fa-solid fa-plus" style="margin-right:6px"></i>Nuevo Certificado';
     document.getElementById('btn-guardar').innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Guardar';
-    ['f-numero','f-descripcion','f-contrato','f-tipo','f-marca','f-modelo','f-procedimiento','f-observaciones','f-correo-aviso'].forEach(id => {
+    ['f-numero','f-descripcion','f-contrato','f-tipo','f-marca','f-modelo','f-procedimiento','f-observaciones'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.value = '';
     });
+    ccCorreosReset();
     document.getElementById('f-aplica').checked = false;
     document.getElementById('f-critico').checked = false;
     document.getElementById('f-vencimiento').value = '';
@@ -539,7 +550,7 @@ async function abrirModalEditar(id) {
     document.getElementById('f-marca').value        = data.marca        || '';
     document.getElementById('f-modelo').value       = data.modelo       || '';
     document.getElementById('f-vencimiento').value   = data.vencimiento  || '';
-    document.getElementById('f-correo-aviso').value  = data.correo_aviso || '';
+    ccCorreosInit(data.correo_aviso || '');
     document.getElementById('f-procedimiento').value = data.procedimiento_asociado || '';
     document.getElementById('f-observaciones').value = data.observaciones || '';
     document.getElementById('f-aplica').checked     = !!data.aplica;
@@ -568,6 +579,7 @@ async function guardarRegistro() {
     fd.append('marca',                document.getElementById('f-marca').value.trim());
     fd.append('modelo',               document.getElementById('f-modelo').value.trim());
     fd.append('vencimiento',          document.getElementById('f-vencimiento').value);
+    ccCorreosSync();
     fd.append('correo_aviso',         document.getElementById('f-correo-aviso').value.trim());
     fd.append('procedimiento_asociado', document.getElementById('f-procedimiento').value.trim());
     fd.append('observaciones',        document.getElementById('f-observaciones').value.trim());
@@ -654,6 +666,74 @@ async function ejecutarImport() {
 // Mostrar nombre de archivo seleccionado
 document.getElementById('f-archivo').addEventListener('change', function () {
     document.getElementById('f-archivo-nombre').textContent = this.files[0]?.name || '';
+});
+
+// ── Multi-correo ─────────────────────────────────────────────────────────────
+function ccCorreosInit(initialValue) {
+    const container = document.getElementById('f-correos-container');
+    const hidden    = document.getElementById('f-correo-aviso');
+    if (!container || !hidden) return;
+    container.innerHTML = '';
+    const correos = (initialValue || '').split(',').map(e => e.trim()).filter(Boolean);
+    if (correos.length === 0) correos.push('');
+    correos.forEach((email, i) => _ccAgregarFila(email, i === 0));
+}
+
+function ccAgregarCorreo() {
+    _ccAgregarFila('', false);
+}
+
+function _ccAgregarFila(valor, esPrimera) {
+    const container = document.getElementById('f-correos-container');
+    const fila = document.createElement('div');
+    fila.className = 'cc-correo-fila';
+
+    const input = document.createElement('input');
+    input.type        = 'text';
+    input.placeholder = 'correo@ejemplo.com';
+    input.value       = valor;
+    input.addEventListener('input', ccCorreosSync);
+
+    fila.appendChild(input);
+
+    if (!esPrimera) {
+        const btnRem = document.createElement('button');
+        btnRem.type      = 'button';
+        btnRem.className = 'cc-btn-rem-correo';
+        btnRem.title     = 'Quitar correo';
+        btnRem.textContent = '×';
+        btnRem.onclick   = () => { fila.remove(); ccCorreosSync(); };
+        fila.appendChild(btnRem);
+    }
+
+    const btnAdd = document.createElement('button');
+    btnAdd.type      = 'button';
+    btnAdd.className = 'cc-btn-add-correo';
+    btnAdd.title     = 'Agregar correo';
+    btnAdd.textContent = '+';
+    btnAdd.onclick   = ccAgregarCorreo;
+    fila.appendChild(btnAdd);
+
+    container.appendChild(fila);
+}
+
+function ccCorreosSync() {
+    const container = document.getElementById('f-correos-container');
+    const hidden    = document.getElementById('f-correo-aviso');
+    if (!container || !hidden) return;
+    const emails = Array.from(container.querySelectorAll('input'))
+        .map(i => i.value.trim()).filter(Boolean);
+    hidden.value = emails.join(',');
+}
+
+function ccCorreosReset() {
+    const hidden = document.getElementById('f-correo-aviso');
+    if (hidden) hidden.value = '';
+    ccCorreosInit('');
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    ccCorreosInit('');
 });
 </script>
 @endpush

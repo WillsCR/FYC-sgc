@@ -200,6 +200,16 @@
 /* Botón eliminar en modal de confirmación (texto visible, no icono) */
 #confirm-ok.btn-del { width: auto; padding: 0 16px; }
 
+/* ── Multi-correo ── */
+.ci-correos-container { display: flex; flex-direction: column; gap: 3px; }
+.ci-correo-fila { display: flex; align-items: center; gap: 4px; }
+.ci-correo-fila input { flex: 1; height: 34px; padding: 7px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: .82rem; box-sizing: border-box; }
+.ci-correo-fila input:focus { border-color: var(--blue-accent); outline: none; }
+.ci-btn-add-correo { width: 28px; height: 28px; border-radius: var(--radius-sm); border: none; background: var(--blue-accent); color: #fff; cursor: pointer; font-size: 1rem; font-weight: 700; line-height: 1; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.ci-btn-add-correo:hover { background: #1d4ed8; }
+.ci-btn-rem-correo { width: 28px; height: 28px; border-radius: var(--radius-sm); border: none; background: #dc2626; color: #fff; cursor: pointer; font-size: 1rem; font-weight: 700; line-height: 1; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.ci-btn-rem-correo:hover { background: #b91c1c; }
+
 /* ── Toast notificaciones ───────────────────────────── */
 #ci-toasts { position: fixed; top: 68px; right: 16px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; }
 .ci-toast {
@@ -645,19 +655,20 @@
                     </div>
                 </div>
 
-                <div class="form-row" style="grid-template-columns:repeat(auto-fill,minmax(180px,1fr))">
+                <div class="form-row-2" style="margin-bottom:12px">
                     <div class="form-group">
                         <label>Responsable</label>
                         <input type="text" name="responsable" placeholder="Ej: Juan Pérez">
                     </div>
                     <div class="form-group">
                         <label>Correo de aviso</label>
-                        <input type="email" name="correo_aviso" placeholder="responsable@empresa.cl">
+                        <div class="ci-correos-container" id="ci-correos-nuevo"></div>
+                        <input type="hidden" name="correo_aviso" id="ci-correo-nuevo" value="">
                     </div>
-                    <div class="form-group" style="grid-column:span 2">
-                        <label>Observaciones</label>
-                        <textarea name="observaciones" rows="2" placeholder="Notas adicionales..."></textarea>
-                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Observaciones</label>
+                    <textarea name="observaciones" rows="2" placeholder="Notas adicionales..."></textarea>
                 </div>
 
             </div>
@@ -861,6 +872,7 @@ document.getElementById('form-nuevo').addEventListener('submit', async function(
     btn.disabled = true;
     btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Guardando...';
 
+    ciCorreosSync('ci-correos-nuevo', 'ci-correo-nuevo');
     const fd = new FormData(this);
     try {
         const res  = await fetch('/control-instrumentos', { method: 'POST', body: fd, headers: { 'X-CSRF-TOKEN': CSRF } });
@@ -941,6 +953,7 @@ document.addEventListener('submit', async function(e) {
         const btn = e.target.querySelector('[type=submit]');
         btn.disabled = true;
         btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Guardando...';
+        ciCorreosSync('ci-correos-edit', 'ci-correo-edit');
         const fd = new FormData(e.target);
         try {
             const res  = await fetch(`/control-instrumentos/${id}`, { method: 'POST', body: fd, headers: { 'X-CSRF-TOKEN': CSRF } });
@@ -1017,5 +1030,73 @@ function ejecutarScripts(container) {
         old.parentNode.replaceChild(n, old);
     });
 }
+
+// ── Multi-correo ─────────────────────────────────────────
+function ciCorreosInit(containerId, hiddenId, initialValue) {
+    const container = document.getElementById(containerId);
+    const hidden    = document.getElementById(hiddenId);
+    if (!container || !hidden) return;
+    container.innerHTML = '';
+    const correos = (initialValue || '').split(',').map(e => e.trim()).filter(Boolean);
+    if (correos.length === 0) correos.push('');
+    correos.forEach((email, i) => _ciAgregarFila(containerId, hiddenId, email, i === 0));
+}
+
+function ciAgregarCorreo(containerId, hiddenId) {
+    _ciAgregarFila(containerId, hiddenId, '', false);
+}
+
+function _ciAgregarFila(containerId, hiddenId, valor, esPrimera) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    const fila = document.createElement('div');
+    fila.className = 'ci-correo-fila';
+
+    const input = document.createElement('input');
+    input.type        = 'text';
+    input.placeholder = 'responsable@empresa.cl';
+    input.value       = valor;
+    input.addEventListener('input', () => ciCorreosSync(containerId, hiddenId));
+
+    fila.appendChild(input);
+
+    if (!esPrimera) {
+        const btnRem = document.createElement('button');
+        btnRem.type        = 'button';
+        btnRem.className   = 'ci-btn-rem-correo';
+        btnRem.title       = 'Quitar correo';
+        btnRem.textContent = '×';
+        btnRem.onclick     = () => { fila.remove(); ciCorreosSync(containerId, hiddenId); };
+        fila.appendChild(btnRem);
+    }
+
+    const btnAdd = document.createElement('button');
+    btnAdd.type        = 'button';
+    btnAdd.className   = 'ci-btn-add-correo';
+    btnAdd.title       = 'Agregar correo';
+    btnAdd.textContent = '+';
+    btnAdd.onclick     = () => ciAgregarCorreo(containerId, hiddenId);
+    fila.appendChild(btnAdd);
+
+    container.appendChild(fila);
+}
+
+function ciCorreosSync(containerId, hiddenId) {
+    const container = document.getElementById(containerId);
+    const hidden    = document.getElementById(hiddenId);
+    if (!container || !hidden) return;
+    const emails = Array.from(container.querySelectorAll('input'))
+        .map(i => i.value.trim()).filter(Boolean);
+    hidden.value = emails.join(',');
+}
+
+// Llamada desde el partial de edición tras carga dinámica
+function ciCorreosEditInit(initialValue) {
+    ciCorreosInit('ci-correos-edit', 'ci-correo-edit', initialValue);
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    ciCorreosInit('ci-correos-nuevo', 'ci-correo-nuevo', '');
+});
 </script>
 @endpush

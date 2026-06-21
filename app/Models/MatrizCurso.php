@@ -12,6 +12,7 @@ class MatrizCurso extends Model
         'id_trabajador', 'curso', 'entidad_acreditadora',
         'fecha_realizacion', 'fecha_vencimiento', 'correo_aviso',
         'archivo_nombre', 'archivo_ruta', 'archivo_mime',
+        'aviso_30d_enviado',
     ];
 
     protected $casts = [

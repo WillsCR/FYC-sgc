@@ -22,6 +22,11 @@ class ArchivoEquipoController extends Controller
      */
     public function subirCertificado(Request $request)
     {
+        $u = PermisoService::usuarioActual();
+        if (! $u || (! $u->esAdmin() && ! PermisoService::can('carga', 'carpeta', 98))) {
+            return response()->json(['success' => false, 'mensaje' => 'Sin permisos para subir archivos.'], 403);
+        }
+
         $request->validate([
             'archivo'       => 'required|file|max:10240',
             'id_programa'   => 'required|integer',

@@ -15,3 +15,6 @@ Schedule::command('ci:avisos-vencimiento')->dailyAt('08:00');
 
 // ── Avisos de vencimiento Certificados de Calidad ──────────────────────────
 Schedule::command('cc:avisos-vencimiento')->dailyAt('08:05');
+
+// ── Avisos de vencimiento Matriz Control Cursos ────────────────────────────
+Schedule::command('mc:avisos-vencimiento')->dailyAt('08:10');

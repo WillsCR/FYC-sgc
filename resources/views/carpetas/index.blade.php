@@ -1244,7 +1244,7 @@ function confirmarEliminarSubmodulo() {
                 _elimSubWrap.style.transition = 'opacity .3s, transform .3s';
                 _elimSubWrap.style.opacity    = '0';
                 _elimSubWrap.style.transform  = 'scale(.9)';
-                setTimeout(() => { _elimSubWrap && _elimSubWrap.remove(); }, 320);
+                setTimeout(() => { location.reload(); }, 350);
             }
             toast(data.mensaje, 'ok', 'Submódulo eliminado');
             _elimSubId = _elimSubWrap = null;

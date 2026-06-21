@@ -70,6 +70,7 @@
                     </p>
                 @endforelse
 
+                @if($puedeGestionar)
                 <button type="button"
                         onclick="subirCertificado({{ $programa->id }}, 'calidad')"
                         class="btn-accion btn-success-ci"
@@ -77,6 +78,7 @@
                     <i class="fa-solid fa-upload"></i>
                     {{ $programa->archivosCalidad->count() > 0 ? 'Reemplazar' : 'Subir certificado' }}
                 </button>
+                @endif
             </div>
         </div>
 
@@ -123,6 +125,7 @@
                     </p>
                 @endforelse
 
+                @if($puedeGestionar)
                 <button type="button"
                         onclick="subirCertificado({{ $programa->id }}, 'calibracion')"
                         class="btn-accion btn-success-ci"
@@ -130,6 +133,7 @@
                     <i class="fa-solid fa-upload"></i>
                     {{ $programa->archivosCalibra->count() > 0 ? 'Reemplazar' : 'Subir certificado' }}
                 </button>
+                @endif
             </div>
         </div>
 

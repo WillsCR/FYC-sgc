@@ -215,8 +215,9 @@ class ControlInstrumentosController extends Controller
 
     public function archivos(ProgramaVerificacion $programaVerificacion)
     {
-        $programa = $programaVerificacion->load(['archivosCalidad', 'archivosCalibra']);
-        return view('control-instrumentos.partials.gestionar-archivos', compact('programa'));
+        $programa       = $programaVerificacion->load(['archivosCalidad', 'archivosCalibra']);
+        $puedeGestionar = $this->puedeGestionarCI();
+        return view('control-instrumentos.partials.gestionar-archivos', compact('programa', 'puedeGestionar'));
     }
 
     // ── Exportar Excel ───────────────────────────────────────────────────────

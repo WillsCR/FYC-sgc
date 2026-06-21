@@ -73,7 +73,7 @@
 .mcc-modal-overlay.visible { display: flex; }
 .mcc-modal {
     background: #fff; border-radius: 8px; box-shadow: 0 8px 40px rgba(0,0,0,.22);
-    width: 100%; max-width: 780px; position: relative;
+    width: 100%; max-width: 960px; position: relative;
 }
 .mcc-modal-head {
     display: flex; align-items: center; justify-content: space-between;

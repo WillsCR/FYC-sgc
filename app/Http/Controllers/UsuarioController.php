@@ -293,7 +293,7 @@ class UsuarioController extends Controller
     private function guardarPermisosCarpetas(int $usuarioId, string $correo, string $clave, array $carpetas): void
     {
         // Módulos especiales: 3 niveles → Sin acceso / Solo visualización / Acceso completo
-        $carpetasPermUnico = [9, 11, 98, 99]; // NC, Cert. Calidad, CI, Matriz Cursos
+        $carpetasPermUnico = [9, 11, 98, 99, 105]; // NC, Cert. Calidad, CI, Matriz Cursos, Matriz Competencias
 
         foreach ($carpetas as $carpetaId => $perms) {
             $carpetaId = (int) $carpetaId;

@@ -558,7 +558,11 @@ async function abrirModalEditar(id) {
     document.getElementById('f-archivo').value      = '';
     document.getElementById('f-archivo-nombre').textContent = '';
     document.getElementById('f-archivo-actual').innerHTML   = data.archivo_nombre
-        ? `<i class="fa-solid fa-paperclip"></i> Actual: <strong>${data.archivo_nombre}</strong>`
+        ? `<i class="fa-solid fa-paperclip"></i> Actual: <strong>${data.archivo_nombre}</strong>
+           <button type="button" onclick="eliminarArchivoCC(${data.id})"
+               style="margin-left:8px;height:22px;padding:0 8px;border:none;border-radius:4px;background:#dc2626;color:#fff;font-size:.7rem;cursor:pointer">
+               <i class="fa-solid fa-trash"></i> Borrar archivo
+           </button>`
         : '';
     document.getElementById('btn-guardar').innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Guardar cambios';
 
@@ -730,6 +734,25 @@ function ccCorreosReset() {
     const hidden = document.getElementById('f-correo-aviso');
     if (hidden) hidden.value = '';
     ccCorreosInit('');
+}
+
+// ── Eliminar archivo del certificado ─────────────────────────────────────────
+async function eliminarArchivoCC(id) {
+    sgcConfirm('¿Borrar el archivo adjunto? Esta acción no se puede deshacer.', async () => {
+        try {
+            const res  = await ccFetch(`${CC_ROUTES.base}/${id}/archivo`, { method: 'DELETE' });
+            if (!res.ok) { notif('err', `Error ${res.status} al eliminar archivo`); return; }
+            const data = await res.json();
+            if (data.success) {
+                document.getElementById('f-archivo-actual').innerHTML = '';
+                notif('ok', 'Archivo eliminado');
+            } else {
+                notif('err', data.error || 'Error al eliminar');
+            }
+        } catch(e) {
+            notif('err', 'Error de conexión');
+        }
+    }, { title: 'Borrar archivo', icon: '<i class="fa-solid fa-trash"></i>', btnText: 'Borrar', btnColor: '#dc2626' });
 }
 
 document.addEventListener('DOMContentLoaded', function() {

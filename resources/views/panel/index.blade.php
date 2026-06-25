@@ -555,24 +555,29 @@ function cerrarBienvenida() {
     border-radius: 14px;
     width: 100%;
     max-width: 720px;
-    min-height: 420px;
-    max-height: 90vh;
+    max-height: 92vh;
     overflow-y: auto;
+    overflow-x: hidden;
     box-shadow: 0 30px 70px rgba(0,0,0,.6);
     position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: space-between;
-    padding: 20px 60px 30px;
+    justify-content: flex-start;
+    gap: 0;
+    padding: 20px 60px 28px;
     color: #fff;
     box-sizing: border-box;
     animation: bienvenida-card-in .45s cubic-bezier(.22, 1, .36, 1) forwards;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,.2) transparent;
 }
+.bienvenida-card::-webkit-scrollbar { width: 4px; }
+.bienvenida-card::-webkit-scrollbar-thumb { background: rgba(255,255,255,.2); border-radius: 4px; }
 
-/* Variante con video: ocupa más altura */
+/* Variante con video: sin min-height forzada */
 .bienvenida-card.has-video {
-    min-height: 520px;
+    min-height: unset;
 }
 
 /* Keyframes para el efecto Fade + Desplazamiento de la tarjeta */
@@ -614,7 +619,8 @@ function cerrarBienvenida() {
     display: flex;
     align-items: center;
     gap: 20px;
-    margin-top: 10px;
+    margin-top: 6px;
+    margin-bottom: 4px;
 }
 .bienvenida-brand-text {
     text-align: left;
@@ -641,7 +647,7 @@ function cerrarBienvenida() {
     position: relative;
     border-radius: 8px;
     overflow: hidden;
-    margin: 12px 0;
+    margin: 8px 0;
 }
 .bienvenida-video-wrap video {
     width: 100%;
@@ -679,20 +685,21 @@ function cerrarBienvenida() {
 .bienvenida-message {
     color: #ffffff;
     text-align: center;
-    margin-bottom: 18px;
+    margin-top: 6px;
+    margin-bottom: 10px;
 }
 .bienvenida-message p {
     color: #fff !important;
-    font-size: 1.1rem;
+    font-size: 1.05rem;
     font-weight: 400;
-    margin: 8px 0;
-    line-height: 1.6;
+    margin: 5px 0;
+    line-height: 1.55;
     font-family: 'Inter', sans-serif;
 }
 .bienvenida-user-title {
     font-size: 2rem;
     font-weight: 800;
-    margin: 20px 0 6px 0;
+    margin: 12px 0 4px 0;
     text-align: center;
     color: #fff;
     font-family: 'Inter', sans-serif;
@@ -703,24 +710,21 @@ function cerrarBienvenida() {
     font-size: 0.75rem;
     color: rgba(255, 255, 255, 0.6);
     font-family: 'Inter', sans-serif;
+    margin-top: 10px;
 }
 
-/* ── Responsivo ─────────────────────────────────────────────── */
+/* ── Responsivo por ANCHO ────────────────────────────────────── */
 
-/* Tablet (≤ 768 px) */
+/* Tablet (≤ 768 px ancho) */
 @media (max-width: 768px) {
     #modal-bienvenida {
         padding: 12px;
-        align-items: flex-end;   /* sube desde abajo como sheet */
+        align-items: flex-end;
     }
     .bienvenida-card {
         max-width: 100%;
-        min-height: auto;
-        border-radius: 18px 18px 0 0;  /* bottom-sheet style */
+        border-radius: 18px 18px 0 0;
         padding: 16px 28px 24px;
-    }
-    .bienvenida-card.has-video {
-        min-height: auto;
     }
     .bienvenida-brand-title    { font-size: 1.5rem; }
     .bienvenida-brand-subtitle { font-size: 0.78rem; }
@@ -729,7 +733,7 @@ function cerrarBienvenida() {
     .bienvenida-video-wrap video { max-height: 240px; }
 }
 
-/* Móvil pequeño (≤ 480 px) */
+/* Móvil pequeño (≤ 480 px ancho) */
 @media (max-width: 480px) {
     #modal-bienvenida { padding: 0; }
     .bienvenida-card {
@@ -741,8 +745,44 @@ function cerrarBienvenida() {
     .bienvenida-brand-subtitle { font-size: 0.72rem; letter-spacing: 0.6px; }
     .bienvenida-user-title     { font-size: 1.2rem; margin: 12px 0 4px; }
     .bienvenida-message p      { font-size: 0.88rem; }
-    .bienvenida-video-wrap video { max-height: 200px; }
+    .bienvenida-video-wrap video { max-height: 180px; }
     .bienvenida-footer         { font-size: 0.68rem; }
+}
+
+/* ── Responsivo por ALTURA (notebooks y pantallas bajas) ─────── */
+
+/* Notebook estándar: 900px alto o menos */
+@media (max-height: 900px) {
+    #modal-bienvenida { padding: 10px; align-items: flex-start; overflow-y: auto; }
+    .bienvenida-card  { padding: 14px 48px 20px; }
+    .bienvenida-brand-wrap  { margin-top: 4px; }
+    .bienvenida-user-title  { font-size: 1.6rem; margin: 10px 0 4px; }
+    .bienvenida-message     { margin-bottom: 10px; }
+    .bienvenida-message p   { font-size: 0.95rem; margin: 5px 0; }
+    .bienvenida-video-wrap  { margin: 8px 0; }
+    .bienvenida-video-wrap video { max-height: 260px; }
+}
+
+/* Pantalla baja: 768px alto o menos */
+@media (max-height: 768px) {
+    .bienvenida-card  { padding: 10px 36px 16px; }
+    .bienvenida-brand-wrap  { gap: 12px; }
+    .bienvenida-brand-title    { font-size: 1.5rem; }
+    .bienvenida-brand-subtitle { font-size: 0.78rem; }
+    .bienvenida-user-title  { font-size: 1.35rem; margin: 6px 0 2px; }
+    .bienvenida-message p   { font-size: 0.88rem; margin: 4px 0; }
+    .bienvenida-video-wrap video { max-height: 210px; }
+    .bienvenida-footer      { font-size: 0.7rem; }
+}
+
+/* Pantalla muy baja: 640px alto o menos */
+@media (max-height: 640px) {
+    .bienvenida-card  { padding: 8px 28px 12px; }
+    .bienvenida-brand-title    { font-size: 1.2rem; }
+    .bienvenida-brand-subtitle { font-size: 0.7rem; }
+    .bienvenida-user-title  { font-size: 1.1rem; margin: 4px 0 2px; }
+    .bienvenida-video-wrap video { max-height: 160px; }
+    .bienvenida-message p   { font-size: 0.82rem; }
 }
 </style>
 

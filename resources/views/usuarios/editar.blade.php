@@ -361,17 +361,16 @@
                     Selecciona qué bloques de módulos verá este usuario en su panel.
                 </p>
                 <div class="bloques-grid-form">
-                    {{-- Módulos base del sistema (bloque_xxx en sgc_usuarios) --}}
                     @foreach([
-                        'bloque_sig'            => ['📋', 'Control SIG'],
-                        'bloque_seguridad'      => ['🛡️', 'Seguridad SST'],
-                        'bloque_ambiente'       => ['🌿', 'Medio Ambiente'],
-                        'bloque_rrhh'           => ['👨‍💼', 'RRHH'],
-                        'bloque_abastecimiento' => ['🏗️', 'Abastecimiento'],
-                        'bloque_proyectos'      => ['📈', 'Proyectos'],
-                        'bloque_gerencia'       => ['🏢', 'Gerencia'],
-                        'bloque_finanzas'       => ['💰', 'Finanzas'],
-                    ] as $col => [$emoji, $nombre])
+                        'bloque_sig'            => ['fa-clipboard-check', 'Control SIG'],
+                        'bloque_seguridad'      => ['fa-shield-halved',   'Control Seguridad SST'],
+                        'bloque_ambiente'       => ['fa-seedling',        'Control Medio Ambiente'],
+                        'bloque_rrhh'           => ['fa-user-tie',        'Control RRHH'],
+                        'bloque_abastecimiento' => ['fa-truck',           'Control Abastecimiento'],
+                        'bloque_proyectos'      => ['fa-chart-line',      'Control Proyectos'],
+                        'bloque_gerencia'       => ['fa-building',        'Control Gerencia'],
+                        'bloque_finanzas'       => ['fa-coins',           'Control Finanzas'],
+                    ] as $col => [$icono, $nombre])
                     @php
                         $checked = old("bloques.{$col}", isset($bloques) ? ($bloques[$col] ?? false) : false);
                     @endphp
@@ -379,25 +378,8 @@
                         <input type="checkbox" name="bloques[{{ $col }}]" value="1"
                                {{ $checked ? 'checked' : '' }}
                                onchange="this.closest('.bloque-check').classList.toggle('activo', this.checked)">
-                        <span>{{ $emoji }}</span>
+                        <i class="fa-solid {{ $icono }}" style="font-size:.95rem;width:1.2em;text-align:center"></i>
                         <span>{{ $nombre }}</span>
-                    </label>
-                    @endforeach
-
-                    {{-- Módulos dinámicos (acceso vía sgc_carpetas_permisos) --}}
-                    @foreach($modulosCarpetas->where('es_dinamico', true) as $modDin)
-                    @php
-                        $tieneAccesoDin = isset($permisosCarpetas) && $permisosCarpetas->has($modDin->id);
-                        $checkedDin     = old("carpetas.{$modDin->id}.descarga", $tieneAccesoDin);
-                    @endphp
-                    <label class="bloque-check {{ $checkedDin ? 'activo' : '' }}" id="label-din-{{ $modDin->id }}">
-                        <input type="checkbox"
-                               name="carpetas[{{ $modDin->id }}][descarga]"
-                               value="1"
-                               {{ $checkedDin ? 'checked' : '' }}
-                               onchange="this.closest('.bloque-check').classList.toggle('activo', this.checked)">
-                        <span>{{ $modDin->icono ?? '📁' }}</span>
-                        <span>{{ $modDin->descripcion }}</span>
                     </label>
                     @endforeach
                 </div>
@@ -406,7 +388,7 @@
 
         {{-- ── Permisos de carpetas ──────────────────────────── --}}
         <div class="form-card">
-            <div class="form-card-header">📁 Permisos de carpetas documentales</div>
+            <div class="form-card-header">📁 Permisos sub módulos</div>
             <div class="form-card-body">
                 <p style="font-size:.78rem;color:var(--text-muted);margin-bottom:12px">
                     Los permisos se asignan por submodulo. Haz clic para expandir.
@@ -504,7 +486,27 @@
                             @endif
                             @else
                             {{-- ── Permisos granulares (comportamiento normal) ── --}}
-                            <div class="permisos-checks">
+                            <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+                                <a href="#" onclick="setPermisoRapido({{ $carpeta->id }},'ver'); return false;"
+                                   style="font-size:.71rem;display:inline-flex;align-items:center;gap:4px;
+                                          padding:3px 10px;border-radius:20px;border:1px solid #93C5FD;
+                                          background:#EFF6FF;color:#1D4ED8;text-decoration:none;font-weight:600">
+                                    👁 Solo visualización
+                                </a>
+                                <a href="#" onclick="setPermisoRapido({{ $carpeta->id }},'completo'); return false;"
+                                   style="font-size:.71rem;display:inline-flex;align-items:center;gap:4px;
+                                          padding:3px 10px;border-radius:20px;border:1px solid #86EFAC;
+                                          background:#F0FDF4;color:#16A34A;text-decoration:none;font-weight:600">
+                                    🔑 Acceso completo
+                                </a>
+                                <a href="#" onclick="setPermisoRapido({{ $carpeta->id }},'ninguno'); return false;"
+                                   style="font-size:.71rem;display:inline-flex;align-items:center;gap:4px;
+                                          padding:3px 10px;border-radius:20px;border:1px solid var(--border);
+                                          background:var(--surface-2);color:var(--text-muted);text-decoration:none;font-weight:600">
+                                    ✕ Sin acceso
+                                </a>
+                            </div>
+                            <div class="permisos-checks" id="checks-{{ $carpeta->id }}">
                                 @foreach(['carga'=>['📤','Subir'],'descarga'=>['📥','Descargar'],'crear'=>['📁','Crear'],'eliminar'=>['🗑️','Eliminar'],'editar'=>['✏️','Editar']] as $permKey => [$icon, $label])
                                 @php $isChecked = old("carpetas.{$carpeta->id}.{$permKey}", $perm2 ? (bool)$perm2->$permKey : false); @endphp
                                 <label class="perm-check {{ $isChecked ? 'activo' : '' }}">
@@ -633,6 +635,26 @@ function toggleNivelPerm(carpetaId, nivel) {
             card.querySelector('div').appendChild(badge);
         } else if (!active && badge) {
             badge.remove();
+        }
+    });
+}
+
+// ── Atajos de permisos granulares (Solo visualización / Acceso completo / Sin acceso) ──
+function setPermisoRapido(carpetaId, nivel) {
+    const mapa = {
+        ver:      { carga: false, descarga: true,  crear: false, eliminar: false, editar: false },
+        completo: { carga: true,  descarga: true,  crear: true,  eliminar: true,  editar: true  },
+        ninguno:  { carga: false, descarga: false, crear: false, eliminar: false, editar: false },
+    };
+    const vals = mapa[nivel];
+    if (!vals) return;
+    const container = document.getElementById(`checks-${carpetaId}`);
+    if (!container) return;
+    container.querySelectorAll('input[type="checkbox"]').forEach(input => {
+        const key = input.name.match(/\[(\w+)\]$/)?.[1];
+        if (key && key in vals) {
+            input.checked = vals[key];
+            input.closest('.perm-check')?.classList.toggle('activo', vals[key]);
         }
     });
 }

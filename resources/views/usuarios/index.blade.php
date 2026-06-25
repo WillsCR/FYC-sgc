@@ -78,6 +78,27 @@
 .alert-ok  { background:#DCFCE7; border-left:3px solid #16A34A; color:#166534; padding:10px 14px; border-radius:var(--radius-sm); font-size:.82rem; margin-bottom:14px; }
 .alert-err { background:#FCEBEB; border-left:3px solid #DC2626; color:#991B1B; padding:10px 14px; border-radius:var(--radius-sm); font-size:.82rem; margin-bottom:14px; }
 
+.usr-search-wrap {
+    position: relative; flex: 1; max-width: 340px;
+}
+.usr-search-wrap i {
+    position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+    color: var(--text-muted); font-size: .85rem; pointer-events: none;
+}
+.usr-search {
+    width: 100%; padding: 8px 12px 8px 32px;
+    border: 1px solid var(--border); border-radius: var(--radius-sm);
+    font-size: .82rem; color: var(--text-primary);
+    background: var(--surface); outline: none; transition: border-color .15s;
+    box-sizing: border-box;
+}
+.usr-search:focus { border-color: var(--navy); }
+.usr-no-results {
+    text-align: center; padding: 32px; color: var(--text-muted);
+    font-size: .85rem; display: none;
+}
+#usr-count-live { font-weight: 600; color: var(--navy); }
+
 @media (max-width: 900px) {
     .usr-table th:nth-child(4), .usr-table td:nth-child(4) { display: none; }
 }
@@ -98,8 +119,12 @@
                 @if($actual->esSuperAdmin()) Todos los usuarios del sistema
                 @else Usuarios con perfil Trabajador
                 @endif
-                · {{ $usuarios->count() }} {{ $usuarios->count() === 1 ? 'usuario' : 'usuarios' }}
+                · <span id="usr-count-live">{{ $usuarios->count() }}</span> {{ $usuarios->count() === 1 ? 'usuario' : 'usuarios' }}
             </p>
+        </div>
+        <div class="usr-search-wrap">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" id="usr-search" class="usr-search" placeholder="Buscar por nombre, email o área…" autocomplete="off">
         </div>
         <a href="{{ route('usuarios.create') }}" class="btn-nuevo">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -197,7 +222,38 @@
                 @endforelse
             </tbody>
         </table>
+        <div class="usr-no-results" id="usr-no-results">
+            <i class="fa-solid fa-user-slash" style="font-size:1.4rem;margin-bottom:8px;display:block"></i>
+            No se encontraron usuarios que coincidan con la búsqueda.
+        </div>
     </div>
 
 </div>
+
+@push('scripts')
+<script>
+(function () {
+    const input    = document.getElementById('usr-search');
+    const rows     = document.querySelectorAll('.usr-table tbody tr');
+    const noResult = document.getElementById('usr-no-results');
+    const counter  = document.getElementById('usr-count-live');
+    const total    = rows.length;
+
+    input.addEventListener('input', function () {
+        const q = this.value.trim().toLowerCase();
+        let visible = 0;
+
+        rows.forEach(function (tr) {
+            const text = tr.textContent.toLowerCase();
+            const show = !q || text.includes(q);
+            tr.style.display = show ? '' : 'none';
+            if (show) visible++;
+        });
+
+        counter.textContent = q ? visible : total;
+        noResult.style.display = (q && visible === 0) ? 'block' : 'none';
+    });
+})();
+</script>
+@endpush
 @endsection

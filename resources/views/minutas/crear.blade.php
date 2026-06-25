@@ -522,9 +522,13 @@ function abrirModalNotif() {
         if (tipo === 'interno') {
             const sel = tr.querySelector('select[name="conv_id_usuario[]"]');
             const id  = sel ? parseInt(sel.value) : 0;
-            if (id) {
-                const u = usuariosData.find(x => x.id === id);
-                if (u) destinatarios.push({ nombre: u.nombre, email: u.email || '', tipo: 'interno' });
+            const u   = id ? usuariosData.find(x => x.id == id) : null;
+            const nombreFallback = tr.querySelector('input[name="conv_nom_ape[]"]')?.value?.trim()
+                                || (sel?.options[sel?.selectedIndex]?.text || '').trim();
+            const nombre = u ? u.nombre : nombreFallback;
+            const email  = u ? (u.email || '') : '';
+            if (nombre && nombre !== '— Seleccionar usuario —') {
+                destinatarios.push({ nombre, email, tipo: 'interno' });
             }
         } else {
             const nomInput = tr.querySelector('td.nombre-cell input[type="text"]');
@@ -582,7 +586,9 @@ function actualizarContador() {
     dest.forEach((_, i) => {
         const chk   = document.getElementById(`notif-chk-${i}`);
         const email = (document.getElementById(`notif-email-${i}`)?.value || '').trim();
-        if (chk?.checked && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) validos++;
+        const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+        if (chk && valid && !chk.checked) chk.checked = true;
+        if (chk?.checked && valid) validos++;
     });
     const lbl = document.getElementById('btn-enviar-label');
     if (lbl) lbl.textContent = validos > 0 ? `Enviar y guardar (${validos})` : 'Enviar y guardar';

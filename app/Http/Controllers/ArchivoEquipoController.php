@@ -162,6 +162,24 @@ class ArchivoEquipoController extends Controller
     }
 
     /**
+     * Eliminar archivo (marca como inactivo y borra el fichero físico)
+     */
+    public function eliminar(ArchivoEquipo $archivo)
+    {
+        $u = PermisoService::usuarioActual();
+        if (! $u || (! $u->esAdmin() && ! PermisoService::can('carga', 'carpeta', 98))) {
+            return response()->json(['success' => false, 'mensaje' => 'Sin permisos'], 403);
+        }
+
+        if ($archivo->ruta_almacenamiento && \Storage::disk('local')->exists($archivo->ruta_almacenamiento)) {
+            \Storage::disk('local')->delete($archivo->ruta_almacenamiento);
+        }
+        $archivo->update(['estado' => 'eliminado']);
+
+        return response()->json(['success' => true, 'mensaje' => 'Archivo eliminado']);
+    }
+
+    /**
      * Listar todos los archivos con filtros
      */
     public function index(Request $request)

@@ -1109,7 +1109,7 @@ function confirmarEliminar() {
     btn.textContent = 'Eliminando...';
     if (_eliminarFila) _eliminarFila.classList.add('fila-eliminando');
 
-    fetch('/archivos/' + _eliminarId, {
+    fetch(window.APP_BASE + '/archivos/' + _eliminarId, {
         method: 'DELETE',
         headers: {
             'X-CSRF-TOKEN':      window.CSRF_TOKEN,
@@ -1166,7 +1166,7 @@ function confirmarEliminarCarpeta() {
     btn.disabled = true;
     btn.textContent = 'Eliminando...';
 
-    fetch('/carpetas/' + _eliminarCarpetaId, {
+    fetch(window.APP_BASE + '/carpetas/' + _eliminarCarpetaId, {
         method: 'DELETE',
         headers: {
             'X-CSRF-TOKEN':     window.CSRF_TOKEN,
@@ -1226,7 +1226,7 @@ function confirmarEliminarSubmodulo() {
     btn.disabled    = true;
     btn.textContent = 'Eliminando...';
 
-    fetch('/submodulos/' + _elimSubId + '/cascade', {
+    fetch(window.APP_BASE + '/submodulos/' + _elimSubId + '/cascade', {
         method:  'DELETE',
         headers: {
             'X-CSRF-TOKEN':     window.CSRF_TOKEN,
@@ -1642,7 +1642,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarVisor(
         var wrap = document.createElement('div');
         wrap.className = 'submodulo-wrap';
         wrap.innerHTML =
-            '<a href="/carpetas/' + sub.id + '" class="submodulo-card"' +
+            '<a href="' + window.APP_BASE + '/carpetas/' + sub.id + '" class="submodulo-card"' +
             ' style="background-color:' + escHtml(color) + '">' +
                 iconoHtml +
                 '<span class="submodulo-nombre">' + escHtml(nombre) + '</span>' +

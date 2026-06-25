@@ -118,6 +118,7 @@ Route::middleware(['auth.sgc'])->group(function () {
     Route::get('/archivos-equipos/programa/{id}',          [ArchivoEquipoController::class, 'archivosPrograma'])->name('archivos-equipos.programa');
     Route::get('/archivos-equipos/equipo/{id}',            [ArchivoEquipoController::class, 'archivosEquipo'])->name('archivos-equipos.equipo');
     Route::get('/archivos-equipos/{id}/historial',         [ArchivoEquipoController::class, 'historial'])->name('archivos-equipos.historial');
+    Route::delete('/archivos-equipos/{archivo}',           [ArchivoEquipoController::class, 'eliminar'])->name('archivos-equipos.eliminar');
     Route::get('/archivos-equipos',                        [ArchivoEquipoController::class, 'index'])->name('archivos-equipos.index');
         // ─── Control de Instrumentos ─────────────────────────────────────────────────
     Route::prefix('control-instrumentos')->name('control-instrumentos.')->group(function () {
@@ -140,7 +141,8 @@ Route::middleware(['auth.sgc'])->group(function () {
         Route::get('/exportar',          [App\Http\Controllers\CertCalidadController::class, 'exportar'])->name('exportar');
         Route::get('/{cert}/datos',      [App\Http\Controllers\CertCalidadController::class, 'datos'])  ->name('datos');
         Route::post('/{cert}',           [App\Http\Controllers\CertCalidadController::class, 'update']) ->name('update');
-        Route::delete('/{cert}',         [App\Http\Controllers\CertCalidadController::class, 'destroy'])->name('destroy');
+        Route::delete('/{cert}',          [App\Http\Controllers\CertCalidadController::class, 'destroy'])        ->name('destroy');
+        Route::delete('/{cert}/archivo', [App\Http\Controllers\CertCalidadController::class, 'eliminarArchivo'])->name('archivo.destroy');
         Route::get('/{cert}/descargar',  [App\Http\Controllers\CertCalidadController::class, 'descargar'])->name('descargar');
     });
 

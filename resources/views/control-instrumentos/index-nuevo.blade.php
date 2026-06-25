@@ -875,7 +875,7 @@ document.getElementById('form-nuevo').addEventListener('submit', async function(
     ciCorreosSync('ci-correos-nuevo', 'ci-correo-nuevo');
     const fd = new FormData(this);
     try {
-        const res  = await fetch('/control-instrumentos', { method: 'POST', body: fd, headers: { 'X-CSRF-TOKEN': CSRF } });
+        const res  = await fetch(window.APP_BASE + '/control-instrumentos', { method: 'POST', body: fd, headers: { 'X-CSRF-TOKEN': CSRF } });
         const data = await res.json();
         if (data.success) {
             cerrarModal('modal-nuevo');
@@ -897,7 +897,7 @@ async function editarPrograma(id) {
     const body = document.getElementById('modal-editar-body');
     body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;padding:40px;color:var(--text-muted)"><i class="fa-solid fa-spinner fa-spin"></i>&nbsp;Cargando...</div>';
     try {
-        const res = await fetch(`/control-instrumentos/${id}/edit`, { headers: { 'X-CSRF-TOKEN': CSRF } });
+        const res = await fetch(window.APP_BASE + `/control-instrumentos/${id}/edit`, { headers: { 'X-CSRF-TOKEN': CSRF } });
         const html = await res.text();
         body.innerHTML = html;
         ejecutarScripts(body);
@@ -910,7 +910,7 @@ async function verArchivos(id) {
     const body = document.getElementById('modal-archivos-body');
     body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;padding:40px;color:var(--text-muted)"><i class="fa-solid fa-spinner fa-spin"></i>&nbsp;Cargando...</div>';
     try {
-        const res = await fetch(`/control-instrumentos/${id}/archivos`, { headers: { 'X-CSRF-TOKEN': CSRF } });
+        const res = await fetch(window.APP_BASE + `/control-instrumentos/${id}/archivos`, { headers: { 'X-CSRF-TOKEN': CSRF } });
         const html = await res.text();
         body.innerHTML = html;
         ejecutarScripts(body);
@@ -932,7 +932,7 @@ document.getElementById('confirm-ok').addEventListener('click', async () => {
         const fd = new FormData();
         fd.append('_token', CSRF);
         fd.append('_method', 'DELETE');
-        const res  = await fetch(`/control-instrumentos/${_eliminarId}`, { method: 'POST', body: fd });
+        const res  = await fetch(window.APP_BASE + `/control-instrumentos/${_eliminarId}`, { method: 'POST', body: fd });
         const data = await res.json();
         if (data.success) {
             notif('success', data.message);
@@ -956,7 +956,7 @@ document.addEventListener('submit', async function(e) {
         ciCorreosSync('ci-correos-edit', 'ci-correo-edit');
         const fd = new FormData(e.target);
         try {
-            const res  = await fetch(`/control-instrumentos/${id}`, { method: 'POST', body: fd, headers: { 'X-CSRF-TOKEN': CSRF } });
+            const res  = await fetch(window.APP_BASE + `/control-instrumentos/${id}`, { method: 'POST', body: fd, headers: { 'X-CSRF-TOKEN': CSRF } });
             const data = await res.json();
             if (data.success) {
                 cerrarModal('modal-editar');
@@ -983,7 +983,7 @@ document.getElementById('form-importar').addEventListener('submit', async functi
 
     const fd = new FormData(this);
     try {
-        const res  = await fetch('/control-instrumentos/importar', { method: 'POST', body: fd, headers: { 'X-CSRF-TOKEN': CSRF } });
+        const res  = await fetch(window.APP_BASE + '/control-instrumentos/importar', { method: 'POST', body: fd, headers: { 'X-CSRF-TOKEN': CSRF } });
         const data = await res.json();
         if (data.success) {
             result.style.display = 'block';
@@ -1011,7 +1011,7 @@ document.querySelectorAll('.perm-check').forEach(chk => {
         fd.append('tipo', this.dataset.tipo);
         fd.append('estado', this.checked ? 1 : 0);
         try {
-            const res = await fetch('/control-instrumentos/actualizar-permisos', {
+            const res = await fetch(window.APP_BASE + '/control-instrumentos/actualizar-permisos', {
                 method: 'POST', body: fd, headers: { 'X-CSRF-TOKEN': CSRF }
             });
             const data = await res.json();

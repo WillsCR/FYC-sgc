@@ -133,6 +133,7 @@
 @stack('scripts')
 <script>
     window.CSRF_TOKEN = '{{ csrf_token() }}';
+    window.APP_BASE   = '{{ rtrim(url('/'), '/') }}';
     window.sgcFetch = (url, options = {}) => fetch(url, {
         headers: {
             'Content-Type': 'application/json',

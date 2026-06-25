@@ -22,6 +22,7 @@
     align-items: center; justify-content: center; z-index: 2;
 }
 .cert-preview-close:hover { background: rgba(0,0,0,.8); }
+.btn-danger-ci { background: #dc2626 !important; color: #fff !important; border: none; }
 </style>
 
 <div class="modal-content-pad">
@@ -55,6 +56,13 @@
                                class="btn-accion btn-files" style="padding:3px 8px" target="_blank" title="Descargar">
                                 <i class="fa-solid fa-download"></i>
                             </a>
+                            @if($puedeGestionar)
+                            <button type="button"
+                                    onclick="eliminarArchivoEquipo({{ $archivo->id }}, {{ $programa->id }})"
+                                    class="btn-accion btn-danger-ci" style="padding:3px 8px" title="Eliminar">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                            @endif
                         </div>
                     </div>
                     {{-- Visor inline --}}
@@ -110,6 +118,13 @@
                                class="btn-accion btn-files" style="padding:3px 8px" target="_blank" title="Descargar">
                                 <i class="fa-solid fa-download"></i>
                             </a>
+                            @if($puedeGestionar)
+                            <button type="button"
+                                    onclick="eliminarArchivoEquipo({{ $archivo->id }}, {{ $programa->id }})"
+                                    class="btn-accion btn-danger-ci" style="padding:3px 8px" title="Eliminar">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                            @endif
                         </div>
                     </div>
                     {{-- Visor inline --}}
@@ -179,6 +194,28 @@
     };
 
     // ── Subir certificado ────────────────────────────────────
+    // ── Eliminar archivo ─────────────────────────────────────
+    window.eliminarArchivoEquipo = function(archivoId, programaId) {
+        sgcConfirm('¿Eliminar este archivo? Esta acción no se puede deshacer.', async () => {
+            try {
+                const fd = new FormData();
+                fd.append('_token',  window.CSRF_TOKEN || '{{ csrf_token() }}');
+                fd.append('_method', 'DELETE');
+                const res  = await fetch(window.APP_BASE + '/archivos-equipos/' + archivoId, { method: 'POST', body: fd });
+                if (!res.ok) { if (typeof notif === 'function') notif('error', 'Error ' + res.status); return; }
+                const data = await res.json();
+                if (data.success) {
+                    if (typeof notif === 'function') notif('success', 'Archivo eliminado');
+                    if (typeof verArchivos === 'function') verArchivos(programaId);
+                } else {
+                    if (typeof notif === 'function') notif('error', data.mensaje || 'Error al eliminar');
+                }
+            } catch(e) {
+                if (typeof notif === 'function') notif('error', 'Error de conexión');
+            }
+        }, { title: 'Eliminar archivo', icon: '<i class="fa-solid fa-trash"></i>', btnText: 'Eliminar', btnColor: '#dc2626' });
+    };
+
     window.subirCertificado = function(programaId, tipo) {
         _ciProgramaId = programaId;
         _ciTipo = tipo;
@@ -201,7 +238,7 @@
         cuerpo.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;padding:30px;color:var(--text-muted)"><i class="fa-solid fa-spinner fa-spin"></i>&nbsp;Subiendo archivo...</div>';
 
         try {
-            const res  = await fetch('/archivos-equipos/subir-certificado', { method: 'POST', body: fd });
+            const res  = await fetch(window.APP_BASE + '/archivos-equipos/subir-certificado', { method: 'POST', body: fd });
             const data = await res.json();
 
             if (data.success) {

@@ -141,6 +141,20 @@ class CertCalidadController extends Controller
         return response()->json(['success' => true, 'message' => 'Registro eliminado']);
     }
 
+    // ── ELIMINAR ARCHIVO ─────────────────────────────────────────────────────
+
+    public function eliminarArchivo(CertCalidad $cert)
+    {
+        if (! $this->puedeGestionar()) return response()->json(['error' => 'Sin permiso'], 403);
+
+        if ($cert->archivo_ruta && Storage::disk('local')->exists($cert->archivo_ruta)) {
+            Storage::disk('local')->delete($cert->archivo_ruta);
+        }
+        $cert->update(['archivo_nombre' => null, 'archivo_ruta' => null, 'archivo_mime' => null]);
+
+        return response()->json(['success' => true, 'message' => 'Archivo eliminado']);
+    }
+
     // ── EXPORTAR EXCEL ────────────────────────────────────────────────────────
 
     public function exportar(Request $request)

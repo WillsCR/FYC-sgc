@@ -160,6 +160,17 @@ Route::middleware(['auth.sgc'])->group(function () {
         Route::delete('/{trabajador}/archivo/{tipo}',   [App\Http\Controllers\MatrizCompetenciasController::class, 'destroyArchivo'])->name('archivo.destroy');
     });
 
+    // ─── Control Flota ───────────────────────────────────────────────────────────
+    Route::prefix('flota')->name('flota.')->group(function () {
+        Route::get('/',              [App\Http\Controllers\FlotaController::class, 'index'])   ->name('index');
+        Route::post('/',             [App\Http\Controllers\FlotaController::class, 'store'])   ->name('store');
+        Route::post('/importar',     [App\Http\Controllers\FlotaController::class, 'importar'])->name('importar');
+        Route::get('/exportar',      [App\Http\Controllers\FlotaController::class, 'exportar'])->name('exportar');
+        Route::get('/{flota}/datos', [App\Http\Controllers\FlotaController::class, 'datos'])  ->name('datos');
+        Route::post('/{flota}',      [App\Http\Controllers\FlotaController::class, 'update']) ->name('update');
+        Route::delete('/{flota}',    [App\Http\Controllers\FlotaController::class, 'destroy'])->name('destroy');
+    });
+
     // ─── Matriz Cursos ───────────────────────────────────────────────────────────
     Route::prefix('matriz-cursos')->name('matriz-cursos.')->group(function () {
         Route::get('/',          [App\Http\Controllers\MatrizCursosController::class, 'index'])   ->name('index');

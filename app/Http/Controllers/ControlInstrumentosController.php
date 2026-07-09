@@ -190,7 +190,7 @@ class ControlInstrumentosController extends Controller
         if (! $this->puedeGestionarCI()) abort(403);
 
         $programaVerificacion->update([
-            'id_contrato'             => $request->id_contrato,
+            'id_contrato'             => $request->id_contrato ?: $programaVerificacion->id_contrato,
             'descripcion'             => $request->descripcion,
             'marca'                   => $request->marca,
             'modelo'                  => $request->modelo,

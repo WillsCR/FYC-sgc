@@ -174,11 +174,7 @@
             </div>
 
             {{-- Paginación --}}
-            <div class="row mt-3">
-                <div class="col-md-12">
-                    {{ $programas->links() }}
-                </div>
-            </div>
+            <x-paginacion :paginator="$programas" label="instrumentos" />
         </div>
     </div>
 </div>

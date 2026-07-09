@@ -54,7 +54,7 @@ class CertCalidadController extends Controller
         if ($request->input('solo_aplica'))         $query->where('aplica', true);
         if ($request->input('solo_critico'))        $query->where('critico', true);
 
-        $registros = $query->orderBy('numero')->orderBy('descripcion')->get();
+        $registros = $query->orderBy('numero')->orderBy('descripcion')->paginate(25)->withQueryString();
 
         return view('cert-calidad.index', compact('registros', 'usuario', 'puedeGestionar'));
     }

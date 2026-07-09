@@ -68,27 +68,43 @@ class NoConformidadController extends Controller
 
     // ── INDEX ─────────────────────────────────────────────────────────────────
 
-    public function index()
+    public function index(Request $request)
     {
         $this->checkVer();
         $usuario = PermisoService::usuarioActual();
-        $esAdmin       = $this->puedeGestionar(); // puede crear/editar/eliminar/exportar
-        $puedeImportar = $usuario->esAdmin();   // solo admins reales pueden importar
+        $esAdmin       = $this->puedeGestionar();
+        $puedeImportar = $usuario->esAdmin();
 
         $areasMap = Area::orderBy('id')->pluck('descripcion', 'id')->toArray();
 
-        $ncs = NoConformidad::with(['accionesInmediatas', 'accionesCorrectivas', 'documentos'])
-            ->orderBy('num_nc')
-            ->get()
-            ->map(function ($nc) use ($areasMap) {
-                $nc->area_nombre         = $areasMap[$nc->id_area] ?? '—';
-                $nc->tipo_nombre         = self::TIPOS_ACCION[$nc->tipo_accion] ?? '—';
-                $nc->status_corr_txt     = self::STATUS[$nc->status_correccion]     ?? '—';
-                $nc->status_acc_txt      = self::STATUS[$nc->status_acc_corr]       ?? '—';
-                $nc->status_seguim_txt   = self::STATUS[$nc->status_seguim_acc_corr] ?? '—';
-                $nc->eficaz_txt          = self::EFICAZ[$nc->accion_eficaz]         ?? '—';
-                return $nc;
+        $query = NoConformidad::with(['accionesInmediatas', 'accionesCorrectivas', 'documentos'])
+            ->orderBy('num_nc');
+
+        if ($s = $request->input('buscar')) {
+            $query->where(function ($q) use ($s) {
+                $q->where('descripcion_hallazgo', 'like', "%{$s}%")
+                  ->orWhere('num_nc', 'like', "%{$s}%");
             });
+        }
+        if ($tipo = $request->input('tipo')) {
+            $tipoId = array_search($tipo, self::TIPOS_ACCION);
+            if ($tipoId !== false) $query->where('tipo_accion', $tipoId);
+        }
+        if ($status = $request->input('estado')) {
+            $statusId = array_search($status, self::STATUS);
+            if ($statusId !== false) $query->where('status_correccion', $statusId);
+        }
+
+        $ncs = $query->paginate(15)->withQueryString();
+        $ncs->getCollection()->transform(function ($nc) use ($areasMap) {
+            $nc->area_nombre         = $areasMap[$nc->id_area] ?? '—';
+            $nc->tipo_nombre         = self::TIPOS_ACCION[$nc->tipo_accion] ?? '—';
+            $nc->status_corr_txt     = self::STATUS[$nc->status_correccion]     ?? '—';
+            $nc->status_acc_txt      = self::STATUS[$nc->status_acc_corr]       ?? '—';
+            $nc->status_seguim_txt   = self::STATUS[$nc->status_seguim_acc_corr] ?? '—';
+            $nc->eficaz_txt          = self::EFICAZ[$nc->accion_eficaz]         ?? '—';
+            return $nc;
+        });
 
         $areas = $areasMap;
 

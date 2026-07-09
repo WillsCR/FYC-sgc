@@ -167,8 +167,8 @@ class PanelController extends Controller
     public function destroyModulo(int $id)
     {
         $usuario = PermisoService::usuarioActual();
-        if (! $usuario->esSuperAdmin()) {
-            return response()->json(['error' => 'Solo el Super Administrador puede eliminar módulos.'], 403);
+        if (! $usuario->esAdmin()) {
+            return response()->json(['error' => 'No tienes permiso para eliminar módulos.'], 403);
         }
 
         $modulo = Carpeta::findOrFail($id);

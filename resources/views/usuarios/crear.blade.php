@@ -345,26 +345,24 @@
                     Selecciona qué bloques de módulos verá este usuario en su panel.
                 </p>
                 <div class="bloques-grid-form">
-                    @foreach([
-                        'bloque_sig'            => ['fa-clipboard-check', 'Control SIG'],
-                        'bloque_seguridad'      => ['fa-shield-halved',   'Control Seguridad SST'],
-                        'bloque_ambiente'       => ['fa-seedling',        'Control Medio Ambiente'],
-                        'bloque_rrhh'           => ['fa-user-tie',        'Control RRHH'],
-                        'bloque_abastecimiento' => ['fa-truck',           'Control Abastecimiento'],
-                        'bloque_proyectos'      => ['fa-chart-line',      'Control Proyectos'],
-                        'bloque_gerencia'       => ['fa-building',        'Control Gerencia'],
-                        'bloque_finanzas'       => ['fa-coins',           'Control Finanzas'],
-                    ] as $col => [$icono, $nombre])
+                    @foreach($modulosCarpetas as $modulo)
+                    @if($modulo->es_dinamico)
                     @php
-                        $checked = old("bloques.{$col}", isset($bloques) ? ($bloques[$col] ?? false) : false);
+                        $dynChecked = old("bloque_dinamico.{$modulo->id}", false);
+                        $dynIcono   = $modulo->icono ?? 'fa-folder-open';
                     @endphp
-                    <label class="bloque-check {{ $checked ? 'activo' : '' }}" id="label-{{ $col }}">
-                        <input type="checkbox" name="bloques[{{ $col }}]" value="1"
-                               {{ $checked ? 'checked' : '' }}
+                    <label class="bloque-check {{ $dynChecked ? 'activo' : '' }}">
+                        <input type="checkbox" name="bloque_dinamico[{{ $modulo->id }}]" value="1"
+                               {{ $dynChecked ? 'checked' : '' }}
                                onchange="this.closest('.bloque-check').classList.toggle('activo', this.checked)">
-                        <i class="fa-solid {{ $icono }}" style="font-size:.95rem;width:1.2em;text-align:center"></i>
-                        <span>{{ $nombre }}</span>
+                        @if(str_starts_with($dynIcono, 'fa-'))
+                            <i class="fa-solid {{ $dynIcono }}" style="font-size:.95rem;width:1.2em;text-align:center"></i>
+                        @else
+                            <span style="font-size:.95rem;width:1.2em;text-align:center;display:inline-block">{{ $dynIcono }}</span>
+                        @endif
+                        <span>{{ $modulo->descripcion }}</span>
                     </label>
+                    @endif
                     @endforeach
                 </div>
             </div>

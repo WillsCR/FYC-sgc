@@ -26,7 +26,7 @@
     @if(count($bloques) > 0)
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">
             <div class="section-label" style="margin-bottom:0">Módulos del sistema</div>
-            @if(session('es_superadmin'))
+            @if(session('es_admin'))
             <button onclick="abrirModalCrearModulo()"
                     style="padding:7px 14px;background:var(--navy);color:#fff;border:none;border-radius:6px;
                            font-size:.78rem;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;
@@ -51,7 +51,7 @@
                     <div class="bloque-title">{{ $bloque['titulo'] }}</div>
                     <div class="bloque-badge">{{ $bloque['badge'] }}</div>
                 </a>
-                @if(session('es_superadmin'))
+                @if(session('es_admin'))
                 <button class="btn-del-modulo"
                         title="Eliminar módulo"
                         onclick="pedirEliminarModulo({{ $bloque['carpeta_id'] }}, '{{ addslashes($bloque['titulo']) }}')">
@@ -174,7 +174,7 @@
 </style>
 
 {{-- Modal: Confirmar eliminar módulo --}}
-@if(session('es_superadmin'))
+@if(session('es_admin'))
 <div class="modal-overlay" id="modal-eliminar-modulo">
     <div class="modal" style="max-width:420px">
         <div class="modal-title" style="color:#c62828">🗑️ Eliminar módulo</div>
@@ -407,7 +407,7 @@ function insertarTarjetaModulo(modulo) {
             ? `<i class="fa-solid ${escHtml(icono)} bloque-icon"></i>`
             : `<span class="bloque-icon" style="font-size:1.8rem">${escHtml(icono)}</span>`;
 
-        @if(session('es_superadmin'))
+        @if(session('es_admin'))
         const btnElim = `<button class="btn-del-modulo" title="Eliminar módulo"
             onclick="pedirEliminarModulo(${modulo.id}, '${escJs(modulo.descripcion)}')">✕</button>`;
         @else

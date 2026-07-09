@@ -100,6 +100,15 @@ class UsuarioController extends Controller
             $this->guardarPermisosCarpetas($usuario->id, $usuario->email, $usuario->quesera, $request->carpetas);
         }
 
+        // Visibilidad de módulos dinámicos (bloque_dinamico[id] = 1)
+        foreach (array_keys($request->input('bloque_dinamico', [])) as $carpetaId) {
+            CarpetasPermisos::firstOrCreate(
+                ['id_carpeta' => (int) $carpetaId, 'id_usuario' => $usuario->id],
+                ['correo' => '', 'clave' => '', 'ver' => 0, 'carga' => 0, 'descarga' => 0,
+                 'crear' => 0, 'ocultar_raiz' => 0, 'eliminar' => 0, 'editar' => 0]
+            );
+        }
+
         return redirect()->route('usuarios.index')
             ->with('ok', "Usuario \"{$usuario->nombre}\" creado correctamente.");
     }
@@ -128,9 +137,18 @@ class UsuarioController extends Controller
             $bloques[$col] = (bool) $usuario->$col;
         }
 
+        $idsBase = array_keys($this->modulosBase());
+        $bloquesDinamicos = CarpetasPermisos::where('id_usuario', $id)
+            ->join('sgc_carpetas3', 'sgc_carpetas3.id', '=', 'sgc_carpetas_permisos.id_carpeta')
+            ->where('sgc_carpetas3.id_padre', 0)
+            ->whereNotIn('sgc_carpetas3.id', $idsBase)
+            ->pluck('sgc_carpetas_permisos.id_carpeta')
+            ->toArray();
+
         return view('usuarios.editar', compact(
             'usuario', 'actual', 'perfiles', 'modulosCarpetas',
-            'permisosCarpetas', 'bloques', 'areas', 'permisosArea', 'esSuCuenta', 'soloLectura'
+            'permisosCarpetas', 'bloques', 'areas', 'permisosArea', 'esSuCuenta', 'soloLectura',
+            'bloquesDinamicos'
         ));
     }
 
@@ -177,10 +195,6 @@ class UsuarioController extends Controller
             $usuario->quesera = password_hash($request->password, PASSWORD_BCRYPT, ['cost' => 12]);
         }
 
-        foreach ($this->columnasBloque() as $col) {
-            $usuario->$col = $request->has("bloques.{$col}") ? 1 : 0;
-        }
-
         $usuario->save();
 
         // Actualizar permisos por área
@@ -190,6 +204,15 @@ class UsuarioController extends Controller
         CarpetasPermisos::where('id_usuario', $id)->delete();
         if ($request->has('carpetas')) {
             $this->guardarPermisosCarpetas($id, $usuario->email, $usuario->quesera, $request->carpetas);
+        }
+
+        // Visibilidad de módulos dinámicos (bloque_dinamico[id] = 1)
+        foreach (array_keys($request->input('bloque_dinamico', [])) as $carpetaId) {
+            CarpetasPermisos::firstOrCreate(
+                ['id_carpeta' => (int) $carpetaId, 'id_usuario' => $id],
+                ['correo' => '', 'clave' => '', 'ver' => 0, 'carga' => 0, 'descarga' => 0,
+                 'crear' => 0, 'ocultar_raiz' => 0, 'eliminar' => 0, 'editar' => 0]
+            );
         }
 
         return redirect()->route('usuarios.index')

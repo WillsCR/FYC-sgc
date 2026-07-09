@@ -226,6 +226,9 @@
         <a href="{{ route('flota.exportar') }}" class="btn-fl btn-fl-green">
             <i class="fa-solid fa-file-excel"></i> Exportar Excel
         </a>
+        <a href="javascript:history.back()" class="btn-fl btn-fl-gray">
+            <i class="fa-solid fa-arrow-left"></i> Volver
+        </a>
         <a href="{{ route('panel') }}" class="btn-fl btn-fl-gray">
             <i class="fa-solid fa-house"></i> Panel Principal
         </a>

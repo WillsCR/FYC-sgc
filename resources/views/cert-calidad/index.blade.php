@@ -150,6 +150,17 @@
 
 .cc-empty { text-align: center; padding: 40px; color: #9ca3af; font-size: .85rem; }
 
+/* ── Columna sticky acciones ── */
+.cc-table th.th-sticky,
+.cc-table td.td-sticky {
+    position: sticky; right: 0; z-index: 1;
+    box-shadow: -2px 0 6px rgba(0,0,0,.12);
+}
+.cc-table th.th-sticky { background: var(--cc-navy); z-index: 2; }
+.cc-table td.td-sticky { background: #fff; }
+.cc-table tbody tr:hover td.td-sticky { background: #f8fafc; }
+
+
 /* Separador de sección */
 .cc-section-title { font-size: .78rem; font-weight: 700; color: var(--cc-navy); margin: 14px 0 10px; padding-bottom: 5px; border-bottom: 2px solid #e5e7eb; }
 
@@ -227,9 +238,10 @@
 
 {{-- ── Tabla ── --}}
 <div class="cc-table-wrap">
-    @php $total = $registros->count(); @endphp
+    @php $total = $registros->total(); @endphp
     <div style="font-size:.75rem;color:#6b7280;margin-bottom:8px">
         {{ $total }} registro{{ $total !== 1 ? 's' : '' }} encontrado{{ $total !== 1 ? 's' : '' }}
+        — mostrando {{ $registros->firstItem() }}–{{ $registros->lastItem() }}
     </div>
 
     @if($registros->isEmpty())
@@ -258,7 +270,7 @@
                 <th>OBSERVACIONES</th>
                 <th>ARCHIVO</th>
                 @if($puedeGestionar)
-                <th style="width:80px">ACCIONES</th>
+                <th style="width:80px" class="th-sticky">ACCIONES</th>
                 @endif
             </tr>
         </thead>
@@ -312,7 +324,7 @@
                 @endif
             </td>
             @if($puedeGestionar)
-            <td class="td-center" style="white-space:nowrap">
+            <td class="td-center td-sticky" style="white-space:nowrap">
                 <button class="btn-cc-icon btn-cc-edit"
                         onclick="abrirModalEditar({{ $r->id }})" title="Editar">
                     <i class="fa-solid fa-pencil" style="font-size:.65rem"></i>
@@ -329,6 +341,8 @@
     </table>
     @endif
 </div>
+
+<x-paginacion :paginator="$registros" label="registros" />
 
 {{-- ══════════════════════════════════════════════════════════════════════════ --}}
 {{-- Modal: Nuevo / Editar registro --}}

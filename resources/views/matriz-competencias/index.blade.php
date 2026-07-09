@@ -164,7 +164,7 @@
            class="btn-mcc btn-mcc-green">
             <i class="fa-solid fa-file-excel"></i> Exportar Excel
         </a>
-        <a href="{{ route('carpetas.show', 1) }}" class="btn-mcc btn-mcc-navy" style="background:#6b7280">
+        <a href="{{ route('carpetas.show', 5) }}" class="btn-mcc btn-mcc-navy" style="background:#6b7280">
             <i class="fa-solid fa-arrow-left"></i> Volver
         </a>
         <a href="{{ route('panel') }}" class="btn-mcc btn-mcc-navy" style="background:#374151">

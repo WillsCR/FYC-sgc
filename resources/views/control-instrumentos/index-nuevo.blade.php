@@ -504,15 +504,15 @@
         </table>
     </div>
 
-    {{-- Leyenda + paginación --}}
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-top:12px">
-        <div class="ci-leyenda">
-            <div class="ci-leyenda-item"><span class="ci-dot ci-dot-verde"></span> Vigente (&gt;30 días)</div>
-            <div class="ci-leyenda-item"><span class="ci-dot ci-dot-amarillo"></span> Por vencer (≤30 días)</div>
-            <div class="ci-leyenda-item"><span class="ci-dot ci-dot-rojo"></span> Vencido / Sin fecha</div>
-        </div>
-        <div class="ci-paginacion">{{ $programas->links() }}</div>
+    {{-- Leyenda --}}
+    <div class="ci-leyenda" style="margin-top:12px">
+        <div class="ci-leyenda-item"><span class="ci-dot ci-dot-verde"></span> Vigente (&gt;30 días)</div>
+        <div class="ci-leyenda-item"><span class="ci-dot ci-dot-amarillo"></span> Por vencer (≤30 días)</div>
+        <div class="ci-leyenda-item"><span class="ci-dot ci-dot-rojo"></span> Vencido / Sin fecha</div>
     </div>
+
+    {{-- Paginación --}}
+    <x-paginacion :paginator="$programas" label="instrumentos" />
 
 </div>{{-- /ci-body --}}
 

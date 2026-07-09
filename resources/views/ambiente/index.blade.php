@@ -198,7 +198,6 @@
     <div class="pub-section-bar">
         <span class="pub-section-title">Estadísticas de Medio Ambiente</span>
         <div class="pub-section-actions">
-            <button class="btn-refrescar" onclick="location.reload()">Refrescar Página</button>
             @if($esAdmin)
             <button class="btn-nueva-amb" id="btn-nueva-estadistica">+ Nueva estadística</button>
             @endif

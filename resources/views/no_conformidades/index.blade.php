@@ -157,18 +157,16 @@
 }
 .btn-danger:hover { background: #fecaca; }
 .btn-icon {
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 4px 6px;
-    border-radius: 5px;
-    color: var(--nc-muted);
-    font-size: .9rem;
-    transition: background .15s, color .15s;
-    line-height: 1;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px;
+    border: none; border-radius: 8px;
+    cursor: pointer; font-size: .85rem;
+    transition: opacity .15s, transform .1s;
+    color: #fff;
 }
-.btn-icon:hover          { background: #f3f4f6; color: #111; }
-.btn-icon.danger:hover   { background: #fee2e2; color: #dc2626; }
+.btn-icon:hover { opacity: .85; transform: scale(1.07); }
+.btn-icon.edit  { background: #f59e0b; }
+.btn-icon.danger { background: #dc2626; }
 
 /* ── Table wrapper ──────────────────────────────────────────────────────────── */
 .nc-table-wrap {
@@ -322,6 +320,8 @@
     color: var(--nc-navy);
     font-size: .85rem;
 }
+
+
 
 /* Empty state */
 .nc-empty {
@@ -706,18 +706,31 @@
     <div id="alerta-err" class="alert alert-err alert-hidden">❌ <span id="alerta-err-msg"></span></div>
 
     {{-- ── Toolbar ─────────────────────────────────────────────────────────────── --}}
-    <div class="nc-toolbar">
-        <input type="search" id="filtro-buscar" placeholder="Buscar…" oninput="filtrarTabla()">
-        <select id="filtro-tipo" onchange="filtrarTabla()">
+    <form method="GET" action="{{ route('nc.index') }}" class="nc-toolbar">
+        <input type="search" name="buscar" placeholder="Buscar…" value="{{ request('buscar') }}">
+        <select name="tipo" onchange="this.form.submit()">
             <option value="">Todos los tipos</option>
-            <option value="Correctiva">Correctiva</option>
-            <option value="Oportunidad de Mejora">Oportunidad de Mejora</option>
+            <option value="Correctiva"            {{ request('tipo') === 'Correctiva'            ? 'selected' : '' }}>Correctiva</option>
+            <option value="Oportunidad de Mejora" {{ request('tipo') === 'Oportunidad de Mejora' ? 'selected' : '' }}>Oportunidad de Mejora</option>
         </select>
-        <select id="filtro-status" onchange="filtrarTabla()">
+        <select name="estado" onchange="this.form.submit()">
             <option value="">Todos los estados</option>
-            <option value="Pendiente">Pendiente</option>
-            <option value="Resuelta">Resuelta</option>
+            <option value="Pendiente" {{ request('estado') === 'Pendiente' ? 'selected' : '' }}>Pendiente</option>
+            <option value="Resuelta"  {{ request('estado') === 'Resuelta'  ? 'selected' : '' }}>Resuelta</option>
         </select>
+        <button type="submit" class="btn-nc btn-nc-navy" style="height:34px;padding:0 12px">
+            <i class="fa-solid fa-filter"></i>
+        </button>
+        @if(request()->hasAny(['buscar','tipo','estado']))
+        <a href="{{ route('nc.index') }}" class="btn-nc" style="background:#0891b2;height:34px;padding:0 12px">
+            <i class="fa-solid fa-rotate"></i>
+        </a>
+        @endif
+    </form>
+
+    {{-- ── Barra de scroll horizontal superior ── --}}
+    <div id="nc-scroll-top" style="overflow-x:scroll;overflow-y:hidden;height:12px;margin-bottom:4px;border-radius:4px;background:#e2e8f0">
+        <div id="nc-scroll-inner" style="height:1px;min-width:3000px"></div>
     </div>
 
     {{-- ── Table ──────────────────────────────────────────────────────────────── --}}
@@ -903,8 +916,12 @@
                     {{-- Acciones admin --}}
                     @if($esAdmin)
                     <td class="col-act center">
-                        <button class="btn-icon" title="Editar" onclick="abrirModalEditar({{ $nc->id }})">✏️</button>
-                        <button class="btn-icon danger" title="Eliminar" onclick="eliminarNC({{ $nc->id }}, {{ $nc->num_nc }})">🗑️</button>
+                        <button class="btn-icon edit" title="Editar" onclick="abrirModalEditar({{ $nc->id }})">
+                            <i class="fa-solid fa-pencil"></i>
+                        </button>
+                        <button class="btn-icon danger" title="Eliminar" onclick="eliminarNC({{ $nc->id }}, {{ $nc->num_nc }})">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
                     </td>
                     @endif
                 </tr>
@@ -919,6 +936,8 @@
             </tbody>
         </table>
     </div>
+
+    <x-paginacion :paginator="$ncs" label="no conformidades" />
 </div>
 
 {{-- ═══════════════════════════════════════════════════════════════════════════ --}}
@@ -1679,5 +1698,19 @@ document.addEventListener('keydown', e => {
         cerrarModal();
     }
 });
+
+// Barra de scroll horizontal superior sincronizada con la tabla
+(function () {
+    var top   = document.getElementById('nc-scroll-top');
+    var inner = document.getElementById('nc-scroll-inner');
+    var wrap  = document.querySelector('.nc-table-wrap');
+    var table = wrap ? wrap.querySelector('table') : null;
+    if (!top || !wrap || !table) return;
+
+    inner.style.width = (table.offsetWidth + 2) + 'px';
+
+    top.addEventListener('scroll',  function () { wrap.scrollLeft = top.scrollLeft; });
+    wrap.addEventListener('scroll', function () { top.scrollLeft  = wrap.scrollLeft; });
+})();
 </script>
 @endpush
